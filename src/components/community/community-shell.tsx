@@ -2,14 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth, useChat, useCommunity } from "@/lib/store";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
-// tooltips removed — base-ui API doesn't support asChild
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,6 +26,7 @@ import {
   Menu,
   X,
   ChevronDown,
+  Home,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -76,10 +76,13 @@ export function CommunityShell({ children }: { children: React.ReactNode }) {
   }
 
   const sidebar = (
-    <div className="flex h-full flex-col">
-      <div className="flex h-14 items-center justify-between px-4 border-b border-sidebar-border">
-        <Link href="/" className="text-lg font-bold truncate">
-          Amigas Y Más
+    <div className="flex h-full flex-col bg-gradient-to-b from-sidebar to-rosa/3">
+      <div className="flex h-14 items-center justify-between px-4 border-b border-rosa/15">
+        <Link href="/" className="flex items-center gap-2">
+          <Image src="/ayms-logo.svg" alt="AYMS" width={28} height={28} className="rounded-full" />
+          <span className="text-base font-bold truncate font-[family-name:var(--font-heading)]">
+            Amigas Y Más
+          </span>
         </Link>
         <Button
           variant="ghost"
@@ -98,19 +101,19 @@ export function CommunityShell({ children }: { children: React.ReactNode }) {
             href={item.href}
             title={item.label}
             className={cn(
-              "flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-xs font-medium transition-colors",
+              "flex flex-1 items-center justify-center gap-1.5 rounded-xl px-2 py-2 text-xs font-medium transition-colors",
               pathname === item.href
-                ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                : "text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50",
+                ? "bg-primary/10 text-primary"
+                : "text-sidebar-foreground/60 hover:text-primary hover:bg-primary/5",
             )}
           >
             <item.icon className="h-4 w-4" />
-            <span className="hidden sm:inline">{item.label}</span>
+            <span>{item.label}</span>
           </Link>
         ))}
       </nav>
 
-      <Separator />
+      <Separator className="bg-rosa/10" />
 
       {isChat && (
         <ScrollArea className="flex-1 px-2 py-2">
@@ -119,7 +122,7 @@ export function CommunityShell({ children }: { children: React.ReactNode }) {
             if (!chs) return null;
             return (
               <div key={key} className="mb-3">
-                <p className="mb-1 px-2 text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/40">
+                <p className="mb-1 px-2 text-[10px] font-semibold uppercase tracking-wider text-primary/40">
                   {label}
                 </p>
                 {chs.map((ch) => (
@@ -127,10 +130,10 @@ export function CommunityShell({ children }: { children: React.ReactNode }) {
                     key={ch.id}
                     onClick={() => setActiveChannel(ch.id)}
                     className={cn(
-                      "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors",
+                      "flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors",
                       activeChannel === ch.id
-                        ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                        : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
+                        ? "bg-primary/10 text-primary font-medium"
+                        : "text-sidebar-foreground/70 hover:bg-primary/5 hover:text-primary",
                     )}
                   >
                     <Hash className="h-3.5 w-3.5 shrink-0 opacity-60" />
@@ -145,7 +148,7 @@ export function CommunityShell({ children }: { children: React.ReactNode }) {
 
       {!isChat && (
         <ScrollArea className="flex-1 px-2 py-2">
-          <p className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/40">
+          <p className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-wider text-primary/40">
             Online — {onlineMembers.length}
           </p>
           {useCommunity
@@ -154,11 +157,11 @@ export function CommunityShell({ children }: { children: React.ReactNode }) {
             .map((m) => (
               <div
                 key={m.id}
-                className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-sidebar-foreground/70"
+                className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-sidebar-foreground/70"
               >
                 <div className="relative">
                   <Avatar className="h-6 w-6">
-                    <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
+                    <AvatarFallback className="text-[10px] bg-gradient-to-br from-primary/20 to-rosa/20 text-primary font-semibold">
                       {initials(m.name)}
                     </AvatarFallback>
                   </Avatar>
@@ -170,27 +173,35 @@ export function CommunityShell({ children }: { children: React.ReactNode }) {
         </ScrollArea>
       )}
 
-      <Separator />
+      <Separator className="bg-rosa/10" />
 
-      <div className="p-2">
+      <div className="px-2 pt-2">
+        <Link
+          href="/"
+          className="flex w-full items-center gap-2 rounded-xl px-2 py-2 text-xs font-medium text-sidebar-foreground/50 transition-colors hover:text-primary hover:bg-primary/5"
+        >
+          <Home className="h-3.5 w-3.5" />
+          Back to Site
+        </Link>
+      </div>
+
+      <div className="p-2 pt-0">
         <DropdownMenu>
-          <DropdownMenuTrigger>
-            <button className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-sm transition-colors hover:bg-sidebar-accent/50">
-              <Avatar className="h-8 w-8">
-                <AvatarFallback className="bg-primary text-primary-foreground text-xs font-semibold">
-                  {user ? initials(user.name) : "?"}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1 text-left min-w-0">
-                <p className="truncate text-sm font-medium">
-                  {user?.name || "Guest"}
-                </p>
-                <p className="truncate text-[10px] text-sidebar-foreground/50">
-                  {user?.email || ""}
-                </p>
-              </div>
-              <ChevronDown className="h-3.5 w-3.5 opacity-50" />
-            </button>
+          <DropdownMenuTrigger className="flex w-full items-center gap-2 rounded-xl px-2 py-2 text-sm transition-colors hover:bg-primary/5">
+            <Avatar className="h-8 w-8">
+              <AvatarFallback className="bg-gradient-to-br from-primary to-magenta text-white text-xs font-semibold">
+                {user ? initials(user.name) : "?"}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex-1 text-left min-w-0">
+              <p className="truncate text-sm font-medium">
+                {user?.name || "Guest"}
+              </p>
+              <p className="truncate text-[10px] text-sidebar-foreground/50">
+                {user?.email || ""}
+              </p>
+            </div>
+            <ChevronDown className="h-3.5 w-3.5 opacity-50" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-56">
             <DropdownMenuItem render={<Link href="/community/profile" />}>
@@ -213,27 +224,24 @@ export function CommunityShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-screen overflow-hidden">
-      {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+          className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
-      {/* Sidebar */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-64 bg-sidebar border-r border-sidebar-border transition-transform lg:static lg:translate-x-0",
+          "fixed inset-y-0 left-0 z-50 w-64 bg-sidebar border-r border-rosa/15 transition-transform lg:static lg:translate-x-0",
           sidebarOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
         {sidebar}
       </aside>
 
-      {/* Main area */}
       <div className="flex flex-1 flex-col min-w-0">
-        <header className="flex h-14 items-center gap-3 border-b border-border px-4 lg:hidden">
+        <header className="flex h-14 items-center gap-3 border-b border-rosa/15 px-4 lg:hidden bg-gradient-to-r from-background to-rosa/3">
           <Button
             variant="ghost"
             size="icon"
@@ -241,7 +249,7 @@ export function CommunityShell({ children }: { children: React.ReactNode }) {
           >
             <Menu className="h-5 w-5" />
           </Button>
-          <span className="font-semibold">Community</span>
+          <span className="font-semibold font-[family-name:var(--font-heading)]">Community</span>
         </header>
         <main className="flex-1 overflow-hidden">{children}</main>
       </div>

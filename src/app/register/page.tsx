@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -30,19 +31,23 @@ export default function RegisterPage() {
     }
     const ok = register(name, email, password);
     if (ok) {
-      toast.success("Welcome to the family, amiga!");
+      toast.success("Welcome to the family, amiga! ♡");
       router.push("/community");
     }
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary/5 via-background to-gold/5 px-4">
-      <Card className="w-full max-w-md">
+    <div className="flex min-h-screen items-center justify-center px-4 relative overflow-hidden">
+      <div className="absolute inset-0 bg-gradient-to-br from-rosa/15 via-background to-gold/8" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_20%_80%,oklch(0.60_0.24_340/0.08),transparent_50%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_80%_20%,oklch(0.82_0.12_85/0.08),transparent_50%)]" />
+
+      <Card className="relative w-full max-w-md border-rosa/20 shadow-xl shadow-primary/5">
         <CardHeader className="text-center">
-          <Link href="/" className="mb-2 inline-block text-2xl font-bold">
-            Amigas Y Más
+          <Link href="/" className="mb-2 inline-flex items-center justify-center gap-2">
+            <Image src="/ayms-logo.svg" alt="AYMS" width={48} height={48} className="rounded-full shadow-md shadow-primary/15" />
           </Link>
-          <h1 className="text-xl font-semibold">Become an Amiga</h1>
+          <h1 className="text-xl font-semibold font-[family-name:var(--font-heading)]">Become an Amiga</h1>
           <p className="text-sm text-muted-foreground">
             Create your account and join the community
           </p>
@@ -56,6 +61,7 @@ export default function RegisterPage() {
                 placeholder="Your name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                className="border-rosa/20 focus-visible:ring-primary/30"
               />
             </div>
             <div className="space-y-2">
@@ -66,6 +72,7 @@ export default function RegisterPage() {
                 placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                className="border-rosa/20 focus-visible:ring-primary/30"
               />
             </div>
             <div className="space-y-2">
@@ -76,6 +83,7 @@ export default function RegisterPage() {
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                className="border-rosa/20 focus-visible:ring-primary/30"
               />
             </div>
             <div className="space-y-2">
@@ -86,10 +94,11 @@ export default function RegisterPage() {
                 placeholder="••••••••"
                 value={confirm}
                 onChange={(e) => setConfirm(e.target.value)}
+                className="border-rosa/20 focus-visible:ring-primary/30"
               />
             </div>
-            <Button type="submit" className="w-full">
-              Create Account
+            <Button type="submit" className="w-full bg-gradient-to-r from-primary to-magenta text-white border-0 hover:opacity-90 shadow-md shadow-primary/20">
+              Create Account ♡
             </Button>
           </form>
         </CardContent>

@@ -64,7 +64,19 @@ interface CommunityState {
   onlineMembers: string[];
 }
 
+const DEV_USER: User = {
+  id: "0",
+  name: "Aaron Villegas",
+  email: "aaron@ayms.com",
+  avatar: "",
+  bio: "Admin & developer. Building the future of AYMS.",
+  location: "California",
+  joinedDate: "2026-04-15",
+  role: "admin",
+};
+
 const MOCK_USERS: User[] = [
+  DEV_USER,
   {
     id: "1",
     name: "Maria Garcia",
@@ -157,8 +169,8 @@ const MOCK_EVENTS: CalendarEvent[] = [
 ];
 
 export const useAuth = create<AuthState>((set, get) => ({
-  user: null,
-  isAuthenticated: false,
+  user: DEV_USER,
+  isAuthenticated: true,
   login: (email: string, _password: string) => {
     const found = MOCK_USERS.find((u) => u.email === email);
     if (found) {
@@ -222,5 +234,5 @@ export const useEvents = create<EventState>(() => ({
 
 export const useCommunity = create<CommunityState>(() => ({
   members: MOCK_USERS,
-  onlineMembers: ["1", "2", "4"],
+  onlineMembers: ["0", "1", "2", "4"],
 }));

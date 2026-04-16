@@ -57,9 +57,9 @@ export default function ChatPage() {
       {/* Chat area */}
       <div className="flex flex-1 flex-col min-w-0">
         {/* Channel header */}
-        <div className="flex h-12 items-center gap-2 border-b border-border px-4">
-          <Hash className="h-4 w-4 text-muted-foreground" />
-          <h2 className="font-semibold">{channel?.name || "General"}</h2>
+        <div className="flex h-12 items-center gap-2 border-b border-rosa/15 px-4 bg-gradient-to-r from-background to-rosa/3">
+          <Hash className="h-4 w-4 text-primary/60" />
+          <h2 className="font-semibold font-[family-name:var(--font-heading)]">{channel?.name || "General"}</h2>
           <span className="text-xs text-muted-foreground hidden sm:inline">
             — {channel?.description}
           </span>
@@ -70,7 +70,7 @@ export default function ChatPage() {
           <div className="space-y-4">
             {channelMessages.length === 0 && (
               <div className="flex flex-col items-center justify-center py-20 text-center">
-                <Hash className="h-12 w-12 text-muted-foreground/30 mb-3" />
+                <Hash className="h-12 w-12 text-primary/20 mb-3" />
                 <p className="text-lg font-medium">
                   Welcome to #{channel?.name}
                 </p>
@@ -85,7 +85,7 @@ export default function ChatPage() {
             {channelMessages.map((msg) => (
               <div key={msg.id} className="group flex gap-3">
                 <Avatar className="h-9 w-9 mt-0.5 shrink-0">
-                  <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
+                  <AvatarFallback className="bg-gradient-to-br from-primary/15 to-rosa/15 text-primary text-xs font-semibold">
                     {initials(msg.userName)}
                   </AvatarFallback>
                 </Avatar>
@@ -109,16 +109,16 @@ export default function ChatPage() {
         </ScrollArea>
 
         {/* Message input */}
-        <div className="border-t border-border px-4 py-3">
+        <div className="border-t border-rosa/15 px-4 py-3">
           <form onSubmit={handleSend} className="flex gap-2">
             <Input
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder={`Message #${channel?.name || "general"}...`}
-              className="flex-1"
+              className="flex-1 border-rosa/20 focus-visible:ring-primary/30"
               autoFocus
             />
-            <Button type="submit" size="icon" disabled={!input.trim()}>
+            <Button type="submit" size="icon" disabled={!input.trim()} className="bg-gradient-to-r from-primary to-magenta text-white border-0 disabled:opacity-40">
               <Send className="h-4 w-4" />
             </Button>
           </form>
@@ -126,11 +126,11 @@ export default function ChatPage() {
       </div>
 
       {/* Members sidebar (desktop only) */}
-      <aside className="hidden w-56 shrink-0 border-l border-border bg-muted/20 xl:block">
+      <aside className="hidden w-56 shrink-0 border-l border-rosa/15 bg-rosa/3 xl:block">
         <div className="p-3">
           <div className="flex items-center gap-2 mb-3">
-            <Users className="h-4 w-4 text-muted-foreground" />
-            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <Users className="h-4 w-4 text-primary/60" />
+            <span className="text-xs font-semibold uppercase tracking-wider text-primary/50">
               Members
             </span>
           </div>

@@ -1,0 +1,44 @@
+// Firebase Storage rules for the AYMS community.
+//
+// Switch to TEST MODE in the Firebase console for first-pass usage:
+//   1. Firebase Console -> Build -> Storage -> Get Started.
+//   2. Pick a region (us-central1 is fine).
+//   3. Choose "Start in test mode" (or pick "production mode" and
+//      paste the test-mode rules below into the Rules tab).
+//   4. Make sure NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET in your
+//      environment variables matches the bucket name shown at the top
+//      of the Storage page (something like
+//      amigas-y-mas-social.firebasestorage.app).
+//
+// TEST MODE (DEV ONLY - allow anyone to read/write until 2026-05-28):
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Open access until the date below. Tighten before launch.
+    match /{allPaths=**} {
+      allow read, write: if request.time < timestamp.date(2026, 5, 28);
+    }
+  }
+}
+
+// PRODUCTION-READY (paste this once Firebase Auth is wired up):
+//
+// rules_version = '2';
+// service firebase.storage {
+//   match /b/{bucket}/o {
+//     // Avatars: anyone can view, only the owning user can write,
+//     // and only image uploads under 5 MB are accepted.
+//     match /avatars/{uid}/{file=**} {
+//       allow read: if true;
+//       allow write: if request.auth != null
+//                    && request.auth.uid == uid
+//                    && request.resource.size < 5 * 1024 * 1024
+//                    && request.resource.contentType.matches('image/.*');
+//     }
+//
+//     // Default deny everything else.
+//     match /{path=**} {
+//       allow read, write: if false;
+//     }
+//   }
+// }

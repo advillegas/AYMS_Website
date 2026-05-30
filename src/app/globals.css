@@ -1,0 +1,386 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ============================================================
+   AYMS Brand Kit — official colors
+   Blush Pink     #FACDE8   Soft accents, community surfaces
+   Vivid Magenta  #FF0099   Primary CTAs, brand identity
+   Vivid Pink     #B51760   Deep headlines, brand hits
+   Neutral Pink   #FFF7FB   Page background (light)
+   Coral          #FF7F50   Trips, travel, summer campaigns ONLY
+   Deep Plum      #6A1B4D   Trip announcements, destination posts ONLY
+   ============================================================ */
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-heading);
+  --font-detail: var(--font-detail);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+
+  /* Brand palette tokens */
+  --color-blush: var(--blush);
+  --color-blush-foreground: var(--blush-foreground);
+  --color-rosa: var(--rosa);
+  --color-rosa-foreground: var(--rosa-foreground);
+  --color-magenta: var(--magenta);
+  --color-magenta-foreground: var(--magenta-foreground);
+  --color-brand-pink: var(--brand-pink);
+  --color-brand-pink-foreground: var(--brand-pink-foreground);
+  --color-coral: var(--coral);
+  --color-coral-foreground: var(--coral-foreground);
+  --color-plum: var(--plum);
+  --color-plum-foreground: var(--plum-foreground);
+
+  /* Legacy aliases (kept so existing components don't break) */
+  --color-gold: var(--gold);
+  --color-gold-foreground: var(--gold-foreground);
+  --color-lavender: var(--lavender);
+  --color-lavender-foreground: var(--lavender-foreground);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+  /* Surface — Neutral Pink background, Deep Plum text */
+  --background: #FFF7FB;
+  --foreground: #6A1B4D;
+  --card: #FFFFFF;
+  --card-foreground: #6A1B4D;
+  --popover: #FFFFFF;
+  --popover-foreground: #6A1B4D;
+
+  /* Primary CTA — Vivid Magenta */
+  --primary: #FF0099;
+  --primary-foreground: #FFFFFF;
+
+  /* Secondary surface — Blush Pink */
+  --secondary: #FACDE8;
+  --secondary-foreground: #6A1B4D;
+
+  --muted: #FCE7F3;
+  --muted-foreground: #8C4373;
+
+  --accent: #FACDE8;
+  --accent-foreground: #B51760;
+
+  --destructive: #DC2626;
+  --border: #F5D7E8;
+  --input: #F5D7E8;
+  --ring: #FF0099;
+
+  /* Brand accent palette — exact kit values */
+  --blush: #FACDE8;            /* Blush Pink */
+  --blush-foreground: #6A1B4D;
+  --rosa: #FACDE8;             /* alias of blush */
+  --rosa-foreground: #6A1B4D;
+  --magenta: #FF0099;          /* Vivid Magenta */
+  --magenta-foreground: #FFFFFF;
+  --brand-pink: #B51760;       /* Vivid Pink — deep headlines */
+  --brand-pink-foreground: #FFFFFF;
+  --coral: #FF7F50;            /* Coral — trips/travel only */
+  --coral-foreground: #FFFFFF;
+  --plum: #6A1B4D;             /* Deep Plum — trip announcements only */
+  --plum-foreground: #FFFFFF;
+
+  /* Legacy tokens — softened to fit brand palette */
+  --gold: #F4B860;             /* warm peach (rarely used) */
+  --gold-foreground: #6A1B4D;
+  --lavender: #E9D5E9;         /* soft plum tint */
+  --lavender-foreground: #6A1B4D;
+
+  --chart-1: #FF0099;
+  --chart-2: #FF7F50;
+  --chart-3: #B51760;
+  --chart-4: #6A1B4D;
+  --chart-5: #FACDE8;
+  --radius: 0.875rem;
+
+  --sidebar: #FFF7FB;
+  --sidebar-foreground: #6A1B4D;
+  --sidebar-primary: #FF0099;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #FACDE8;
+  --sidebar-accent-foreground: #B51760;
+  --sidebar-border: #F5D7E8;
+  --sidebar-ring: #FF0099;
+}
+
+.dark {
+  /* Dark mode — deep plum background, neutral pink text */
+  --background: #1A0814;
+  --foreground: #FFF7FB;
+  --card: #2A0A1E;
+  --card-foreground: #FFF7FB;
+  --popover: #2A0A1E;
+  --popover-foreground: #FFF7FB;
+
+  --primary: #FF0099;
+  --primary-foreground: #FFFFFF;
+  --secondary: #3A0F2A;
+  --secondary-foreground: #FFF7FB;
+  --muted: #3A0F2A;
+  --muted-foreground: #C9A0BB;
+  --accent: #4A1438;
+  --accent-foreground: #FFF7FB;
+  --destructive: #EF4444;
+  --border: rgba(255, 247, 251, 0.10);
+  --input: rgba(255, 247, 251, 0.15);
+  --ring: #FF0099;
+
+  --blush: #FACDE8;
+  --blush-foreground: #1A0814;
+  --rosa: #FACDE8;
+  --rosa-foreground: #1A0814;
+  --magenta: #FF0099;
+  --magenta-foreground: #FFFFFF;
+  --brand-pink: #B51760;
+  --brand-pink-foreground: #FFFFFF;
+  --coral: #FF7F50;
+  --coral-foreground: #1A0814;
+  --plum: #6A1B4D;
+  --plum-foreground: #FFFFFF;
+
+  --gold: #F4B860;
+  --gold-foreground: #1A0814;
+  --lavender: #E9D5E9;
+  --lavender-foreground: #1A0814;
+
+  --chart-1: #FF0099;
+  --chart-2: #FF7F50;
+  --chart-3: #B51760;
+  --chart-4: #FACDE8;
+  --chart-5: #6A1B4D;
+
+  --sidebar: #14060F;
+  --sidebar-foreground: #FFF7FB;
+  --sidebar-primary: #FF0099;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #2A0A1E;
+  --sidebar-accent-foreground: #FFF7FB;
+  --sidebar-border: rgba(255, 247, 251, 0.10);
+  --sidebar-ring: #FF0099;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans scroll-smooth;
+  }
+
+  /* Brand kit typography hierarchy
+     Headlines: Playfair Display Bold      (--font-heading)
+     Subheadings + body: Montserrat        (--font-sans, default)
+     Small details: Cormorant Garamond     (--font-detail, italic) */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading);
+  }
+}
+
+@layer utilities {
+  .font-detail {
+    font-family: var(--font-detail);
+    font-style: italic;
+  }
+  .glow-pink {
+    box-shadow:
+      0 0 20px rgb(255 0 153 / 0.15),
+      0 0 60px rgb(255 0 153 / 0.08);
+  }
+  .glow-pink-lg {
+    box-shadow:
+      0 0 30px rgb(255 0 153 / 0.25),
+      0 0 80px rgb(255 0 153 / 0.12),
+      0 0 120px rgb(181 23 96 / 0.06);
+  }
+  .text-glow-pink {
+    text-shadow: 0 0 30px rgb(255 0 153 / 0.35);
+  }
+  .border-glow {
+    box-shadow:
+      inset 0 0 0 1px rgb(250 205 232 / 0.45),
+      0 0 15px rgb(255 0 153 / 0.08);
+  }
+  .pattern-dots {
+    background-image: radial-gradient(rgb(255 0 153 / 0.06) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+  .pattern-grid {
+    background-image:
+      linear-gradient(rgb(250 205 232 / 0.18) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(250 205 232 / 0.18) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+  .animate-shimmer {
+    background-size: 200% 100%;
+    animation: shimmer 3s ease-in-out infinite;
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+  }
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+  @keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 0 20px rgb(255 0 153 / 0.15); }
+    50% { box-shadow: 0 0 40px rgb(255 0 153 / 0.30), 0 0 80px rgb(181 23 96 / 0.10); }
+  }
+  .animate-pulse-glow {
+    animation: pulse-glow 3s ease-in-out infinite;
+  }
+  @keyframes marquee {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+}
+
+/* Flip card animation system */
+.flip-card-inner {
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.group:hover .flip-card-inner {
+  transform: rotateY(180deg);
+}
+
+/* Sparkle particles that burst outward on flip */
+.sparkle-particle {
+  --angle: calc(var(--i) * 36deg);
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0);
+  transition: none;
+}
+.group:hover .sparkle-particle {
+  animation: sparkle-burst 0.7s cubic-bezier(0.2, 0, 0, 1) forwards;
+  animation-delay: calc(var(--i) * 30ms);
+}
+@keyframes sparkle-burst {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0);
+  }
+  30% {
+    opacity: 1;
+    transform:
+      translate(
+        calc(-50% + cos(var(--angle)) * 30px),
+        calc(-50% + sin(var(--angle)) * 30px)
+      )
+      scale(1.2);
+  }
+  100% {
+    opacity: 0;
+    transform:
+      translate(
+        calc(-50% + cos(var(--angle)) * 60px),
+        calc(-50% + sin(var(--angle)) * 60px)
+      )
+      scale(0);
+  }
+}
+
+/* Glow flash that pulses on flip */
+.flip-glow {
+  --glow-color: #FF0099;
+  opacity: 0;
+  box-shadow: none;
+  transition: opacity 0.3s, box-shadow 0.3s;
+}
+.group:hover .flip-glow {
+  animation: glow-flash 0.8s ease-out forwards;
+}
+/* ------------------------------------------------------------------ */
+/* Themed scrollbars — pink track matching the AYMS palette            */
+/* ------------------------------------------------------------------ */
+
+/* Modern browsers (Firefox, future Chrome) */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: oklch(0.75 0.15 350) transparent;
+}
+
+/* WebKit (Chrome, Edge, Safari) */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: oklch(0.75 0.15 350 / 0.5);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.65 0.2 350 / 0.7);
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+@keyframes glow-flash {
+  0% {
+    opacity: 0;
+    box-shadow: 0 0 0 color-mix(in srgb, var(--glow-color, #FF0099) 0%, transparent);
+  }
+  40% {
+    opacity: 1;
+    box-shadow:
+      0 0 25px color-mix(in srgb, var(--glow-color, #FF0099) 45%, transparent),
+      0 0 50px color-mix(in srgb, var(--glow-color, #FF0099) 18%, transparent);
+  }
+  100% {
+    opacity: 0;
+    box-shadow:
+      0 0 40px color-mix(in srgb, var(--glow-color, #FF0099) 0%, transparent),
+      0 0 80px color-mix(in srgb, var(--glow-color, #FF0099) 0%, transparent);
+  }
+}

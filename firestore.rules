@@ -1,0 +1,39 @@
+// Firestore Security Rules for the AYMS community chat.
+//
+// CURRENT (test mode, dev only): open reads/writes until 2026-05-28.
+// PRODUCTION: switch to the auth-gated block below before public launch.
+//
+// Deploy with:
+//   firebase deploy --only firestore:rules
+// or paste the contents of this file into Firebase Console -> Firestore
+// Database -> Rules tab -> Publish.
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // === DEV (test mode) =====================================
+    // Active until 2026-05-28. Allows the smoke test and any
+    // unauthenticated browser to read/write.
+    match /{document=**} {
+      allow read, write: if request.time < timestamp.date(2026, 5, 28);
+    }
+
+    // === PROD (auth-gated, uncomment when ready) =============
+    // Requires the client to be signed in via Firebase Auth and to
+    // write only their own messages. Use this block once we wire
+    // Firebase Auth (or replace request.auth.uid with the user.id
+    // from your auth provider via custom claims).
+    //
+    // match /messages/{id} {
+    //   allow read: if request.auth != null;
+    //   allow create: if request.auth != null
+    //                 && request.resource.data.userId == request.auth.uid
+    //                 && request.resource.data.content is string
+    //                 && request.resource.data.content.size() < 4000;
+    //   allow update, delete: if request.auth != null
+    //                        && resource.data.userId == request.auth.uid;
+    // }
+  }
+}

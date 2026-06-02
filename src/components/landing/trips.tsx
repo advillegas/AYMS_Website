@@ -23,8 +23,8 @@ const TRIPS = [
     es: { title: "País del Vino, Napa", desc: "Un fin de semana relajante de catas de vino, spa y conversaciones significativas." },
     date: "October 10–12, 2026",
     tag: "Domestic",
-    gradient: "from-gold/25 via-coral/20 to-rosa/15",
-    gradientBack: "from-gold via-coral to-primary",
+    gradient: "from-coral/25 via-coral/20 to-rosa/15",
+    gradientBack: "from-coral via-coral to-primary",
     emoji: "🍷",
   },
   {
@@ -32,34 +32,37 @@ const TRIPS = [
     es: { title: "Fin de Semana en NYC", desc: "¡La ciudad que nunca duerme! Broadway, tours de comida y compras con tus amigas." },
     date: "November 7–9, 2026",
     tag: "Domestic",
-    gradient: "from-lavender/25 via-primary/20 to-rosa/15",
-    gradientBack: "from-lavender via-magenta to-primary",
+    gradient: "from-brand-pink/25 via-primary/20 to-rosa/15",
+    gradientBack: "from-brand-pink via-magenta to-primary",
     emoji: "🗽",
   },
 ];
 
 export function Trips() {
   return (
-    <section id="trips" className="relative py-28 overflow-hidden">
-      <div className="absolute inset-0 pattern-grid opacity-20" />
-      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+    <section id="trips" className="grain relative overflow-hidden py-32 bg-[#3A1020]">
+      {/* Coral-tinted dark bg — trips section only uses coral */}
+      <div className="absolute inset-0 bg-gradient-to-b from-[#3A1020] via-[#2A0D18] to-[#1a0a12]" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_0%,rgb(255_127_80/0.18),transparent)]" />
+      <div className="absolute inset-0 pattern-dots opacity-10" />
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#FF7F50]/40 to-transparent" />
 
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 24 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
+          transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
           className="text-center"
         >
-          <p className="text-sm font-bold uppercase tracking-[0.3em] text-primary text-glow-pink">
+          <p className="font-detail text-base font-semibold italic tracking-[0.12em] text-[#FF7F50]">
             Upcoming Trips
           </p>
-          <h2 className="mt-3 font-[family-name:var(--font-heading)] text-4xl font-bold tracking-tight sm:text-5xl">
+          <h2 className="text-title mt-3 font-[family-name:var(--font-heading)] font-extrabold text-white text-balance">
             Travel With Your{" "}
-            <span className="bg-gradient-to-r from-primary via-coral to-gold bg-clip-text text-transparent">Amigas</span>
+            <span className="bg-gradient-to-r from-[#FF7F50] via-[#FF0099] to-[#B51760] bg-clip-text text-transparent">Amigas</span>
           </h2>
-          <p className="mx-auto mt-5 max-w-2xl text-lg text-muted-foreground leading-relaxed">
+          <p className="text-lead mx-auto mt-5 max-w-2xl text-white/55">
             We organize group trips that create lifelong memories. From beach
             getaways to city adventures, there&apos;s something for every amiga.
           </p>
@@ -69,38 +72,38 @@ export function Trips() {
           {TRIPS.map((trip, i) => (
             <motion.div
               key={trip.en.title}
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 28 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ delay: i * 0.15, duration: 0.5 }}
+              transition={{ delay: i * 0.15, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
             >
               <FlipCard
-                className="h-[420px] cursor-pointer"
+                className="ring-gradient h-[440px] cursor-pointer rounded-3xl"
                 front={
-                  <div className="flex h-full flex-col rounded-2xl border border-rosa/20 bg-card overflow-hidden border-glow transition-shadow hover:glow-pink">
+                  <div className="flex h-full flex-col rounded-3xl bg-white/[0.06] overflow-hidden border border-white/10 backdrop-blur-sm">
                     <div className={`h-48 bg-gradient-to-br ${trip.gradient} flex items-center justify-center relative`}>
                       <div className="absolute inset-0 pattern-dots opacity-15" />
                       <span className="text-6xl relative z-10 drop-shadow-lg">{trip.emoji}</span>
                     </div>
                     <div className="flex-1 p-6 flex flex-col">
                       <div className="flex items-center justify-between mb-3">
-                        <h3 className="text-xl font-bold font-[family-name:var(--font-heading)]">{trip.en.title}</h3>
-                        <Badge className="bg-primary/10 text-primary border-primary/20 text-[10px] font-bold">{trip.tag}</Badge>
+                        <h3 className="text-xl font-bold font-[family-name:var(--font-heading)] text-white">{trip.en.title}</h3>
+                        <Badge className="bg-[#FF7F50]/15 text-[#FF7F50] border-[#FF7F50]/20 text-[10px] font-bold">{trip.tag}</Badge>
                       </div>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
-                        <Calendar className="h-4 w-4 text-primary" />
+                      <div className="flex items-center gap-2 text-sm text-white/55 mb-3">
+                        <Calendar className="h-4 w-4 text-[#FF7F50]" />
                         {trip.date}
                       </div>
-                      <p className="text-sm text-muted-foreground leading-relaxed flex-1">{trip.en.desc}</p>
+                      <p className="text-sm text-white/60 leading-relaxed flex-1">{trip.en.desc}</p>
                       <div className="mt-4">
-                        <span className="text-xs text-primary/60 font-medium">Hover to see in Spanish →</span>
+                        <span className="text-xs text-[#FF7F50] font-medium">Hover to see in Spanish →</span>
                       </div>
                     </div>
                   </div>
                 }
                 back={
-                  <div className={`flex h-full flex-col rounded-2xl bg-gradient-to-br ${trip.gradientBack} overflow-hidden text-white glow-pink-lg`}>
-                    <div className="h-48 flex items-center justify-center relative bg-white/5">
+                  <div className={`flex h-full flex-col rounded-3xl bg-gradient-to-br ${trip.gradientBack} overflow-hidden text-white`}>
+                    <div className="h-48 flex items-center justify-center relative bg-black/10">
                       <div className="absolute inset-0 pattern-dots opacity-10" />
                       <span className="text-6xl relative z-10 drop-shadow-lg">{trip.emoji}</span>
                     </div>
@@ -115,7 +118,7 @@ export function Trips() {
                       </div>
                       <p className="text-sm text-white/85 leading-relaxed flex-1">{trip.es.desc}</p>
                       <div className="mt-4">
-                        <Link href="/register" className={cn(buttonVariants({ variant: "outline", size: "sm" }), "w-full bg-white/10 border-white/25 text-white hover:bg-white/20 font-semibold")}>
+                        <Link href="/register" className={cn(buttonVariants({ variant: "outline", size: "sm" }), "w-full rounded-full bg-white/10 border-white/25 text-white hover:bg-white/20 font-semibold")}>
                           Join Trip ♡
                         </Link>
                       </div>
@@ -127,6 +130,9 @@ export function Trips() {
           ))}
         </div>
       </div>
+
+      {/* Bottom fade into light bg */}
+      <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-[#FFF7FB] to-transparent" />
     </section>
   );
 }

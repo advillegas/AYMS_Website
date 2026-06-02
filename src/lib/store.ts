@@ -103,6 +103,7 @@ export interface AuthResult {
 
 interface RegisteredUser extends User {
   passwordHash: string;
+  salt: string;
 }
 
 type ProfilePatch = Partial<
@@ -176,17 +177,23 @@ interface CommunityState {
 }
 
 /**
- * Demo-quality password "hash". Encodes the password so it isn't stored
- * in plaintext in localStorage, but provides no real cryptographic
- * protection. For production, move authentication server-side and use a
- * proper password hashing scheme such as bcrypt or argon2 behind a real
- * auth provider (Clerk, NextAuth.js, Supabase Auth).
+ * Client-side password hashing for the legacy localStorage registry
+ * fallback (used only when Firebase isn't configured). SHA-256 over a
+ * per-user random salt so passwords are never stored reversibly in
+ * localStorage. This is NOT a substitute for server-side auth: the
+ * canonical path is Firebase Auth, which uses scrypt server-side. For a
+ * self-hosted backend use bcrypt/argon2 behind a real auth provider.
  */
-function hashPassword(p: string): string {
-  if (typeof window === "undefined") {
-    return Buffer.from(p, "utf-8").toString("base64");
-  }
-  return btoa(unescape(encodeURIComponent(p)));
+function makeSalt(): string {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  return btoa(String.fromCharCode(...bytes));
+}
+
+async function hashPassword(password: string, salt: string): Promise<string> {
+  const data = new TextEncoder().encode(`${salt}:${password}`);
+  const digest = await crypto.subtle.digest("SHA-256", data);
+  return btoa(String.fromCharCode(...new Uint8Array(digest)));
 }
 
 const MOCK_USERS: User[] = [
@@ -343,11 +350,12 @@ export const useAuth = create<AuthState>()(
         if (!registered) {
           return { ok: false, error: "No account found with that email" };
         }
-        if (registered.passwordHash !== hashPassword(password)) {
+        if (registered.passwordHash !== (await hashPassword(password, registered.salt))) {
           return { ok: false, error: "Incorrect password" };
         }
-        const { passwordHash: _ph, ...user } = registered;
+        const { passwordHash: _ph, salt: _salt, ...user } = registered;
         void _ph;
+        void _salt;
         set({ user, isAuthenticated: true });
         // Mirror legacy users into Firestore on login so they
         // start showing up in the members list.
@@ -391,6 +399,7 @@ export const useAuth = create<AuthState>()(
         if (exists) {
           return { ok: false, error: "An account with that email already exists" };
         }
+        const salt = makeSalt();
         const newUser: RegisteredUser = {
           id: `u-${Date.now()}`,
           name: trimmedName,
@@ -400,10 +409,12 @@ export const useAuth = create<AuthState>()(
           location: "",
           joinedDate: new Date().toISOString().split("T")[0],
           role: "amiga",
-          passwordHash: hashPassword(password),
+          passwordHash: await hashPassword(password, salt),
+          salt,
         };
-        const { passwordHash: _ph, ...user } = newUser;
+        const { passwordHash: _ph, salt: _salt, ...user } = newUser;
         void _ph;
+        void _salt;
         set((s) => ({
           registry: [...s.registry, newUser],
           user,

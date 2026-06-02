@@ -163,11 +163,11 @@ export function NewConversationDialog({
     >
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+          <DialogTitle className="flex items-center gap-2 font-[family-name:var(--font-heading)] text-[#B51760]">
             {isGroup ? (
-              <Users className="h-4 w-4 text-primary" />
+              <Users className="h-4 w-4 text-[#FF0099]" />
             ) : (
-              <MessageCircle className="h-4 w-4 text-primary" />
+              <MessageCircle className="h-4 w-4 text-[#FF0099]" />
             )}
             {isGroup ? "New group chat" : "New message"}
           </DialogTitle>
@@ -211,7 +211,7 @@ export function NewConversationDialog({
             </Label>
             <Input
               id="group-name"
-              placeholder="e.g. Cancun Crew"
+              placeholder="e.g. Cancún Crew"
               value={groupName}
               onChange={(e) => setGroupName(e.target.value)}
               maxLength={60}
@@ -308,7 +308,7 @@ export function NewConversationDialog({
               type="button"
               onClick={handleStart}
               disabled={busy || selected.size === 0}
-              className="bg-primary text-primary-foreground hover:bg-magenta"
+              className="bg-gradient-to-r from-[#FF0099] to-[#B51760] text-white border-0 shadow-[0_4px_14px_rgb(255_0_153/0.3)] hover:brightness-110"
             >
               {busy ? (
                 <>

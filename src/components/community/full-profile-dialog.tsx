@@ -134,7 +134,7 @@ export function FullProfileDialog({
       <DialogContent className="sm:max-w-md p-0 overflow-hidden">
         {/* Banner tinted by the user's primary role color. */}
         <div
-          className="h-20 w-full bg-gradient-to-r from-primary/40 to-magenta/30"
+          className="h-20 w-full bg-gradient-to-r from-[#FF0099]/50 via-[#B51760]/30 to-[#FACDE8]/20"
           style={
             primaryColor
               ? {
@@ -158,7 +158,7 @@ export function FullProfileDialog({
             {/* Avatar overlapping the banner. */}
             <div className="-mt-12 flex items-end gap-3">
               <span className="relative inline-flex">
-                <Avatar className="h-24 w-24 ring-4 ring-card shadow-md">
+                <Avatar className="h-24 w-24 ring-4 ring-[#FF0099]/30 shadow-[0_0_24px_rgb(255_0_153/0.2)] elevate-3">
                   {profile.avatar && (
                     <AvatarImage src={profile.avatar} alt={displayName} />
                   )}
@@ -177,8 +177,8 @@ export function FullProfileDialog({
 
             <div className="mt-3">
               <h2
-                className="text-xl font-bold leading-tight font-[family-name:var(--font-heading)]"
-                style={primaryColor ? { color: primaryColor } : undefined}
+                className="text-title font-bold leading-tight font-[family-name:var(--font-heading)]"
+                style={primaryColor ? { color: primaryColor } : { color: "#B51760" }}
               >
                 {displayName}
               </h2>
@@ -255,7 +255,7 @@ export function FullProfileDialog({
               <>
                 <Separator className="my-4" />
                 <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-gradient-brand mb-2">
                     {isSelf ? "Your Friends" : "Mutual Friends"} ({topFriends.length})
                   </p>
                   <div className="grid grid-cols-4 gap-2">
@@ -291,7 +291,7 @@ export function FullProfileDialog({
                 <Button
                   type="button"
                   onClick={handleSendMessage}
-                  className="flex-1 bg-primary text-primary-foreground hover:bg-magenta"
+                  className="flex-1 bg-gradient-to-r from-[#FF0099] to-[#B51760] text-white border-0 shadow-[0_4px_14px_rgb(255_0_153/0.3)] hover:brightness-110"
                 >
                   <MessageCircle className="mr-2 h-4 w-4" />
                   Message

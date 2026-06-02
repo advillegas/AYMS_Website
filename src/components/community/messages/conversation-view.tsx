@@ -489,11 +489,11 @@ function TypingRow({ userIds }: { userIds: string[] }) {
 function EmptyState() {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-3 p-8 text-center">
-      <div className="rounded-full bg-primary/10 p-4">
-        <MessageSquare className="h-8 w-8 text-primary" />
+      <div className="rounded-full bg-gradient-to-br from-[#FF0099]/15 to-[#B51760]/10 p-4 ring-1 ring-[#FF0099]/20">
+        <MessageSquare className="h-8 w-8 text-[#FF0099]" />
       </div>
       <div>
-        <h3 className="text-base font-semibold font-[family-name:var(--font-heading)]">
+        <h3 className="text-lead font-bold font-[family-name:var(--font-heading)] text-[#B51760]">
           No conversation selected
         </h3>
         <p className="mt-1 text-xs text-muted-foreground max-w-xs">
@@ -663,7 +663,7 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
   return (
     <div className="flex h-full min-h-0 flex-col">
       {/* Header */}
-      <div className="flex h-12 shrink-0 items-center gap-3 border-b border-rosa/20 bg-card/80 px-4">
+      <div className="flex h-12 shrink-0 items-center gap-3 border-b border-[#FACDE8]/25 glass elevate-2 px-4">
         {/* Avatar stack */}
         <div className="flex -space-x-2 shrink-0">
           {header.avatars.length === 0 ? (
@@ -685,7 +685,7 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
-            <h2 className="text-sm font-semibold truncate font-[family-name:var(--font-heading)]">
+            <h2 className="text-sm font-bold truncate font-[family-name:var(--font-heading)] text-[#B51760]">
               {header.title}
             </h2>
             {muted && (
@@ -814,7 +814,7 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
       <TypingRow userIds={typingUsers} />
 
       {/* Composer */}
-      <div className="shrink-0 border-t border-rosa/20 bg-card/40 px-3 py-2.5">
+      <div className="shrink-0 border-t border-[#FACDE8]/25 glass elevate-2 px-3 py-2.5">
         {pendingGif && (
           <div className="mb-2 flex items-start gap-2 rounded-lg border border-rosa/20 bg-muted/30 p-2 max-w-xs">
             <Image
@@ -861,7 +861,7 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
             size="icon"
             onClick={handleSend}
             disabled={(!input.trim() && !pendingGif) || sending}
-            className="h-8 w-8 rounded-full bg-primary text-primary-foreground hover:bg-magenta disabled:opacity-30"
+            className="h-8 w-8 rounded-full bg-gradient-to-r from-[#FF0099] to-[#B51760] text-white hover:brightness-110 disabled:opacity-30 shadow-[0_4px_14px_rgb(255_0_153/0.3)]"
             aria-label="Send"
           >
             {sending ? (

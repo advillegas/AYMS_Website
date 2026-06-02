@@ -13,7 +13,6 @@ import { NextResponse } from "next/server";
  * round-trip.
  */
 
-const DEFAULT_ADMIN_PASSWORD = "ayms2026!";
 const ADMIN_USERNAMES = new Set(["admin", "admin@ayms.com"]);
 
 interface LoginPayload {
@@ -48,7 +47,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, fallback: true });
   }
 
-  const expected = process.env.ADMIN_PASSWORD ?? DEFAULT_ADMIN_PASSWORD;
+  const expected = process.env.ADMIN_PASSWORD;
+  if (!expected) {
+    // Fail closed: refuse admin auth when no password is configured server-side.
+    return NextResponse.json(
+      { ok: false, error: "Admin login is not configured" },
+      { status: 503 },
+    );
+  }
   if (password !== expected) {
     return NextResponse.json(
       { ok: false, error: "Invalid admin credentials" },

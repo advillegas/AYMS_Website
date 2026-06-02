@@ -237,9 +237,9 @@ function ChannelRow({
         <button
           onClick={() => onPick(ch.id)}
           className={cn(
-            "flex flex-1 items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-left transition-colors min-w-0",
+            "flex flex-1 items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-left transition-all min-w-0",
             active
-              ? "bg-primary/15 text-primary font-semibold"
+              ? "bg-gradient-to-r from-[#FF0099]/18 to-[#B51760]/10 text-primary font-semibold shadow-[inset_0_0_0_1px_rgb(255_0_153/0.18)]"
               : "text-foreground/70 hover:bg-primary/8 hover:text-primary",
             muted && !active && "opacity-60",
           )}
@@ -472,9 +472,9 @@ function TopBarTabs({ onNavigate }: { onNavigate?: () => void }) {
             href={tab.href}
             onClick={onNavigate}
             className={cn(
-              "relative flex items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition-colors whitespace-nowrap",
+              "relative flex items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition-all whitespace-nowrap",
               active
-                ? "bg-primary text-primary-foreground"
+                ? "bg-gradient-to-r from-[#FF0099] to-[#B51760] text-white shadow-[0_4px_14px_rgb(255_0_153/0.35)]"
                 : "text-foreground/70 hover:bg-primary/10 hover:text-primary",
             )}
           >
@@ -559,7 +559,7 @@ export function CommunityShell({ children }: { children: React.ReactNode }) {
     <CommunityErrorBoundary>
     <div className="flex h-screen flex-col overflow-hidden bg-background">
       {/* TOP BAR -------------------------------------------------- */}
-      <header className="flex h-14 shrink-0 items-center gap-3 border-b border-rosa/20 bg-card/80 backdrop-blur-sm px-3 sm:px-4">
+      <header className="flex h-14 shrink-0 items-center gap-3 border-b border-[#FACDE8]/30 glass-strong elevate-2 px-3 sm:px-4">
         <Button
           variant="ghost"
           size="icon"
@@ -576,9 +576,9 @@ export function CommunityShell({ children }: { children: React.ReactNode }) {
             alt="AYMS"
             width={28}
             height={28}
-            className="rounded-full"
+            className="rounded-full glow-pink-sm"
           />
-          <span className="hidden sm:inline text-base font-bold font-[family-name:var(--font-heading)]">
+          <span className="hidden sm:inline text-base font-bold font-[family-name:var(--font-heading)] text-gradient-brand">
             Amigas Y Más
           </span>
         </Link>
@@ -655,7 +655,7 @@ export function CommunityShell({ children }: { children: React.ReactNode }) {
         {/* LEFT: channel list (always visible on lg+, drawer on mobile) */}
         <aside
           className={cn(
-            "fixed inset-y-0 left-0 z-50 w-60 bg-card border-r border-rosa/20 transition-transform shrink-0",
+            "fixed inset-y-0 left-0 z-50 w-60 bg-card/95 backdrop-blur-xl border-r border-[#FACDE8]/20 transition-transform shrink-0",
             "lg:static lg:translate-x-0 lg:top-0 lg:bottom-0",
             drawerOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
           )}
@@ -675,8 +675,8 @@ export function CommunityShell({ children }: { children: React.ReactNode }) {
                 <X className="h-4 w-4" />
               </Button>
             </div>
-            <div className="hidden lg:block px-3 py-2 border-b border-rosa/20">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-primary/70">
+            <div className="hidden lg:block px-3 py-2.5 border-b border-[#FACDE8]/20">
+              <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-gradient-brand">
                 Channels
               </span>
             </div>
@@ -700,7 +700,7 @@ export function CommunityShell({ children }: { children: React.ReactNode }) {
 
         {/* RIGHT: members / detail / thread */}
         {showRightRail && (
-          <aside className="hidden xl:block w-72 shrink-0 border-l border-rosa/20 bg-card/50">
+          <aside className="hidden xl:block w-72 shrink-0 border-l border-[#FACDE8]/20 bg-card/60 backdrop-blur-sm">
             {rightRail}
           </aside>
         )}

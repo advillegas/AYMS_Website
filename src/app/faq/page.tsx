@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { motion } from "framer-motion";
 import { Navbar } from "@/components/landing/navbar";
 import { Footer } from "@/components/landing/footer";
 import { Input } from "@/components/ui/input";
@@ -75,27 +76,41 @@ export default function FAQPage() {
       <Navbar />
       <main className="min-h-screen pt-[88px]">
         {/* Hero */}
-        <section className="relative overflow-hidden bg-[#1a0a12] py-24">
-          <div className="absolute inset-0 bg-gradient-to-b from-[#3A0F2A] to-[#1A0814]" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_50%_50%_at_50%_50%,oklch(0.40_0.14_340/0.15),transparent)]" />
-          <div className="absolute inset-0 pattern-dots opacity-10" />
-          <div className="relative mx-auto max-w-7xl px-4 text-center sm:px-6 lg:px-8">
-            <HelpCircle className="mx-auto h-12 w-12 text-[#FFB3D0]/60 mb-4" />
-            <h1 className="font-[family-name:var(--font-heading)] text-4xl font-bold text-white sm:text-5xl">
-              Frequently Asked{" "}
-              <span className="bg-gradient-to-r from-[#FFB3D0] via-[#FF0099] to-[#D4A56A] bg-clip-text text-transparent">
-                Questions
+        <section className="grain aurora relative overflow-hidden bg-[#1a0a12] py-28">
+          <div className="absolute inset-0 bg-gradient-to-b from-[#3A0F2A] via-[#1a0a12] to-[#1A0814]" />
+          <div className="absolute inset-0 pattern-dots opacity-[0.07]" />
+          <motion.div
+            initial={{ opacity: 0, y: 32 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+            className="relative mx-auto max-w-4xl px-4 text-center sm:px-6 lg:px-8"
+          >
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.5, ease: [0.34, 1.56, 0.64, 1] }}
+              className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/[0.08] backdrop-blur-md border border-white/15 shadow-[0_0_32px_rgb(255_0_153/0.25)]"
+            >
+              <HelpCircle className="h-8 w-8 text-[#FFB3D0]" />
+            </motion.div>
+            <div className="mx-auto mb-6 flex w-fit items-center gap-2.5 rounded-full border border-white/15 bg-white/[0.06] px-4 py-1.5 backdrop-blur-md">
+              <span className="text-xs font-semibold uppercase tracking-[0.32em] text-[#FFB3D0]">
+                Got Questions? We&apos;ve Got Answers
               </span>
+            </div>
+            <h1 className="text-hero font-[family-name:var(--font-heading)] font-extrabold text-white text-balance">
+              Frequently{" "}
+              <span className="text-gradient-brand">Asked</span>
             </h1>
-            <p className="mx-auto mt-4 max-w-xl text-white/50">
+            <p className="text-lead mx-auto mt-6 max-w-xl text-white/60">
               Everything you need to know about traveling with AYMS.
               Can&apos;t find your answer? Reach out to us anytime.
             </p>
-          </div>
+          </motion.div>
         </section>
 
         {/* Search */}
-        <section className="border-b border-rosa/15 bg-background">
+        <section className="border-b border-rosa/15 bg-background/95 backdrop-blur-sm sticky top-[88px] z-10">
           <div className="mx-auto max-w-3xl px-4 py-4 sm:px-6 lg:px-8">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -103,7 +118,7 @@ export default function FAQPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search questions..."
-                className="pl-9 border-rosa/20 focus-visible:ring-primary/30"
+                className="pl-9 border-rosa/30 focus-visible:ring-primary/30 glass"
               />
             </div>
             {search && (
@@ -115,20 +130,30 @@ export default function FAQPage() {
         </section>
 
         {/* FAQ content */}
-        <section className="relative py-12">
-          <div className="absolute inset-0 pattern-grid opacity-10" />
-          <div className="relative mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 space-y-10">
-            {filteredCategories.map((cat) => (
-              <div key={cat.category}>
-                <h2 className="text-lg font-bold font-[family-name:var(--font-heading)] text-primary mb-4">
-                  {cat.category}
-                </h2>
-                <Accordion className="space-y-2">
+        <section className="relative py-14">
+          <div className="absolute inset-0 pattern-grid opacity-[0.07]" />
+          <div className="relative mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 space-y-12">
+            {filteredCategories.map((cat, catIdx) => (
+              <motion.div
+                key={cat.category}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: catIdx * 0.08, ease: [0.16, 1, 0.3, 1] }}
+              >
+                <div className="mb-5 flex items-center gap-3">
+                  <div className="h-px flex-1 bg-gradient-to-r from-transparent via-rosa/30 to-transparent" />
+                  <h2 className="text-sm font-bold font-[family-name:var(--font-heading)] text-primary uppercase tracking-widest">
+                    {cat.category}
+                  </h2>
+                  <div className="h-px flex-1 bg-gradient-to-r from-transparent via-rosa/30 to-transparent" />
+                </div>
+                <Accordion className="space-y-3">
                   {cat.items.map((item, i) => (
                     <AccordionItem
                       key={i}
                       value={`${cat.category}-${i}`}
-                      className="rounded-xl border border-rosa/15 bg-card px-5 overflow-hidden data-[state=open]:border-primary/25 data-[state=open]:shadow-md data-[state=open]:shadow-primary/5 transition-all"
+                      className="rounded-2xl border border-rosa/20 glass px-5 overflow-hidden data-[state=open]:border-primary/30 data-[state=open]:elevate-3 transition-all elevate-2"
                     >
                       <AccordionTrigger className="text-left text-sm font-semibold hover:text-primary py-4 [&>svg]:text-primary/50">
                         {item.q}
@@ -139,46 +164,67 @@ export default function FAQPage() {
                     </AccordionItem>
                   ))}
                 </Accordion>
-              </div>
+              </motion.div>
             ))}
 
             {filteredCategories.length === 0 && (
-              <div className="py-20 text-center">
-                <HelpCircle className="mx-auto h-12 w-12 text-muted-foreground/30 mb-3" />
-                <p className="text-lg font-medium">No results found</p>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="py-24 text-center"
+              >
+                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl glass elevate-2">
+                  <HelpCircle className="h-7 w-7 text-muted-foreground/50" />
+                </div>
+                <p className="text-lg font-semibold font-[family-name:var(--font-heading)]">No matches yet, amiga</p>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Try a different search term
+                  Try another word — or just ask us, we&apos;re here ♡
                 </p>
-              </div>
+              </motion.div>
             )}
           </div>
         </section>
 
         {/* CTA */}
-        <section className="border-t border-rosa/15 bg-gradient-to-b from-rosa/5 to-background py-16">
-          <div className="mx-auto max-w-2xl px-4 text-center sm:px-6 lg:px-8">
-            <h2 className="font-[family-name:var(--font-heading)] text-2xl font-bold">
-              Still have questions?
+        <section className="relative overflow-hidden border-t border-rosa/15 py-20">
+          <div className="absolute inset-0 bg-gradient-to-b from-rosa/8 via-background to-background" />
+          <div className="absolute inset-0 pattern-dots opacity-[0.05]" />
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+            className="relative mx-auto max-w-2xl px-4 text-center sm:px-6 lg:px-8"
+          >
+            <h2 className="text-title font-[family-name:var(--font-heading)] font-bold">
+              Still have{" "}
+              <span className="text-gradient-brand">questions?</span>
             </h2>
-            <p className="mt-2 text-muted-foreground">
+            <p className="mt-3 text-muted-foreground">
               We&apos;re here to help. Reach out anytime and we&apos;ll get back
               to you within 24–48 hours.
             </p>
-            <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
+            <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link
                 href="/#contact"
-                className={cn(buttonVariants(), "bg-gradient-to-r from-primary to-magenta text-white border-0 hover:opacity-90 px-8 font-semibold")}
+                className={cn(
+                  buttonVariants({ size: "lg" }),
+                  "lift h-14 rounded-full border-0 bg-gradient-to-r from-[#FF0099] via-[#B51760] to-[#FF0099] px-10 text-base font-semibold tracking-wide text-white shadow-[0_8px_30px_rgb(255_0_153/0.30)] hover:brightness-110"
+                )}
               >
                 Contact Us ♡
               </Link>
               <Link
                 href="/trips"
-                className={cn(buttonVariants({ variant: "outline" }), "border-primary/25 hover:bg-primary/5 px-8 font-semibold")}
+                className={cn(
+                  buttonVariants({ variant: "outline", size: "lg" }),
+                  "h-14 rounded-full border-primary/25 hover:bg-primary/5 px-10 font-semibold"
+                )}
               >
                 Browse Trips
               </Link>
             </div>
-          </div>
+          </motion.div>
         </section>
       </main>
       <Footer />

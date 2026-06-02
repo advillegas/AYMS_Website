@@ -85,22 +85,27 @@ export default function PlayPage() {
       <Navbar />
       <main className="min-h-screen pt-[88px]">
         {/* Hero banner */}
-        <section className="relative overflow-hidden bg-[#1a0a12] py-16">
-          <div className="absolute inset-0 bg-gradient-to-b from-[#3A0F2A] to-[#1A0814]" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_50%_50%_at_50%_50%,oklch(0.40_0.14_340/0.12),transparent)]" />
-          <div className="absolute inset-0 pattern-dots opacity-10" />
-          <div className="relative mx-auto max-w-4xl px-4 text-center">
-            <Compass className="mx-auto h-10 w-10 text-[#FFB3D0]/60 mb-3" />
-            <h1 className="font-[family-name:var(--font-heading)] text-3xl font-bold text-white sm:text-4xl lg:text-5xl">
+        <section className="grain aurora relative overflow-hidden bg-[#1a0a12] py-24">
+          <div className="absolute inset-0 bg-gradient-to-b from-[#3A0F2A] via-[#1a0a12] to-[#1A0814]" />
+          <div className="absolute inset-0 pattern-dots opacity-[0.07]" />
+          <motion.div
+            initial={{ opacity: 0, y: 28 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+            className="relative mx-auto max-w-4xl px-4 text-center"
+          >
+            <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/[0.08] backdrop-blur-md border border-white/15 shadow-[0_0_32px_rgb(255_0_153/0.25)]">
+              <Compass className="h-8 w-8 text-[#FFB3D0]" />
+            </div>
+            <p className="mb-5 text-xs font-semibold uppercase tracking-[0.32em] text-[#FFB3D0]">Quiz · Map · Adventure</p>
+            <h1 className="text-hero font-[family-name:var(--font-heading)] font-extrabold text-white text-balance">
               Travel{" "}
-              <span className="bg-gradient-to-r from-[#FFB3D0] via-[#FF0099] to-[#D4A56A] bg-clip-text text-transparent">
-                Playground
-              </span>
+              <span className="text-gradient-brand">Playground</span>
             </h1>
-            <p className="mt-3 text-white/40 text-sm">
+            <p className="text-lead mx-auto mt-5 max-w-lg text-white/55">
               Take the quiz, explore the map, or live an adventure — your choice, amiga!
             </p>
-          </div>
+          </motion.div>
         </section>
 
         <div className="relative bg-[#1A0814] min-h-[70vh]">
@@ -131,7 +136,7 @@ export default function PlayPage() {
                       title: "World Map",
                       desc: "Explore an interactive map — click any city to start an adventure",
                       emoji: "🗺️",
-                      gradient: "from-[#DAA520] to-[#C44B3F]",
+                      gradient: "from-[#9B2C8A] to-[#FF0099]",
                       onClick: () => setMode("map"),
                     },
                     {
@@ -139,36 +144,38 @@ export default function PlayPage() {
                       title: "Quick Adventure",
                       desc: "Jump into a random choose-your-own-adventure story",
                       emoji: "📖",
-                      gradient: "from-[#9B2C8A] to-[#FF0099]",
+                      gradient: "from-[#B51760] to-[#9B2C8A]",
                       onClick: () => {
                         const cities = MAP_CITIES;
                         const random = cities[Math.floor(Math.random() * cities.length)];
                         openStory(random);
                       },
                     },
-                  ].map((item) => (
-                    <button
+                  ].map((item, idx) => (
+                    <motion.button
                       key={item.title}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: idx * 0.1, ease: [0.16, 1, 0.3, 1] }}
                       onClick={item.onClick}
-                      className={`group relative overflow-hidden rounded-2xl bg-gradient-to-br ${item.gradient} p-8 text-left text-white transition-all hover:-translate-y-1 hover:shadow-2xl hover:shadow-[#FF0099]/20`}
+                      className={`ring-gradient group relative overflow-hidden rounded-3xl bg-gradient-to-br ${item.gradient} p-8 text-left text-white transition-all hover:-translate-y-2 hover:shadow-2xl hover:shadow-[#FF0099]/25`}
                     >
-                      <div className="absolute inset-0 pattern-dots opacity-10" />
+                      <div className="absolute inset-0 pattern-dots opacity-[0.12]" />
                       <div className="relative">
-                        <span className="text-4xl block mb-4">{item.emoji}</span>
+                        <span className="text-5xl block mb-5 drop-shadow-lg transition-transform group-hover:scale-110">{item.emoji}</span>
                         <item.icon className="h-5 w-5 mb-2 text-white/60" />
                         <h3 className="text-xl font-bold font-[family-name:var(--font-heading)]">{item.title}</h3>
-                        <p className="mt-2 text-sm text-white/60 leading-relaxed">{item.desc}</p>
-                        <div className="mt-4 flex items-center gap-1 text-xs font-semibold text-white/80">
-                          Play Now <ArrowRight className="h-3 w-3" />
+                        <p className="mt-2 text-sm text-white/65 leading-relaxed">{item.desc}</p>
+                        <div className="mt-5 flex items-center gap-1.5 text-xs font-bold text-white/90 uppercase tracking-wider">
+                          Play Now <ArrowRight className="h-3 w-3 group-hover:translate-x-1 transition-transform" />
                         </div>
                       </div>
-                    </button>
+                    </motion.button>
                   ))}
                 </div>
               </motion.div>
             )}
 
-            {/* === QUIZ === */}
             {mode === "quiz" && currentQuestion && (
               <motion.div
                 key={`quiz-${quizStep}`}
@@ -189,7 +196,7 @@ export default function PlayPage() {
                       />
                     ))}
                   </div>
-                  <p className="text-xs text-white/30 uppercase tracking-wider mb-2">
+                  <p className="text-xs text-white/65 uppercase tracking-wider mb-2">
                     Question {quizStep + 1} of {QUIZ_QUESTIONS.length}
                   </p>
                   <span className="text-5xl block mb-4">{currentQuestion.emoji}</span>
@@ -203,7 +210,7 @@ export default function PlayPage() {
                     <button
                       key={i}
                       onClick={() => handleQuizAnswer(opt.traits)}
-                      className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-6 py-4 text-left text-white transition-all hover:border-[#FF0099]/40 hover:bg-[#FF0099]/10 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-[#FF0099]/10 group"
+                      className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-6 py-4 text-left text-white transition-all hover:border-[#FF0099]/40 hover:bg-[#FF0099]/10 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-[#FF0099]/10 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]"
                     >
                       <span className="text-sm font-medium group-hover:text-[#FFB3D0] transition-colors">
                         {opt.text}
@@ -214,7 +221,6 @@ export default function PlayPage() {
               </motion.div>
             )}
 
-            {/* === QUIZ RESULT === */}
             {mode === "quiz-result" && matchedDest && (
               <motion.div
                 key="result"
@@ -270,14 +276,13 @@ export default function PlayPage() {
 
                 <button
                   onClick={() => setMode("menu")}
-                  className="mt-6 text-xs text-white/30 hover:text-white/60 transition-colors"
+                  className="mt-6 text-xs text-white/65 hover:text-white/60 transition-colors"
                 >
                   ← Back to menu
                 </button>
               </motion.div>
             )}
 
-            {/* === WORLD MAP === */}
             {mode === "map" && (
               <motion.div
                 key="map"
@@ -291,7 +296,7 @@ export default function PlayPage() {
                     <Map className="inline h-5 w-5 mr-2 text-[#FFB3D0]" />
                     Click a city to start your adventure
                   </h2>
-                  <button onClick={() => setMode("menu")} className="mt-2 text-xs text-white/30 hover:text-white/60">
+                  <button onClick={() => setMode("menu")} className="mt-2 text-xs text-white/65 hover:text-white/60">
                     ← Back to menu
                   </button>
                 </div>
@@ -332,7 +337,7 @@ export default function PlayPage() {
                     <button
                       key={city.id}
                       onClick={() => openStory(city)}
-                      className="absolute group"
+                      className="absolute group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]"
                       style={{
                         left: `${city.x}%`,
                         top: `${city.y}%`,
@@ -361,12 +366,12 @@ export default function PlayPage() {
                     <button
                       key={city.id}
                       onClick={() => openStory(city)}
-                      className="flex items-center gap-2.5 rounded-xl border border-white/8 bg-white/[0.02] p-3 text-left transition-all hover:border-[#FF0099]/30 hover:bg-[#FF0099]/5 group"
+                      className="flex items-center gap-2.5 rounded-xl border border-white/8 bg-white/[0.02] p-3 text-left transition-all hover:border-[#FF0099]/30 hover:bg-[#FF0099]/5 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]"
                     >
                       <span className="text-2xl">{city.emoji}</span>
                       <div>
                         <p className="text-sm font-bold text-white group-hover:text-[#FFB3D0] transition-colors">{city.name}</p>
-                        <p className="text-[10px] text-white/30">{city.country}</p>
+                        <p className="text-[10px] text-white/65">{city.country}</p>
                       </div>
                     </button>
                   ))}
@@ -374,7 +379,6 @@ export default function PlayPage() {
               </motion.div>
             )}
 
-            {/* === STORY / ADVENTURE === */}
             {mode === "story" && story && currentNode && (
               <motion.div
                 key={`story-${storyNodeId}`}
@@ -460,7 +464,7 @@ export default function PlayPage() {
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ delay: 0.2 + i * 0.1 }}
                             onClick={() => advanceStory(choice.nextId)}
-                            className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-6 py-4 text-left text-white transition-all hover:border-[#FF0099]/40 hover:bg-[#FF0099]/10 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-[#FF0099]/10 group"
+                            className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-6 py-4 text-left text-white transition-all hover:border-[#FF0099]/40 hover:bg-[#FF0099]/10 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-[#FF0099]/10 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]"
                           >
                             <span className="flex items-center justify-between">
                               <span className="text-sm font-medium group-hover:text-[#FFB3D0] transition-colors">
@@ -482,7 +486,7 @@ export default function PlayPage() {
                             setStoryPath((p) => p.slice(0, -1));
                             setStoryNodeId(prev);
                           }}
-                          className="text-xs text-white/20 hover:text-white/50 transition-colors"
+                          className="text-xs text-white/20 hover:text-white/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]"
                         >
                           ← Go back
                         </button>

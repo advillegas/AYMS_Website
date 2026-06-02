@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 
 interface FlipCardProps {
@@ -10,8 +11,23 @@ interface FlipCardProps {
 }
 
 export function FlipCard({ front, back, className, innerClassName }: FlipCardProps) {
+  const [flipped, setFlipped] = useState(false);
+
+  // Touch devices have no hover, so the back face was unreachable. Tapping the
+  // card now flips it — but taps on real links/buttons inside a face pass through.
+  const handleClick = (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest("a, button, [role=button], input, textarea, select")) {
+      return;
+    }
+    setFlipped((f) => !f);
+  };
+
   return (
-    <div className={cn("group [perspective:1200px]", className)}>
+    <div
+      className={cn("group [perspective:1200px]", className)}
+      data-flipped={flipped}
+      onClick={handleClick}
+    >
       <div
         className={cn(
           "flip-card-inner relative h-full w-full [transform-style:preserve-3d]",

@@ -24,7 +24,6 @@ export default function Home() {
         <About />
         <WhyUs />
         <Destinations />
-        <Marquee />
         <Camp />
         <Trips />
         <Experiences />

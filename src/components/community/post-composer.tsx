@@ -143,9 +143,9 @@ export function PostComposer({
 
   return (
     <Dialog open={open} onOpenChange={(o) => !submitting && onOpenChange(o)}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg elevate-4">
         <DialogHeader>
-          <DialogTitle>New post{channelName && ` in #${channelName}`}</DialogTitle>
+          <DialogTitle className="font-[family-name:var(--font-heading)] text-[#B51760]">New post{channelName && <span className="text-gradient-brand"> in #{channelName}</span>}</DialogTitle>
           <DialogDescription>
             Share a longer announcement, recap, or question. Members can
             comment and react just like a chat message.
@@ -273,7 +273,7 @@ export function PostComposer({
             type="button"
             onClick={handleSubmit}
             disabled={submitting || uploading || !title.trim()}
-            className="bg-gradient-to-r from-primary to-magenta text-white border-0"
+            className="bg-gradient-to-r from-[#FF0099] to-[#B51760] text-white border-0 shadow-[0_4px_14px_rgb(255_0_153/0.3)] hover:brightness-110"
           >
             {submitting ? (
               <>

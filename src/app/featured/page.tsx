@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { motion } from "framer-motion";
 import { useCms } from "@/lib/cms-store";
 import { useBuilder, type BuilderElement } from "@/lib/builder-store";
 import { ElementRenderer } from "@/components/builder/element-renderer";
@@ -29,23 +30,45 @@ export default function FeaturedPage() {
       <Navbar />
       <main className="min-h-screen pt-[88px]">
         {elements.length === 0 ? (
-          <section className="relative overflow-hidden bg-[#1a0a12] py-32">
-            <div className="absolute inset-0 bg-gradient-to-b from-[#3A0F2A] to-[#1A0814]" />
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_50%_50%_at_50%_50%,oklch(0.40_0.14_340/0.15),transparent)]" />
-            <div className="relative mx-auto max-w-3xl px-4 text-center">
-              <Sparkles className="mx-auto h-12 w-12 text-[#FFB3D0]/40 mb-4" />
-              <h1 className="font-[family-name:var(--font-heading)] text-3xl font-bold text-white sm:text-4xl">
-                Featured Event Coming Soon
+          <section className="grain aurora relative overflow-hidden bg-[#1a0a12] py-40">
+            <div className="absolute inset-0 bg-gradient-to-b from-[#3A0F2A] via-[#1a0a12] to-[#1A0814]" />
+            <div className="absolute inset-0 pattern-dots opacity-[0.07]" />
+            <motion.div
+              initial={{ opacity: 0, y: 32 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+              className="relative mx-auto max-w-3xl px-4 text-center"
+            >
+              <motion.div
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ duration: 0.5, ease: [0.34, 1.56, 0.64, 1] }}
+                className="mx-auto mb-8 flex h-20 w-20 items-center justify-center rounded-3xl bg-white/[0.08] backdrop-blur-md border border-white/15 shadow-[0_0_40px_rgb(255_0_153/0.25)]"
+              >
+                <Sparkles className="h-10 w-10 text-[#FFB3D0]" />
+              </motion.div>
+              <div className="mx-auto mb-7 flex w-fit items-center gap-2.5 rounded-full border border-white/15 bg-white/[0.06] px-4 py-1.5 backdrop-blur-md">
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#FF0099] opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-[#FF0099]" />
+                </span>
+                <span className="text-xs font-semibold uppercase tracking-[0.32em] text-[#FFB3D0]">
+                  Coming Soon
+                </span>
+              </div>
+              <h1 className="text-hero font-[family-name:var(--font-heading)] font-extrabold text-white text-balance">
+                Featured{" "}
+                <span className="text-gradient-brand">Event</span>
               </h1>
-              <p className="mt-4 text-white/40">
+              <p className="text-lead mx-auto mt-6 max-w-lg text-white/70">
                 Stay tuned — something exciting is on the way!
               </p>
-            </div>
+            </motion.div>
           </section>
         ) : (
-          <section className="relative overflow-hidden bg-[#1A0814]">
-            <div className="absolute inset-0 bg-gradient-to-b from-[#3A0F2A]/50 to-[#1A0814]" />
-            <div className="absolute inset-0 pattern-dots opacity-5" />
+          <section className="grain aurora relative overflow-hidden bg-[#1A0814]">
+            <div className="absolute inset-0 bg-gradient-to-b from-[#3A0F2A]/60 to-[#1A0814]" />
+            <div className="absolute inset-0 pattern-dots opacity-[0.06]" />
             <div className="relative mx-auto max-w-3xl px-4 py-16 sm:px-6 lg:px-8">
               <div className="space-y-6">
                 {elements.map((el: BuilderElement) => (

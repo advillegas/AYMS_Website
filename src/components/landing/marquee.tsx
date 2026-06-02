@@ -19,15 +19,18 @@ const WORDS = [
 
 export function Marquee() {
   const track = WORDS.map((w) => (
-    <span key={w} className="flex items-center gap-6">
-      <span className="text-sm sm:text-base font-bold uppercase tracking-[0.2em]">{w}</span>
-      <span className="text-primary text-lg">♡</span>
+    <span key={w} className="flex items-center gap-5">
+      <span className="text-xs sm:text-sm font-extrabold uppercase tracking-[0.28em] text-[#6A1B4D]">{w}</span>
+      <span className="text-[#FF0099] text-base leading-none">♡</span>
     </span>
   ));
 
   return (
-    <div className="relative overflow-hidden border-y border-rosa/20 bg-gradient-to-r from-rosa/8 via-primary/5 to-rosa/8 py-4">
-      <div className="flex w-max animate-[marquee_30s_linear_infinite] gap-6">
+    <div className="relative overflow-hidden border-y border-[#FACDE8]/60 bg-[#FFF7FB] py-3.5">
+      {/* Left / right edge fades */}
+      <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-20 bg-gradient-to-r from-[#FFF7FB] to-transparent" />
+      <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-20 bg-gradient-to-l from-[#FFF7FB] to-transparent" />
+      <div className="flex w-max animate-[marquee_30s_linear_infinite] gap-5">
         {track}
         {track}
       </div>

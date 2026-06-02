@@ -168,7 +168,7 @@ export function ProfileView({ profile, isSelf, onSave }: ProfileViewProps) {
             {editing ? (
               <AvatarUploader />
             ) : (
-              <Avatar className="h-24 w-24 sm:h-32 sm:w-32 ring-4 ring-card shadow-lg">
+              <Avatar className="h-24 w-24 sm:h-32 sm:w-32 ring-4 ring-[#FF0099]/30 shadow-[0_0_24px_rgb(255_0_153/0.18)] elevate-3">
                 {profile.avatar && <AvatarImage src={profile.avatar} alt={displayName} />}
                 <AvatarFallback className="bg-gradient-to-br from-primary to-magenta text-white text-2xl sm:text-3xl font-bold">
                   {initials(displayName)}
@@ -186,7 +186,7 @@ export function ProfileView({ profile, isSelf, onSave }: ProfileViewProps) {
               </div>
             ) : (
               <>
-                <h1 className="text-xl sm:text-2xl font-bold font-[family-name:var(--font-heading)] truncate" style={primaryColor ? { color: primaryColor } : undefined}>
+                <h1 className="text-title font-bold font-[family-name:var(--font-heading)] truncate" style={primaryColor ? { color: primaryColor } : { color: "#B51760" }}>
                   {displayName}
                 </h1>
                 {(profile.headline || profile.pronouns) && (
@@ -223,7 +223,7 @@ export function ProfileView({ profile, isSelf, onSave }: ProfileViewProps) {
       <div className="px-4 sm:px-6 mt-6 space-y-6">
         {/* About */}
         <section>
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-primary/70 mb-2">About</h2>
+          <h2 className="text-xs font-bold uppercase tracking-[0.18em] text-gradient-brand mb-2">About</h2>
           {editing ? (
             <div className="space-y-2">
               <div>
@@ -267,7 +267,7 @@ export function ProfileView({ profile, isSelf, onSave }: ProfileViewProps) {
 
         {/* Social links */}
         <section>
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-primary/70 mb-2">Social</h2>
+          <h2 className="text-xs font-bold uppercase tracking-[0.18em] text-gradient-brand mb-2">Social</h2>
           {editing ? (
             <div className="grid grid-cols-2 gap-2">
               <div><Label className="text-xs">Instagram</Label><Input value={instagram} onChange={(e) => setInstagram(e.target.value)} placeholder="@handle" /></div>
@@ -295,7 +295,7 @@ export function ProfileView({ profile, isSelf, onSave }: ProfileViewProps) {
 
         {/* Interests */}
         <section>
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-primary/70 mb-2">Interests</h2>
+          <h2 className="text-xs font-bold uppercase tracking-[0.18em] text-gradient-brand mb-2">Interests</h2>
           <InterestPicker selected={editing ? interests : (profile.interests ?? [])} onChange={setInterests} readOnly={!editing} />
           {!editing && (profile.interests ?? []).length === 0 && (
             <p className="text-xs text-muted-foreground italic">No interests added yet.</p>
@@ -306,7 +306,7 @@ export function ProfileView({ profile, isSelf, onSave }: ProfileViewProps) {
 
         {/* Top Friends */}
         <section>
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-primary/70 mb-2">
+          <h2 className="text-xs font-bold uppercase tracking-[0.18em] text-gradient-brand mb-2">
             {isSelf ? "Top Friends" : "Friends"}
           </h2>
           <TopFriendsEditor topFriendIds={editing ? topFriendIds : (profile.topFriendIds ?? [])} onChange={setTopFriendIds} readOnly={!editing} />
@@ -319,7 +319,7 @@ export function ProfileView({ profile, isSelf, onSave }: ProfileViewProps) {
 
         {/* Photo Gallery */}
         <section>
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-primary/70 mb-2">Photos</h2>
+          <h2 className="text-xs font-bold uppercase tracking-[0.18em] text-gradient-brand mb-2">Photos</h2>
           <PhotoGallery photos={editing ? galleryPhotos : (profile.galleryPhotos ?? [])} onChange={setGalleryPhotos} editable={editing} />
           {!editing && (profile.galleryPhotos ?? []).length === 0 && (
             <p className="text-xs text-muted-foreground italic">No photos yet.</p>
@@ -331,7 +331,7 @@ export function ProfileView({ profile, isSelf, onSave }: ProfileViewProps) {
           <>
             <Separator />
             <section>
-              <h2 className="text-sm font-semibold uppercase tracking-wider text-primary/70 mb-2">Location Settings</h2>
+              <h2 className="text-xs font-bold uppercase tracking-[0.18em] text-gradient-brand mb-2">Location Settings</h2>
               <div className="space-y-4">
                 <div>
                   <Label className="text-xs font-medium">My locations</Label>
@@ -474,7 +474,7 @@ export function ProfileView({ profile, isSelf, onSave }: ProfileViewProps) {
         {/* Save / Cancel */}
         {editing && (
           <div className="flex gap-3 pt-4 border-t border-rosa/20">
-            <Button onClick={handleSave} disabled={saving} className="bg-primary hover:bg-magenta">
+            <Button onClick={handleSave} disabled={saving} className="bg-gradient-to-r from-[#FF0099] to-[#B51760] text-white border-0 shadow-[0_4px_14px_rgb(255_0_153/0.3)] hover:brightness-110">
               {saving ? <><Save className="h-3.5 w-3.5 mr-1 animate-spin" /> Saving...</> : <><Save className="h-3.5 w-3.5 mr-1" /> Save Profile</>}
             </Button>
             <Button variant="outline" onClick={() => setEditing(false)} disabled={saving}>

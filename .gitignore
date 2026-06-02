@@ -22,6 +22,16 @@
 .DS_Store
 *.pem
 
+# macOS / ExFAT AppleDouble shadows (T7 is ExFAT)
+._*
+.Spotlight-V100
+.Trashes
+
+# ruflo / claude-flow daemon output
+/.claude-flow/
+/.swarm/
+/.hive-mind/
+
 # debug
 npm-debug.log*
 yarn-debug.log*

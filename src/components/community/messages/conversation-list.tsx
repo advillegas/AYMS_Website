@@ -168,8 +168,8 @@ function ConversationRow({
         type="button"
         onClick={() => onSelect(row.conversation.id)}
         className={cn(
-          "flex w-full items-center gap-2.5 px-2.5 py-2 text-left transition-colors",
-          active ? "bg-primary/15" : "hover:bg-primary/5",
+          "flex w-full items-center gap-2.5 px-2.5 py-2 text-left transition-all",
+          active ? "bg-gradient-to-r from-[#FF0099]/15 to-[#B51760]/8 shadow-[inset_0_0_0_1px_rgb(255_0_153/0.16)]" : "hover:bg-[#FF0099]/5",
         )}
       >
         {/* Avatar / avatar stack */}
@@ -356,9 +356,9 @@ export function ConversationList({
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="flex h-12 shrink-0 items-center gap-2 border-b border-rosa/20 px-3 bg-card/80">
-        <MessageCircle className="h-3.5 w-3.5 text-primary/70" />
-        <span className="text-xs font-semibold uppercase tracking-wider text-primary/70">
+      <div className="flex h-12 shrink-0 items-center gap-2 border-b border-[#FACDE8]/25 px-3 glass elevate-2">
+        <MessageCircle className="h-3.5 w-3.5 text-[#FF0099]/80" />
+        <span className="text-xs font-bold uppercase tracking-[0.16em] text-gradient-brand">
           Direct Messages
         </span>
         <Button
@@ -391,7 +391,8 @@ export function ConversationList({
         ) : rows.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center text-[11px] text-muted-foreground">
             <MessageCircle className="h-7 w-7 opacity-30" />
-            <p>No conversations yet.</p>
+            <p>No chats yet</p>
+            <p className="text-[10px]">Slide into an amiga&apos;s DMs — say hola ♡</p>
             <Button
               type="button"
               size="sm"

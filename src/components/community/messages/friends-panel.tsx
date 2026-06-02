@@ -344,10 +344,9 @@ export function FriendsPanel({ className }: FriendsPanelProps) {
               outgoingRequests.length === 0 ? (
               <div className="flex h-full flex-col items-center justify-center text-center px-6 py-12 text-xs text-muted-foreground gap-2">
                 <UserPlus className="h-8 w-8 opacity-30" />
-                <p>No friends yet.</p>
+                <p>No amigas added yet</p>
                 <p className="text-[10px]">
-                  Click any member&apos;s avatar in the chat or members
-                  list to send a friend request.
+                  Tap any member&apos;s avatar to connect ♡
                 </p>
               </div>
             ) : null}

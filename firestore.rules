@@ -1,30 +1,38 @@
 // Firestore Security Rules for the AYMS community chat.
 //
-// CURRENT (test mode, dev only): open reads/writes until 2026-05-28.
-// PRODUCTION: switch to the auth-gated block below before public launch.
+// CURRENT: fail closed (deny all). The old test-mode rule relied on an
+// expiry date that has now passed; this makes the deny explicit so
+// security never hinges on the wall clock.
+//
+// BEFORE ENABLING FIREBASE (i.e. once NEXT_PUBLIC_FIREBASE_* env vars are
+// set), author auth-gated rules covering every collection the app uses:
+//   users/{uid}                      - read: members list; write: own doc
+//   config/channels                  - read: all; write: admin only
+//   conversations/{id}               - read/write: participants only
+//   conversations/{id}/messages/{m}  - read: participants; write: sender
+//   events/*                         - read: all; write: admin only
+// The admin account authenticates server-side (/api/auth/login) and has
+// NO Firebase Auth uid, so admin-only writes need a custom claim or a
+// server (Admin SDK) path - decide that model before writing these rules.
+// A starting template for messages is kept at the bottom of this file.
 //
 // Deploy with:
 //   firebase deploy --only firestore:rules
-// or paste the contents of this file into Firebase Console -> Firestore
-// Database -> Rules tab -> Publish.
+// or paste this file into Firebase Console -> Firestore Database -> Rules.
 
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // === DEV (test mode) =====================================
-    // Active until 2026-05-28. Allows the smoke test and any
-    // unauthenticated browser to read/write.
+    // Deny everything until real auth-gated rules are authored above.
     match /{document=**} {
-      allow read, write: if request.time < timestamp.date(2026, 5, 28);
+      allow read, write: if false;
     }
 
-    // === PROD (auth-gated, uncomment when ready) =============
-    // Requires the client to be signed in via Firebase Auth and to
-    // write only their own messages. Use this block once we wire
-    // Firebase Auth (or replace request.auth.uid with the user.id
-    // from your auth provider via custom claims).
+    // === PROD TEMPLATE (do NOT deploy as-is; incomplete) =====
+    // Covers only /messages. Expand to the full collection list above
+    // before relying on it.
     //
     // match /messages/{id} {
     //   allow read: if request.auth != null;

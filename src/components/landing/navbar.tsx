@@ -65,7 +65,7 @@ export function Navbar() {
 
   async function handleSignOut() {
     await logout();
-    toast.success("Signed out");
+    toast.success("See you soon, amiga ♡");
     router.push("/");
   }
 
@@ -76,7 +76,7 @@ export function Navbar() {
 
   return (
     <>
-      {/* Featured event banner */}
+      {/* Announcement bar */}
       <div className="fixed top-0 z-[60] w-full bg-gradient-to-r from-[#FF0099] via-[#B51760] to-[#FF0099] animate-shimmer">
         <Link
           href="/featured"
@@ -88,27 +88,28 @@ export function Navbar() {
         </Link>
       </div>
 
-      <header className="fixed top-8 z-50 w-full border-b border-white/10 bg-black/40 backdrop-blur-xl">
-        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <Link href="/" className="flex items-center gap-2">
+      <header className="fixed top-8 z-50 w-full">
+        <div className="mx-auto max-w-7xl px-4 pt-3 sm:px-6 lg:px-8">
+          <div className="glass-strong flex h-14 items-center justify-between rounded-2xl px-5 shadow-[0_8px_32px_rgb(106_27_77/0.10)]">
+          <Link href="/" className="flex items-center gap-2.5">
             <Image
               src="/ayms-logo.svg"
               alt="AYMS Logo"
-              width={32}
-              height={32}
-              className="rounded-full"
+              width={34}
+              height={34}
+              className="rounded-full shadow-[0_0_14px_rgb(255_0_153/0.22)]"
             />
-            <span className="text-lg font-semibold tracking-tight font-[family-name:var(--font-heading)] text-white">
+            <span className="text-base font-bold tracking-tight font-[family-name:var(--font-heading)] text-[#6A1B4D]">
               Amigas Y Más
             </span>
           </Link>
 
-          <nav className="hidden items-center gap-4 lg:flex">
+          <nav className="hidden items-center gap-5 lg:flex">
             {links.map((l) => (
               <Link
                 key={l.href}
                 href={l.href}
-                className="text-sm font-medium text-white/60 transition-colors hover:text-white"
+                className="text-sm font-medium text-[#6A1B4D]/65 transition-colors hover:text-[#FF0099]"
               >
                 {l.label}
               </Link>
@@ -121,7 +122,7 @@ export function Navbar() {
                 href="/admin"
                 className={cn(
                   buttonVariants({ variant: "ghost", size: "sm" }),
-                  "text-white/50 hover:text-white hover:bg-white/10 gap-1.5 text-xs",
+                  "text-[#6A1B4D]/50 hover:text-[#6A1B4D] hover:bg-[#FACDE8]/30 gap-1.5 text-xs",
                 )}
               >
                 <Settings className="h-3.5 w-3.5" />
@@ -134,7 +135,7 @@ export function Navbar() {
                   href="/community"
                   className={cn(
                     buttonVariants({ size: "sm" }),
-                    "bg-gradient-to-r from-[#FF0099] to-[#B51760] text-white border-0 hover:brightness-110 shadow-lg shadow-[#FF0099]/20 gap-1.5",
+                    "rounded-full bg-gradient-to-r from-[#FF0099] to-[#B51760] text-white border-0 hover:brightness-110 shadow-lg shadow-[#FF0099]/20 gap-1.5",
                   )}
                 >
                   <LayoutDashboard className="h-3.5 w-3.5" />
@@ -142,7 +143,7 @@ export function Navbar() {
                 </Link>
                 <DropdownMenu>
                   <DropdownMenuTrigger
-                    className="flex items-center gap-1.5 rounded-full bg-white/5 hover:bg-white/10 transition-colors px-2 py-1 text-white"
+                    className="flex items-center gap-1.5 rounded-full bg-[#FACDE8]/25 hover:bg-[#FACDE8]/45 transition-colors px-2 py-1 text-[#6A1B4D]"
                     aria-label="Account menu"
                   >
                     <Avatar className="h-7 w-7">
@@ -202,7 +203,7 @@ export function Navbar() {
                   href="/login"
                   className={cn(
                     buttonVariants({ variant: "ghost", size: "sm" }),
-                    "text-white/70 hover:text-white hover:bg-white/10",
+                    "text-[#6A1B4D]/70 hover:text-[#6A1B4D] hover:bg-[#FACDE8]/30",
                   )}
                 >
                   Log In
@@ -211,21 +212,21 @@ export function Navbar() {
                   href="/register"
                   className={cn(
                     buttonVariants({ size: "sm" }),
-                    "bg-gradient-to-r from-[#FF0099] to-[#B51760] text-white border-0 hover:brightness-110 shadow-lg shadow-[#FF0099]/20",
+                    "rounded-full bg-gradient-to-r from-[#FF0099] to-[#B51760] text-white border-0 hover:brightness-110 shadow-lg shadow-[#FF0099]/20 px-5",
                   )}
                 >
-                  Join Us
+                  Become an Amiga
                 </Link>
               </>
             )}
           </div>
 
-          {/* Mobile */}
+          {/* Mobile hamburger */}
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger
               className={cn(
                 buttonVariants({ variant: "ghost", size: "icon" }),
-                "lg:hidden text-white hover:bg-white/10",
+                "lg:hidden text-[#6A1B4D] hover:bg-[#FACDE8]/30",
               )}
             >
               {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -328,13 +329,14 @@ export function Navbar() {
                       Log In
                     </Link>
                     <Link href="/register" onClick={() => setOpen(false)} className={cn(buttonVariants(), "bg-gradient-to-r from-primary to-magenta text-white border-0")}>
-                      Join Us
+                      Become an Amiga
                     </Link>
                   </>
                 )}
               </nav>
             </SheetContent>
           </Sheet>
+          </div>
         </div>
       </header>
     </>

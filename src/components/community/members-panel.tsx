@@ -162,8 +162,8 @@ function MemberRow({ member }: MemberRowProps) {
           onClick={onClick}
           onContextMenu={ctx.openAt}
           className={cn(
-            "group flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors",
-            open ? "bg-primary/10" : "hover:bg-primary/5",
+            "group flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-all",
+            open ? "bg-[#FF0099]/12 shadow-[inset_0_0_0_1px_rgb(255_0_153/0.18)]" : "hover:bg-[#FF0099]/6",
           )}
         >
           <span className="relative shrink-0 inline-flex">
@@ -211,8 +211,8 @@ export function MembersPanel() {
     <ScrollArea className="h-full">
       <div className="p-3">
         <div className="flex items-center gap-2 mb-3">
-          <Users className="h-3.5 w-3.5 text-primary/70" />
-          <span className="text-xs font-semibold uppercase tracking-wider text-primary/70">
+          <Users className="h-3.5 w-3.5 text-[#FF0099]/80" />
+          <span className="text-xs font-bold uppercase tracking-[0.16em] text-gradient-brand">
             Members ({members.length})
           </span>
         </div>
@@ -299,8 +299,8 @@ export function MemberDetailCard() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between border-b border-rosa/20 px-3 py-2">
-        <span className="text-xs font-semibold uppercase tracking-wider text-primary/70">
+      <div className="flex items-center justify-between border-b border-[#FACDE8]/25 px-3 py-2">
+        <span className="text-xs font-bold uppercase tracking-[0.16em] text-gradient-brand">
           Member
         </span>
         <Button
@@ -320,7 +320,7 @@ export function MemberDetailCard() {
             <div className="relative">
               <Avatar
                 className={cn(
-                  "h-20 w-20 ring-4 ring-rosa/20 transition-opacity",
+                  "h-20 w-20 ring-4 ring-[#FF0099]/25 transition-opacity elevate-3",
                   status === "offline" && "opacity-70",
                 )}
               >
@@ -339,8 +339,8 @@ export function MemberDetailCard() {
               />
             </div>
             <h3
-              className="mt-3 text-base font-bold font-[family-name:var(--font-heading)]"
-              style={primaryColor ? { color: primaryColor } : undefined}
+              className="mt-3 text-lead font-bold font-[family-name:var(--font-heading)]"
+              style={primaryColor ? { color: primaryColor } : { color: "#B51760" }}
             >
               {displayName}
             </h3>

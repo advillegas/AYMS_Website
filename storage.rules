@@ -10,13 +10,15 @@
 //      of the Storage page (something like
 //      amigas-y-mas-social.firebasestorage.app).
 //
-// TEST MODE (DEV ONLY - allow anyone to read/write until 2026-05-28):
+// CURRENT: fail closed (deny all). The old test-mode rule relied on an
+// expiry date that has now passed; this makes the deny explicit so
+// access never hinges on the wall clock. Activate the production block
+// below once Firebase Auth is wired (Lane B) and deploy it.
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    // Open access until the date below. Tighten before launch.
     match /{allPaths=**} {
-      allow read, write: if request.time < timestamp.date(2026, 5, 28);
+      allow read, write: if false;
     }
   }
 }

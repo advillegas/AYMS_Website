@@ -79,7 +79,7 @@ export function PostCard({
     <>
       <article
         className={cn(
-          "rounded-xl border border-rosa/20 bg-card shadow-sm overflow-hidden transition-shadow hover:shadow-md",
+          "rounded-2xl glass elevate-2 overflow-hidden transition-all lift",
           className,
         )}
       >
@@ -120,14 +120,14 @@ export function PostCard({
                     type="button"
                     ref={triggerRef as React.RefObject<HTMLButtonElement>}
                     onClick={onClick}
-                    className="text-sm font-semibold underline-offset-2 hover:underline focus:outline-none"
+                    className="text-sm font-semibold underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]"
                     style={authorColor ? { color: authorColor } : undefined}
                   >
                     {msg.userName}
                   </button>
                 )}
               </ProfileMiniTrigger>
-              <span className="text-[11px] uppercase tracking-wider rounded bg-primary/10 text-primary px-1.5 py-0.5 font-semibold">
+              <span className="text-[11px] uppercase tracking-[0.12em] rounded-full bg-gradient-to-r from-[#FF0099]/15 to-[#B51760]/10 text-[#B51760] border border-[#FF0099]/20 px-2 py-0.5 font-bold">
                 Post
               </span>
               <span className="text-[11px] text-muted-foreground">
@@ -147,7 +147,7 @@ export function PostCard({
 
         <div className="px-4 pb-3">
           {msg.postTitle && (
-            <h3 className="text-lg font-semibold leading-snug font-[family-name:var(--font-heading)]">
+            <h3 className="text-lead font-bold leading-snug font-[family-name:var(--font-heading)] text-[#B51760]">
               {msg.postTitle}
             </h3>
           )}
@@ -229,7 +229,7 @@ export function PostCard({
         )}
 
         {footer && (
-          <div className="px-4 py-2 border-t border-rosa/15 bg-rosa/5">
+          <div className="px-4 py-2 border-t border-[#FACDE8]/20 bg-[#FACDE8]/8">
             {footer}
           </div>
         )}

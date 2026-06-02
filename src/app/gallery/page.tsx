@@ -6,7 +6,7 @@ import { PAST_TRIPS } from "@/lib/trips-data";
 import { Navbar } from "@/components/landing/navbar";
 import { Footer } from "@/components/landing/footer";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, Users, Calendar } from "lucide-react";
+import { MapPin, Users, Calendar, Images } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CmsPageWrapper } from "@/components/admin/cms-page-wrapper";
 
@@ -14,11 +14,11 @@ const YEARS = ["All", "2026", "2025", "2024"] as const;
 
 const GRADIENTS = [
   "from-[#FF0099] via-[#B51760] to-[#9B2C8A]",
-  "from-[#DAA520] via-[#C44B3F] to-[#FF0099]",
   "from-[#9B2C8A] via-[#FF0099] to-[#FF6BA8]",
-  "from-[#C44B3F] via-[#DAA520] to-[#2D8B6F]",
-  "from-[#2D8B6F] via-[#DAA520] to-[#FF0099]",
-  "from-[#B51760] via-[#9B2C8A] to-[#6B3FA0]",
+  "from-[#C44B3F] via-[#B51760] to-[#FF0099]",
+  "from-[#B51760] via-[#9B2C8A] to-[#6A1B4D]",
+  "from-[#FF0099] via-[#C44B3F] to-[#B51760]",
+  "from-[#6A1B4D] via-[#FF0099] to-[#B51760]",
 ];
 
 export default function GalleryPage() {
@@ -33,38 +33,50 @@ export default function GalleryPage() {
       <Navbar />
       <main className="min-h-screen pt-[88px]">
         {/* Hero */}
-        <section className="relative overflow-hidden bg-[#1a0a12] py-24">
-          <div className="absolute inset-0 bg-gradient-to-b from-[#3A0F2A] to-[#1A0814]" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_50%_50%_at_50%_50%,oklch(0.40_0.14_340/0.15),transparent)]" />
-          <div className="absolute inset-0 pattern-dots opacity-10" />
-          <div className="relative mx-auto max-w-7xl px-4 text-center sm:px-6 lg:px-8">
-            <p className="text-sm font-bold uppercase tracking-[0.3em] text-[#FFB3D0]">
-              Memories for the Books
-            </p>
-            <h1 className="mt-4 font-[family-name:var(--font-heading)] text-4xl font-bold text-white sm:text-5xl lg:text-6xl">
-              Past{" "}
-              <span className="bg-gradient-to-r from-[#FFB3D0] via-[#FF0099] to-[#D4A56A] bg-clip-text text-transparent">
-                Trips
+        <section className="grain aurora relative overflow-hidden bg-[#1a0a12] py-28">
+          <div className="absolute inset-0 bg-gradient-to-b from-[#3A0F2A] via-[#1a0a12] to-[#1A0814]" />
+          <div className="absolute inset-0 pattern-dots opacity-[0.07]" />
+          <motion.div
+            initial={{ opacity: 0, y: 32 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+            className="relative mx-auto max-w-4xl px-4 text-center sm:px-6 lg:px-8"
+          >
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.5, ease: [0.34, 1.56, 0.64, 1] }}
+              className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/[0.08] backdrop-blur-md border border-white/15 shadow-[0_0_32px_rgb(255_0_153/0.25)]"
+            >
+              <Images className="h-8 w-8 text-[#FFB3D0]" />
+            </motion.div>
+            <div className="mx-auto mb-6 flex w-fit items-center gap-2.5 rounded-full border border-white/15 bg-white/[0.06] px-4 py-1.5 backdrop-blur-md">
+              <span className="text-xs font-semibold uppercase tracking-[0.32em] text-[#FFB3D0]">
+                Memories for the Books
               </span>
+            </div>
+            <h1 className="text-hero font-[family-name:var(--font-heading)] font-extrabold text-white text-balance">
+              Past{" "}
+              <span className="text-gradient-brand">Trips</span>
             </h1>
-            <p className="mx-auto mt-4 max-w-xl text-white/50">
+            <p className="text-lead mx-auto mt-6 max-w-xl text-white/60">
               Where we&apos;ve been, who we&apos;ve become. Every trip builds
               bonds that last a lifetime.
             </p>
-          </div>
+          </motion.div>
         </section>
 
         {/* Year filter */}
-        <section className="border-b border-rosa/15 bg-background">
+        <section className="border-b border-rosa/15 bg-background/95 backdrop-blur-sm sticky top-[88px] z-10">
           <div className="mx-auto flex max-w-7xl items-center gap-2 px-4 py-3 sm:px-6 lg:px-8">
             {YEARS.map((y) => (
               <button
                 key={y}
                 onClick={() => setYearFilter(y)}
                 className={cn(
-                  "shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition-all",
+                  "shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]",
                   yearFilter === y
-                    ? "bg-primary text-white shadow-md shadow-primary/20"
+                    ? "bg-gradient-to-r from-[#FF0099] to-[#B51760] text-white shadow-md shadow-primary/25"
                     : "text-muted-foreground hover:bg-primary/5 hover:text-primary",
                 )}
               >
@@ -78,8 +90,8 @@ export default function GalleryPage() {
         </section>
 
         {/* Gallery grid — masonry-like */}
-        <section className="relative py-12">
-          <div className="absolute inset-0 pattern-grid opacity-10" />
+        <section className="relative py-14">
+          <div className="absolute inset-0 pattern-grid opacity-[0.07]" />
           <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="columns-1 gap-5 sm:columns-2 lg:columns-3">
               <AnimatePresence mode="popLayout">
@@ -90,23 +102,23 @@ export default function GalleryPage() {
                     <motion.div
                       key={trip.title}
                       layout
-                      initial={{ opacity: 0, y: 20 }}
+                      initial={{ opacity: 0, y: 24 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, scale: 0.95 }}
-                      transition={{ delay: i * 0.05 }}
+                      transition={{ delay: i * 0.05, ease: [0.16, 1, 0.3, 1] }}
                       className="mb-5 break-inside-avoid"
                     >
                       <div
                         className={cn(
-                          `group relative overflow-hidden rounded-2xl bg-gradient-to-br ${grad} border border-white/10 transition-all hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-1`,
+                          `lift group relative overflow-hidden rounded-2xl bg-gradient-to-br ${grad} border border-white/15 elevate-3`,
                           tall ? "aspect-[3/4]" : "aspect-[4/3]",
                         )}
                       >
-                        <div className="absolute inset-0 pattern-dots opacity-10" />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                        <div className="absolute inset-0 pattern-dots opacity-[0.12]" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
 
                         <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center text-white">
-                          <span className="text-5xl mb-3 transition-transform group-hover:scale-110">
+                          <span className="text-5xl mb-3 transition-transform group-hover:scale-110 drop-shadow-lg">
                             {trip.emoji}
                           </span>
                           <h3 className="text-xl font-bold font-[family-name:var(--font-heading)] drop-shadow-lg">
@@ -115,7 +127,7 @@ export default function GalleryPage() {
                         </div>
 
                         <div className="absolute bottom-0 left-0 right-0 p-4">
-                          <div className="flex items-center justify-between text-xs text-white/70">
+                          <div className="flex items-center justify-between text-xs text-white/80">
                             <span className="flex items-center gap-1">
                               <MapPin className="h-3 w-3" />
                               {trip.location}
@@ -141,21 +153,30 @@ export default function GalleryPage() {
         </section>
 
         {/* Stats */}
-        <section className="border-t border-rosa/15 bg-gradient-to-b from-rosa/5 to-background py-16">
-          <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+        <section className="relative overflow-hidden border-t border-rosa/15 py-20">
+          <div className="absolute inset-0 bg-gradient-to-b from-rosa/8 via-background to-background" />
+          <div className="absolute inset-0 pattern-dots opacity-[0.05]" />
+          <div className="relative mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-2 gap-6 sm:grid-cols-4 text-center">
               {[
                 { value: PAST_TRIPS.length + "+", label: "Trips Completed" },
                 { value: PAST_TRIPS.reduce((s, t) => s + t.amigas, 0) + "+", label: "Amigas Traveled" },
                 { value: "10+", label: "Countries Visited" },
                 { value: "∞", label: "Memories Made" },
-              ].map((s) => (
-                <div key={s.label}>
-                  <p className="text-3xl font-bold bg-gradient-to-r from-primary to-magenta bg-clip-text text-transparent font-[family-name:var(--font-heading)]">
+              ].map((s, i) => (
+                <motion.div
+                  key={s.label}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.1, ease: [0.16, 1, 0.3, 1] }}
+                  className="lift glass rounded-2xl py-8 px-4 elevate-2"
+                >
+                  <p className="text-4xl font-extrabold text-gradient-brand font-[family-name:var(--font-heading)]">
                     {s.value}
                   </p>
-                  <p className="mt-1 text-xs text-muted-foreground">{s.label}</p>
-                </div>
+                  <p className="mt-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">{s.label}</p>
+                </motion.div>
               ))}
             </div>
           </div>

@@ -95,34 +95,33 @@ export function Testimonials() {
   }
 
   return (
-    <section className="relative py-28 overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-b from-rosa/8 via-background to-background" />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_40%_at_50%_0%,oklch(0.40_0.14_340/0.06),transparent)]" />
-      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-rosa/40 to-transparent" />
+    <section className="grain relative overflow-hidden py-32 bg-[#1a0a12]">
+      <div className="absolute inset-0 bg-gradient-to-b from-[#2A0A1E] via-[#1a0a12] to-[#1a0a12]" />
+      <div className="aurora opacity-35" />
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#FF0099]/40 to-transparent" />
 
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 24 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
+          transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
           className="flex items-end justify-between"
         >
           <div>
-            <p className="text-sm font-bold uppercase tracking-[0.3em] text-primary text-glow-pink">
+            <p className="font-detail text-base font-semibold italic tracking-[0.12em] text-[#FACDE8]/70">
               Testimonials
             </p>
-            <h2 className="mt-3 font-[family-name:var(--font-heading)] text-4xl font-bold sm:text-5xl">
+            <h2 className="text-title mt-3 font-[family-name:var(--font-heading)] font-extrabold text-white">
               Hear From Our{" "}
-              <span className="bg-gradient-to-r from-primary via-magenta to-coral bg-clip-text text-transparent">
-                Amigas
-              </span>
+              <span className="text-gradient-brand">Amigas</span>
             </h2>
           </div>
           <div className="hidden sm:flex items-center gap-2">
-            <Button variant="outline" size="icon" onClick={() => scroll("left")} className="rounded-full border-rosa/20 hover:bg-primary/5 hover:border-primary/30">
+            <Button aria-label="Scroll testimonials left" variant="outline" size="icon" onClick={() => scroll("left")} className="rounded-full border-white/15 bg-white/5 text-white hover:bg-white/10 hover:border-white/30">
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <Button variant="outline" size="icon" onClick={() => scroll("right")} className="rounded-full border-rosa/20 hover:bg-primary/5 hover:border-primary/30">
+            <Button aria-label="Scroll testimonials right" variant="outline" size="icon" onClick={() => scroll("right")} className="rounded-full border-white/15 bg-white/5 text-white hover:bg-white/10 hover:border-white/30">
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
@@ -140,16 +139,16 @@ export function Testimonials() {
               initial={{ opacity: 0, x: 30 }}
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
-              transition={{ delay: i * 0.08 }}
+              transition={{ delay: i * 0.08, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
               className="shrink-0 w-80 snap-center"
             >
               <FlipCard
-                className="h-72 cursor-pointer"
+                className="ring-gradient h-72 cursor-pointer rounded-3xl"
                 front={
-                  <div className="flex h-full flex-col justify-between rounded-2xl border border-rosa/15 bg-card p-6 border-glow">
+                  <div className="flex h-full flex-col justify-between rounded-3xl border border-white/10 bg-white/[0.05] p-6 backdrop-blur-sm">
                     <div>
-                      <div className="mb-3 text-2xl text-primary">♡</div>
-                      <p className="text-sm text-muted-foreground italic leading-relaxed line-clamp-5">
+                      <div className="mb-3 text-2xl text-[#FF0099]">♡</div>
+                      <p className="text-sm text-white/65 italic leading-relaxed line-clamp-5 font-detail">
                         &ldquo;{t.en}&rdquo;
                       </p>
                     </div>
@@ -160,17 +159,17 @@ export function Testimonials() {
                         </AvatarFallback>
                       </Avatar>
                       <div>
-                        <p className="text-sm font-bold">{t.name}</p>
-                        <p className="text-[10px] text-muted-foreground">{t.trip}</p>
+                        <p className="text-sm font-bold text-white">{t.name}</p>
+                        <p className="text-[10px] text-white/45">{t.trip}</p>
                       </div>
                     </div>
                   </div>
                 }
                 back={
-                  <div className={`flex h-full flex-col justify-between rounded-2xl bg-gradient-to-br ${t.gradient} p-6 text-white`}>
+                  <div className={`flex h-full flex-col justify-between rounded-3xl bg-gradient-to-br ${t.gradient} p-6 text-white`}>
                     <div>
                       <div className="mb-3 text-2xl text-white/70">♡</div>
-                      <p className="text-sm text-white/90 italic leading-relaxed line-clamp-5">
+                      <p className="text-sm text-white/90 italic leading-relaxed line-clamp-5 font-detail">
                         &ldquo;{t.es}&rdquo;
                       </p>
                     </div>
@@ -192,6 +191,9 @@ export function Testimonials() {
           ))}
         </div>
       </div>
+
+      {/* Bottom fade into light bg */}
+      <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-[#FFF7FB] to-transparent" />
     </section>
   );
 }

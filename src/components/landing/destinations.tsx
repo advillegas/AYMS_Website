@@ -17,26 +17,25 @@ const DESTINATIONS = [
 
 export function Destinations() {
   return (
-    <section className="relative py-28 overflow-hidden">
-      <div className="absolute inset-0 pattern-grid opacity-15" />
-      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+    <section className="grain relative overflow-hidden py-32 bg-[#1a0a12]">
+      <div className="absolute inset-0 bg-gradient-to-b from-[#1a0a12] via-[#2A0A1E] to-[#1a0a12]" />
+      <div className="aurora opacity-40" />
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#FF0099]/40 to-transparent" />
 
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 24 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
+          transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
           className="text-center"
         >
-          <p className="text-sm font-bold uppercase tracking-[0.3em] text-primary text-glow-pink">
+          <p className="font-detail text-base font-semibold italic tracking-[0.12em] text-[#FACDE8]/70">
             Explore by Destination
           </p>
-          <h2 className="mt-3 font-[family-name:var(--font-heading)] text-4xl font-bold sm:text-5xl">
+          <h2 className="text-title mt-3 font-[family-name:var(--font-heading)] font-extrabold text-white text-balance">
             Where Will{" "}
-            <span className="bg-gradient-to-r from-primary via-magenta to-coral bg-clip-text text-transparent">
-              You Go
-            </span>
-            ?
+            <span className="text-gradient-brand">You Go</span>?
           </h2>
         </motion.div>
 
@@ -44,27 +43,27 @@ export function Destinations() {
           {DESTINATIONS.map((dest, i) => (
             <motion.div
               key={dest.name}
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 28 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ delay: i * 0.06 }}
+              transition={{ delay: i * 0.06, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
             >
               <Link
                 href="/trips"
                 className={cn(
-                  "group relative flex aspect-[4/3] flex-col items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br p-6 text-center text-white transition-all hover:-translate-y-1 hover:shadow-xl hover:shadow-black/20",
+                  "lift group relative flex aspect-[4/3] flex-col items-center justify-center overflow-hidden rounded-3xl bg-gradient-to-br p-6 text-center text-white elevate-3",
                   dest.gradient,
                 )}
               >
                 <div className="absolute inset-0 pattern-dots opacity-10" />
-                <div className="absolute inset-0 bg-black/10 transition-colors group-hover:bg-black/0" />
-                <span className="relative text-5xl mb-2 transition-transform group-hover:scale-110 drop-shadow-lg">
+                <div className="absolute inset-0 bg-black/15 transition-colors group-hover:bg-black/0" />
+                <span className="relative text-5xl mb-2 transition-transform group-hover:scale-115 drop-shadow-lg">
                   {dest.emoji}
                 </span>
                 <h3 className="relative text-lg font-bold font-[family-name:var(--font-heading)] drop-shadow-md">
                   {dest.name}
                 </h3>
-                <p className="relative text-xs text-white/70 mt-0.5">
+                <p className="relative mt-0.5 rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white/80 backdrop-blur-sm">
                   {dest.trips} trip{dest.trips !== 1 ? "s" : ""}
                 </p>
               </Link>
@@ -72,6 +71,9 @@ export function Destinations() {
           ))}
         </div>
       </div>
+
+      {/* Bottom fade into light bg */}
+      <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-[#FFF7FB] to-transparent" />
     </section>
   );
 }

@@ -766,9 +766,9 @@ export default function ChatPage() {
   return (
     <div className="flex h-full flex-col">
       {/* Channel header */}
-      <div className="flex h-12 shrink-0 items-center gap-2 border-b border-rosa/20 px-4 bg-gradient-to-r from-card to-rosa/10">
-        <Hash className="h-4 w-4 text-primary/70" />
-        <h2 className="font-semibold font-[family-name:var(--font-heading)]">
+      <div className="flex h-12 shrink-0 items-center gap-2 border-b border-[#FACDE8]/25 px-4 glass elevate-2">
+        <Hash className="h-4 w-4 text-[#FF0099]/80" />
+        <h2 className="font-semibold font-[family-name:var(--font-heading)] text-[#B51760]">
           {channel?.name || "General"}
         </h2>
         {channel?.isGeoChannel && (
@@ -788,7 +788,7 @@ export default function ChatPage() {
           <div
             role="tablist"
             aria-label="Channel view"
-            className="inline-flex items-center rounded-full border border-rosa/30 bg-card p-0.5 text-[11px] font-medium"
+            className="inline-flex items-center rounded-full border border-[#FACDE8]/40 glass p-0.5 text-[11px] font-medium"
           >
             <button
               type="button"
@@ -796,9 +796,9 @@ export default function ChatPage() {
               aria-selected={view === "stream"}
               onClick={() => setView("stream")}
               className={cn(
-                "flex items-center gap-1 rounded-full px-2.5 py-0.5 transition-colors",
+                "flex items-center gap-1 rounded-full px-2.5 py-0.5 transition-all",
                 view === "stream"
-                  ? "bg-primary text-primary-foreground"
+                  ? "bg-gradient-to-r from-[#FF0099] to-[#B51760] text-white shadow-[0_2px_8px_rgb(255_0_153/0.3)]"
                   : "text-muted-foreground hover:text-foreground",
               )}
             >
@@ -811,9 +811,9 @@ export default function ChatPage() {
               aria-selected={view === "posts"}
               onClick={() => setView("posts")}
               className={cn(
-                "flex items-center gap-1 rounded-full px-2.5 py-0.5 transition-colors",
+                "flex items-center gap-1 rounded-full px-2.5 py-0.5 transition-all",
                 view === "posts"
-                  ? "bg-primary text-primary-foreground"
+                  ? "bg-gradient-to-r from-[#FF0099] to-[#B51760] text-white shadow-[0_2px_8px_rgb(255_0_153/0.3)]"
                   : "text-muted-foreground hover:text-foreground",
               )}
             >
@@ -839,7 +839,7 @@ export default function ChatPage() {
               type="button"
               size="sm"
               variant="outline"
-              className="h-7 gap-1 border-primary/30 text-primary hover:bg-primary/10"
+              className="h-7 gap-1 border-[#FF0099]/40 text-[#B51760] hover:bg-[#FF0099]/10 hover:border-[#FF0099]/60"
               onClick={() => setPostComposerOpen(true)}
               title="New bulletin post"
             >
@@ -913,14 +913,16 @@ export default function ChatPage() {
             )}
             {!loading && messages.length === 0 && (
               <div className="flex flex-col items-center justify-center py-20 text-center">
-                <Hash className="h-12 w-12 text-primary/30 mb-3" />
-                <p className="text-lg font-medium">
+                <div className="rounded-full bg-gradient-to-br from-[#FF0099]/15 to-[#B51760]/10 p-4 mb-4 ring-1 ring-[#FF0099]/20">
+                  <Hash className="h-10 w-10 text-[#FF0099]" />
+                </div>
+                <p className="text-title font-bold font-[family-name:var(--font-heading)] text-[#B51760]">
                   Welcome to #{channel?.name}
                 </p>
-                <p className="text-sm text-muted-foreground mt-1">
+                <p className="text-sm text-muted-foreground mt-2 max-w-xs">
                   {channel?.description}
                 </p>
-                <p className="text-xs text-muted-foreground mt-4">
+                <p className="text-xs text-muted-foreground/70 mt-3">
                   Be the first to send a message!
                 </p>
               </div>
@@ -949,7 +951,7 @@ export default function ChatPage() {
           <div className="mx-auto max-w-2xl space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-base font-semibold font-[family-name:var(--font-heading)]">
+                <h3 className="text-title font-bold font-[family-name:var(--font-heading)] text-[#B51760]">
                   Posts in #{channel?.name}
                 </h3>
                 <p className="text-xs text-muted-foreground">
@@ -961,7 +963,7 @@ export default function ChatPage() {
                   type="button"
                   size="sm"
                   onClick={() => setPostComposerOpen(true)}
-                  className="bg-gradient-to-r from-primary to-magenta text-white border-0 gap-1"
+                  className="bg-gradient-to-r from-[#FF0099] to-[#B51760] text-white border-0 gap-1 shadow-[0_4px_14px_rgb(255_0_153/0.3)] hover:brightness-110"
                 >
                   <Plus className="h-3.5 w-3.5" />
                   New post
@@ -978,8 +980,7 @@ export default function ChatPage() {
                 <Newspaper className="h-10 w-10 text-primary/40 mb-2" />
                 <p className="text-sm font-medium">No posts yet</p>
                 <p className="text-xs text-muted-foreground mt-1 max-w-xs">
-                  Posts are bulletin-style messages with a title, body,
-                  and optional photos. Be the first to publish one.
+                  Be the first to share something with the amigas ♡
                 </p>
               </div>
             )}
@@ -1027,7 +1028,7 @@ export default function ChatPage() {
       )}
 
       {/* Composer */}
-      <div className="relative border-t border-rosa/20 px-4 py-3 bg-card/40">
+      <div className="relative border-t border-[#FACDE8]/25 px-4 py-3 glass elevate-2">
         {!canSendMessages && (
           <div className="mb-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-[11px] text-amber-900 dark:text-amber-200">
             You don&apos;t have permission to send messages in this channel.
@@ -1104,7 +1105,7 @@ export default function ChatPage() {
             type="submit"
             size="icon"
             disabled={!canSend}
-            className="bg-gradient-to-r from-primary to-magenta text-white border-0 disabled:opacity-40 rounded-full shrink-0"
+            className="bg-gradient-to-r from-[#FF0099] to-[#B51760] text-white border-0 disabled:opacity-40 rounded-full shrink-0 shadow-[0_4px_14px_rgb(255_0_153/0.35)] hover:brightness-110 lift"
             aria-label="Send message"
           >
             <Send className="h-4 w-4" />

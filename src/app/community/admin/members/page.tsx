@@ -26,13 +26,22 @@ import {
   RotateCcw,
   Wifi,
   WifiOff,
+  Ban,
+  MicOff,
+  Mic,
+  UserX,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import {
   useCommunityMembers,
   type MemberWithStatus,
 } from "@/lib/use-community-members";
-import { useRoles } from "@/lib/use-roles-store";
+import { useRoles, useMe } from "@/lib/use-roles-store";
+import {
+  useModeration,
+  useIsBanned,
+  useMuteEntry,
+} from "@/lib/use-moderation-store";
 import { isFirebaseConfigured } from "@/lib/firebase";
 import {
   AvatarStatusOverlay,
@@ -281,6 +290,15 @@ function MemberDetail({ member, onClose }: MemberDetailProps) {
   const userRoles = useRoles((s) => s.userRoles);
   const toggleUserRole = useRoles((s) => s.toggleUserRole);
   const confirm = useConfirm();
+  const { user: me, hasPermission } = useMe();
+  const moderation = useModeration();
+  const isBanned = useIsBanned(member.id);
+  const muteEntry = useMuteEntry(member.id);
+  const canBan = hasPermission("banMembers");
+  const canMute = hasPermission("muteMembers");
+  const canKick = hasPermission("kickMembers");
+  const showModeration = canBan || canMute || canKick;
+  const actor = me ? { id: me.id, name: me.name } : null;
   const myRoleIds = userRoles[member.id] ?? [];
   const lastSeen =
     member.lastActiveAt
@@ -313,6 +331,69 @@ function MemberDetail({ member, onClose }: MemberDetailProps) {
       console.error(e);
       toast.error("Couldn't delete the profile. Check console for details.");
     }
+  }
+
+  async function handleBanToggle() {
+    if (!actor) return;
+    if (isBanned) {
+      moderation.unban(member.id, actor, member.name);
+      toast.success(`${member.name} has been unbanned.`);
+      return;
+    }
+    const ok = await confirm({
+      title: `Ban ${member.name}?`,
+      description:
+        "They'll be blocked from posting and their existing messages hidden. They'll be notified. You can unban them later.",
+      destructive: true,
+      confirmText: "Ban member",
+    });
+    if (!ok) return;
+    moderation.ban(member.id, actor, "Banned from members admin", member.name);
+    toast.success(`${member.name} has been banned.`);
+  }
+
+  function handleMute(durationMs: number | null) {
+    if (!actor) return;
+    moderation.mute(
+      member.id,
+      actor,
+      "Muted from members admin",
+      durationMs,
+      member.name,
+    );
+    toast.success(
+      durationMs
+        ? `${member.name} muted until ${new Date(
+            Date.now() + durationMs,
+          ).toLocaleString()}.`
+        : `${member.name} muted indefinitely.`,
+    );
+  }
+
+  function handleUnmute() {
+    if (!actor) return;
+    moderation.unmute(member.id, actor, member.name);
+    toast.success(`${member.name} has been unmuted.`);
+  }
+
+  async function handleKick() {
+    if (!actor) return;
+    const ok = await confirm({
+      title: `Kick ${member.name}?`,
+      description:
+        "Removes their community profile (they can re-join). Their auth account is unaffected. They'll be notified.",
+      destructive: true,
+      confirmText: "Kick member",
+    });
+    if (!ok) return;
+    await moderation.kick(
+      member.id,
+      actor,
+      "Kicked from members admin",
+      member.name,
+    );
+    toast.success(`${member.name} has been removed.`);
+    onClose();
   }
 
   return (
@@ -425,6 +506,101 @@ function MemberDetail({ member, onClose }: MemberDetailProps) {
             enforcement requires mirroring these in Firestore rules.
           </p>
         </div>
+
+        {showModeration && (
+          <>
+            <Separator />
+            <div className="space-y-2">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Moderation
+              </p>
+              {(isBanned || muteEntry) && (
+                <div className="flex flex-wrap gap-1.5">
+                  {isBanned && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-semibold text-destructive">
+                      <Ban className="h-3 w-3" /> Banned
+                    </span>
+                  )}
+                  {muteEntry && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-300">
+                      <MicOff className="h-3 w-3" />
+                      {muteEntry.until
+                        ? `Muted until ${format(new Date(muteEntry.until), "MMM d, h:mm a")}`
+                        : "Muted"}
+                    </span>
+                  )}
+                </div>
+              )}
+              <div className="flex flex-wrap gap-2">
+                {canMute &&
+                  (muteEntry ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleUnmute}
+                      className="border-amber-500/40 text-amber-700 dark:text-amber-300 hover:bg-amber-500/10"
+                    >
+                      <Mic className="h-3.5 w-3.5 mr-1" /> Unmute
+                    </Button>
+                  ) : (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleMute(60 * 60 * 1000)}
+                      >
+                        <MicOff className="h-3.5 w-3.5 mr-1" /> Mute 1h
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleMute(24 * 60 * 60 * 1000)}
+                      >
+                        <MicOff className="h-3.5 w-3.5 mr-1" /> Mute 24h
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleMute(null)}
+                      >
+                        <MicOff className="h-3.5 w-3.5 mr-1" /> Mute ∞
+                      </Button>
+                    </>
+                  ))}
+                {canBan && (
+                  <Button
+                    variant={isBanned ? "outline" : "ghost"}
+                    size="sm"
+                    onClick={handleBanToggle}
+                    className={cn(
+                      isBanned
+                        ? "border-emerald-500/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/10"
+                        : "text-destructive hover:text-destructive hover:bg-destructive/10",
+                    )}
+                  >
+                    <Ban className="h-3.5 w-3.5 mr-1" />
+                    {isBanned ? "Unban" : "Ban"}
+                  </Button>
+                )}
+                {canKick && member.isLive && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleKick}
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                  >
+                    <UserX className="h-3.5 w-3.5 mr-1" /> Kick
+                  </Button>
+                )}
+              </div>
+              <p className="text-[10px] text-muted-foreground italic">
+                Bans/mutes sync live via{" "}
+                <code className="text-[10px]">config/moderation</code>. Firestore
+                security rules are the real server-side backstop.
+              </p>
+            </div>
+          </>
+        )}
 
         <Separator />
 

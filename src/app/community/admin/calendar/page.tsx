@@ -464,6 +464,7 @@ export default function AdminCalendarPage() {
               endTime: data.endTime,
               type: data.type ?? "social",
               location: data.location ?? "",
+              capacity: data.capacity,
               createdBy: user?.id,
             });
             if (id) {
@@ -603,6 +604,7 @@ function EventDialog({
   const [endTime, setEndTime] = useState("");
   const [type, setType] = useState<string>("social");
   const [location, setLocation] = useState("");
+  const [capacity, setCapacity] = useState("");
   const [busy, setBusy] = useState(false);
 
   const isEdit = !!event;
@@ -621,6 +623,11 @@ function EventDialog({
     setEndTime(event?.endTime ?? "");
     setType(event?.type ?? "social");
     setLocation(event?.location ?? "");
+    setCapacity(
+      typeof event?.capacity === "number" && event.capacity > 0
+        ? String(event.capacity)
+        : "",
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, event?.id]);
 
@@ -633,6 +640,7 @@ function EventDialog({
     setEndTime("");
     setType("social");
     setLocation("");
+    setCapacity("");
   }
 
   return (
@@ -730,6 +738,23 @@ function EventDialog({
               />
             </div>
           </div>
+          <div className="grid gap-1.5">
+            <Label>Capacity (optional)</Label>
+            <Input
+              type="number"
+              inputMode="numeric"
+              min={0}
+              max={10000}
+              value={capacity}
+              onChange={(e) => setCapacity(e.target.value)}
+              placeholder="Max attendees — blank for unlimited"
+              className="max-w-[220px]"
+            />
+            <p className="text-[11px] text-muted-foreground">
+              When set, RSVPs show &quot;X going · N spots left&quot; and
+              &quot;Going&quot; locks once it&apos;s full.
+            </p>
+          </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
@@ -739,6 +764,14 @@ function EventDialog({
             onClick={async () => {
               if (!title.trim() || !date) {
                 toast.error("Title and date are required.");
+                return;
+              }
+              const capNum = capacity.trim() ? Number(capacity) : undefined;
+              if (
+                capNum !== undefined &&
+                (Number.isNaN(capNum) || capNum < 0)
+              ) {
+                toast.error("Capacity must be a positive number.");
                 return;
               }
               setBusy(true);
@@ -752,6 +785,7 @@ function EventDialog({
                   endTime: endTime || undefined,
                   type: type as FirestoreEvent["type"],
                   location: location.trim(),
+                  capacity: capNum,
                 });
               } finally {
                 setBusy(false);

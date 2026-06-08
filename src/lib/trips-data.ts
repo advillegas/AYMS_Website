@@ -173,6 +173,16 @@ export const TRIPS_DATA: Trip[] = [
   },
 ];
 
+/**
+ * Look up a single trip by id. Returns undefined when nothing matches
+ * so callers (e.g. the reservation hook + My Upcoming page) can resolve
+ * a saved tripId back to its full marketing record without re-importing
+ * the whole array.
+ */
+export function getTripById(id: string): Trip | undefined {
+  return TRIPS_DATA.find((t) => t.id === id);
+}
+
 export const PAST_TRIPS = [
   { title: "Thailand New Years 2026", location: "Bangkok & Chiang Mai", emoji: "🇹🇭", amigas: 16, year: 2026 },
   { title: "Peru April 2026", location: "Lima, Cusco & Machu Picchu", emoji: "🇵🇪", amigas: 14, year: 2026 },

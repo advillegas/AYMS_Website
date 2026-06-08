@@ -29,6 +29,8 @@ import {
   X,
   ChevronDown,
   Home,
+  MapPin,
+  CalendarHeart,
   BellOff,
   AtSign,
   Mic,
@@ -54,6 +56,7 @@ import {
   type RichChannel,
 } from "@/lib/use-channels-store";
 import { useMe, useHasPermission, useRolesSync } from "@/lib/use-roles-store";
+import { useModerationSync } from "@/lib/use-moderation-store";
 import { ChannelDialog } from "./channel-dialog";
 import { NotificationsButton } from "./notifications-button";
 import {
@@ -71,10 +74,13 @@ import { useUnreadConversations } from "@/lib/use-conversations";
 import { CommunityErrorBoundary } from "./community-error-boundary";
 
 const BASE_TABS = [
+  { label: "Home", href: "/community/home", icon: Home, perm: null },
   { label: "Chat", href: "/community", icon: MessageSquare, perm: null },
   { label: "Messages", href: "/community/messages", icon: MessageCircle, perm: null },
   { label: "Calendar", href: "/community/calendar", icon: Calendar, perm: null },
+  { label: "Meetups", href: "/community/meetups", icon: MapPin, perm: null },
   { label: "Members", href: "/community/members", icon: Users, perm: null },
+  { label: "My Events", href: "/community/my-events", icon: CalendarHeart, perm: null },
   { label: "Profile", href: "/community/profile", icon: User, perm: null },
 ] as const;
 
@@ -509,6 +515,10 @@ export function CommunityShell({ children }: { children: React.ReactNode }) {
   // across all browsers/devices in realtime.
   useRolesSync();
   useChannelsSync();
+  // Sync moderation bans/mutes shell-wide so member-panel mod actions,
+  // admin pages, and chat enforcement all read one live store (the chat
+  // hook also mounts this; the sync is module-guarded so it's a no-op).
+  useModerationSync();
   // Eagerly start the singleton members subscription so the avatar
   // status dot, member rows, and chat-message status pills all share
   // ONE Firestore listener instead of spinning up a fresh one per

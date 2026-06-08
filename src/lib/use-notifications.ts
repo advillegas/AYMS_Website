@@ -29,7 +29,6 @@ import {
   collection,
   limit,
   onSnapshot,
-  orderBy,
   query,
   type DocumentData,
   type FirestoreError,
@@ -79,22 +78,73 @@ export interface NotificationItem {
 interface NotifReadState {
   /** ISO timestamp of the most recent "I saw the bell" moment. */
   lastSeenAt: string;
+  /**
+   * Per-item read overrides. The derived feed only has a single
+   * `lastSeenAt` cursor (good enough for the bell, which marks
+   * everything read on close), but the full notification center needs
+   * "mark this one read" without touching the others. Ids dismissed
+   * here are treated as read even when newer than `lastSeenAt`.
+   *
+   * Persisted as a plain string[] (Sets aren't JSON-serialisable);
+   * rehydrated back into a Set on load. Pruned to the most recent 500
+   * ids so it can't grow unbounded.
+   */
+  readIds: string[];
   markAllRead: () => void;
+  /** Mark a single derived notification (by id) as read. */
+  markOneRead: (id: string) => void;
 }
+
+const READ_IDS_CAP = 500;
 
 export const useNotificationReadState = create<NotifReadState>()(
   persist(
     (set) => ({
       lastSeenAt: new Date(0).toISOString(),
-      markAllRead: () =>
-        set({ lastSeenAt: new Date().toISOString() }),
+      readIds: [],
+      markAllRead: () => set({ lastSeenAt: new Date().toISOString() }),
+      markOneRead: (id) =>
+        set((s) => {
+          if (!id || s.readIds.includes(id)) return s;
+          const next = [id, ...s.readIds].slice(0, READ_IDS_CAP);
+          return { readIds: next };
+        }),
     }),
     {
       name: "ayms-notif-read",
       storage: createJSONStorage(() => localStorage),
+      version: 1,
+      // Back-compat: persisted state from before readIds existed simply
+      // hydrates with an empty array (lastSeenAt + markAllRead behave
+      // exactly as before).
+      migrate: (persisted) => {
+        const p = (persisted ?? {}) as Partial<NotifReadState>;
+        return {
+          lastSeenAt: p.lastSeenAt ?? new Date(0).toISOString(),
+          readIds: Array.isArray(p.readIds) ? p.readIds : [],
+        } as NotifReadState;
+      },
     },
   ),
 );
+
+/**
+ * Back-compatible read-state helper for derived notifications.
+ *
+ * A derived item counts as read when it's older than the global
+ * `lastSeenAt` cursor OR has been individually dismissed via
+ * `markOneRead`. Centralised so the bell and the notification center
+ * agree on what "read" means.
+ */
+export function isDerivedNotificationRead(
+  item: Pick<NotificationItem, "id" | "createdAt">,
+  lastSeenAt: string,
+  readIds: Set<string> | string[],
+): boolean {
+  const ids = Array.isArray(readIds) ? new Set(readIds) : readIds;
+  if (ids.has(item.id)) return true;
+  return item.createdAt <= lastSeenAt;
+}
 
 /* ------------------------------------------------------------------ */
 /* Persisted reaction events                                           */
@@ -399,6 +449,7 @@ export function useNotifications(): UseNotificationsResult {
   const myRoles = useUserRoles(currentUser?.id);
   const channels = useChannels((s) => s.channels);
   const { lastSeenAt, markAllRead } = useNotificationReadState();
+  const readIds = useNotificationReadState((s) => s.readIds);
   const reactionEventsMap = useReactionEvents((s) => s.events);
   const recordReactionEvents = useReactionEvents((s) => s.recordNew);
   const pruneReactionEvents = useReactionEvents((s) => s.prune);
@@ -667,12 +718,14 @@ export function useNotifications(): UseNotificationsResult {
 
   const unreadCount = useMemo(() => {
     if (notifications.length === 0) return 0;
+    const dismissed = new Set(readIds);
     let n = 0;
     for (const it of notifications) {
+      if (dismissed.has(it.id)) continue;
       if (it.createdAt > lastSeenAt) n += 1;
     }
     return n;
-  }, [notifications, lastSeenAt]);
+  }, [notifications, lastSeenAt, readIds]);
 
   return { notifications, unreadCount, markAllRead };
 }

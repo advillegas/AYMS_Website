@@ -19,6 +19,12 @@ export interface CalendarEvent {
   endTime?: string;
   type: "trip" | "meetup" | "camp" | "social" | "synced";
   location: string;
+  /**
+   * Optional attendance cap. When set, the RSVP affordance shows
+   * "X going · N spots left" and disables "Going" once full.
+   * Omit (or 0) for unlimited.
+   */
+  capacity?: number;
 }
 
 export const COMMUNITY_EVENTS: CalendarEvent[] = [

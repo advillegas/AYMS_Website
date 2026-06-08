@@ -7,6 +7,7 @@ import { useAuthHydrated } from "@/lib/use-auth-hydrated";
 import { useCms } from "@/lib/cms-store";
 import { PageManager } from "@/components/admin/page-manager";
 import { NavEditor } from "@/components/admin/nav-editor";
+import { NewsletterPanel } from "@/components/admin/newsletter-panel";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -25,11 +26,12 @@ import {
   Home,
   Trash2,
   FolderOpen,
+  Users,
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 
-type Tab = "pages" | "nav" | "templates";
+type Tab = "pages" | "nav" | "templates" | "audience";
 
 export default function AdminPage() {
   const user = useAuth((s) => s.user);
@@ -87,6 +89,7 @@ export default function AdminPage() {
             { id: "pages" as Tab, icon: FileText, label: "Pages" },
             { id: "nav" as Tab, icon: Navigation, label: "Nav" },
             { id: "templates" as Tab, icon: LayoutTemplate, label: "Templates" },
+            { id: "audience" as Tab, icon: Users, label: "Audience" },
           ]).map((tab) => (
             <button
               key={tab.id}
@@ -145,24 +148,30 @@ export default function AdminPage() {
       </aside>
 
       {/* Main content area */}
-      <div className="flex-1 flex items-center justify-center">
-        <div className="text-center max-w-md px-8">
-          <div className="mx-auto h-16 w-16 rounded-2xl bg-gradient-to-br from-[#FF0099]/15 to-[#B51760]/10 flex items-center justify-center mb-6">
-            <FileText className="h-8 w-8 text-[#FF0099]/60" />
-          </div>
-          <h2 className="text-xl font-bold font-[family-name:var(--font-heading)] text-white">
-            Manage Your Site
-          </h2>
-          <p className="mt-3 text-sm text-white/40 leading-relaxed">
-            Use the sidebar to manage pages, navigation, and templates.
-            To edit a page&apos;s content, click on it in the Pages list —
-            you&apos;ll be taken to the live page with inline editing enabled.
-          </p>
-          <p className="mt-4 text-xs text-white/25">
-            You can also click &quot;Edit This Page&quot; on any page while browsing the site.
-          </p>
+      {activeTab === "audience" ? (
+        <div className="flex-1 overflow-hidden">
+          <NewsletterPanel />
         </div>
-      </div>
+      ) : (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center max-w-md px-8">
+            <div className="mx-auto h-16 w-16 rounded-2xl bg-gradient-to-br from-[#FF0099]/15 to-[#B51760]/10 flex items-center justify-center mb-6">
+              <FileText className="h-8 w-8 text-[#FF0099]/60" />
+            </div>
+            <h2 className="text-xl font-bold font-[family-name:var(--font-heading)] text-white">
+              Manage Your Site
+            </h2>
+            <p className="mt-3 text-sm text-white/40 leading-relaxed">
+              Use the sidebar to manage pages, navigation, and templates.
+              To edit a page&apos;s content, click on it in the Pages list —
+              you&apos;ll be taken to the live page with inline editing enabled.
+            </p>
+            <p className="mt-4 text-xs text-white/25">
+              You can also click &quot;Edit This Page&quot; on any page while browsing the site.
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

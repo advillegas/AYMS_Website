@@ -1,19 +1,21 @@
 "use client";
 
+import { useState } from "react";
 import { useUserRoles } from "@/lib/use-roles-store";
 import {
   useCommunityMembers,
   type MemberWithStatus,
 } from "@/lib/use-community-members";
-import { useAuth } from "@/lib/store";
+import { useIncomingFriendRequestCount } from "@/lib/use-friends";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
-import { Users, MapPin, Calendar } from "lucide-react";
+import { Users, MapPin, Calendar, UserRound, Heart } from "lucide-react";
 import { format, parseISO, isValid, formatDistanceToNow } from "date-fns";
 import { cn, initials } from "@/lib/utils";
 import { AvatarStatusOverlay, statusLabel } from "@/components/community/status-indicator";
 import { formatDisplayName } from "@/lib/name-format";
 import { ProfileMiniTrigger } from "@/components/community/profile-mini-card";
+import { FriendsHub } from "@/components/community/friends-hub";
 
 function MemberRoleChips({ memberId }: { memberId: string }) {
   const roles = useUserRoles(memberId);
@@ -64,8 +66,6 @@ function MemberNameButton({
 }
 
 function MemberCard({ member }: { member: MemberWithStatus }) {
-  const currentUserId = useAuth((s) => s.user?.id);
-  const isSelf = currentUserId === member.id;
   const displayName = formatDisplayName(member.name, member.nameDisplay);
 
   const lastSeen =
@@ -169,13 +169,16 @@ function MemberCard({ member }: { member: MemberWithStatus }) {
   );
 }
 
+type MembersTab = "directory" | "friends";
+
 export default function MembersPage() {
-  const { members, online, away, offline, loading, isLive } =
-    useCommunityMembers();
+  const { members, online, away, offline, isLive } = useCommunityMembers();
+  const [tab, setTab] = useState<MembersTab>("directory");
+  const incomingCount = useIncomingFriendRequestCount();
 
   return (
     <div className="p-4 lg:p-6 overflow-auto h-full">
-      <div className="mb-6">
+      <div className="mb-5">
         <h1 className="text-2xl font-bold flex items-center gap-2 font-[family-name:var(--font-heading)]">
           <Users className="h-6 w-6 text-primary" />
           Community Members
@@ -194,52 +197,112 @@ export default function MembersPage() {
         </p>
       </div>
 
-      {loading && members.length === 0 ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
-          {[0, 1, 2, 3, 4, 5].map((i) => (
-            <Card key={i} className="animate-pulse">
-              <CardContent className="pt-6">
-                <div className="flex items-start gap-4">
-                  <div className="h-14 w-14 rounded-full bg-muted" />
-                  <div className="flex-1 space-y-2">
-                    <div className="h-4 w-32 rounded bg-muted" />
-                    <div className="h-3 w-24 rounded bg-muted" />
-                    <div className="h-3 w-full rounded bg-muted" />
-                  </div>
+      {/* Directory / Friends tab switcher */}
+      <div
+        role="tablist"
+        aria-label="Members view"
+        className="mb-6 inline-flex items-center rounded-full border border-rosa/30 bg-card/70 p-1 text-sm font-medium"
+      >
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === "directory"}
+          onClick={() => setTab("directory")}
+          className={cn(
+            "flex items-center gap-1.5 rounded-full px-4 py-1.5 transition-all",
+            tab === "directory"
+              ? "bg-gradient-to-r from-[#FF0099] to-[#B51760] text-white shadow-[0_2px_8px_rgb(255_0_153/0.3)]"
+              : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          <UserRound className="h-4 w-4" />
+          Directory
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === "friends"}
+          onClick={() => setTab("friends")}
+          className={cn(
+            "flex items-center gap-1.5 rounded-full px-4 py-1.5 transition-all",
+            tab === "friends"
+              ? "bg-gradient-to-r from-[#FF0099] to-[#B51760] text-white shadow-[0_2px_8px_rgb(255_0_153/0.3)]"
+              : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          <Heart className="h-4 w-4" />
+          Friends
+          {incomingCount > 0 && (
+            <span
+              className={cn(
+                "ml-0.5 rounded-full px-1.5 text-[10px] font-bold tabular-nums",
+                tab === "friends"
+                  ? "bg-white/30 text-white"
+                  : "bg-primary text-primary-foreground",
+              )}
+            >
+              {incomingCount > 9 ? "9+" : incomingCount}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {tab === "directory" ? <DirectoryView /> : <FriendsHub />}
+    </div>
+  );
+}
+
+function DirectoryView() {
+  const { members, online, away, offline, loading } = useCommunityMembers();
+
+  if (loading && members.length === 0) {
+    return (
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+        {[0, 1, 2, 3, 4, 5].map((i) => (
+          <Card key={i} className="animate-pulse">
+            <CardContent className="pt-6">
+              <div className="flex items-start gap-4">
+                <div className="h-14 w-14 rounded-full bg-muted" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 w-32 rounded bg-muted" />
+                  <div className="h-3 w-24 rounded bg-muted" />
+                  <div className="h-3 w-full rounded bg-muted" />
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-8">
+      {online.length > 0 && (
+        <Section title="Online" tone="online" count={online.length}>
+          {online.map((m) => (
+            <MemberCard key={m.id} member={m} />
           ))}
-        </div>
-      ) : (
-        <div className="space-y-8">
-          {online.length > 0 && (
-            <Section title="Online" tone="online" count={online.length}>
-              {online.map((m) => (
-                <MemberCard key={m.id} member={m} />
-              ))}
-            </Section>
-          )}
-          {away.length > 0 && (
-            <Section title="Away" tone="away" count={away.length}>
-              {away.map((m) => (
-                <MemberCard key={m.id} member={m} />
-              ))}
-            </Section>
-          )}
-          {offline.length > 0 && (
-            <Section title="Offline" tone="offline" count={offline.length}>
-              {offline.map((m) => (
-                <MemberCard key={m.id} member={m} />
-              ))}
-            </Section>
-          )}
-          {members.length === 0 && (
-            <p className="text-sm text-muted-foreground text-center py-12">
-              No members yet.
-            </p>
-          )}
-        </div>
+        </Section>
+      )}
+      {away.length > 0 && (
+        <Section title="Away" tone="away" count={away.length}>
+          {away.map((m) => (
+            <MemberCard key={m.id} member={m} />
+          ))}
+        </Section>
+      )}
+      {offline.length > 0 && (
+        <Section title="Offline" tone="offline" count={offline.length}>
+          {offline.map((m) => (
+            <MemberCard key={m.id} member={m} />
+          ))}
+        </Section>
+      )}
+      {members.length === 0 && (
+        <p className="text-sm text-muted-foreground text-center py-12">
+          No members yet.
+        </p>
       )}
     </div>
   );

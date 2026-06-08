@@ -25,6 +25,7 @@ import {
   Plus,
   Newspaper,
   MapPin,
+  Flag,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useChat, useAuth, useCommunity } from "@/lib/store";
@@ -96,6 +97,11 @@ import { cn, initials } from "@/lib/utils";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { formatDisplayName } from "@/lib/name-format";
 import { ProfileMiniTrigger } from "@/components/community/profile-mini-card";
+import { useIsMuted } from "@/lib/use-moderation-store";
+import {
+  ReportDialog,
+  type ReportTarget,
+} from "@/components/community/report-dialog";
 
 function formatMessageTime(ts: string | null | undefined) {
   // tsToIso returns "" for unresolved serverTimestamp() values; show
@@ -120,6 +126,8 @@ interface ChatMessageProps {
    *  owned by the page, not the inline single-field MessageEditor. */
   onEditPost: () => void;
   onDelete: () => Promise<boolean>;
+  /** Opens the report dialog for this message (page-owned dialog). */
+  onReport: () => void;
   canManagePolls: boolean;
   canVotePolls: boolean;
   canModerate: boolean;
@@ -135,6 +143,7 @@ function ChatMessage({
   onEdit,
   onEditPost,
   onDelete,
+  onReport,
   canManagePolls,
   canVotePolls,
   canModerate,
@@ -226,6 +235,17 @@ function ChatMessage({
         toast.success("Copied message link.");
       },
     });
+    // Report — available on anyone else's message (you can't report
+    // your own). Opens the page-owned ReportDialog.
+    if (!isAuthor && currentUser) {
+      items.push({ kind: "separator" });
+      items.push({
+        id: "report",
+        label: msg.isPost ? "Report post" : "Report message",
+        icon: <Flag className="h-3.5 w-3.5" />,
+        onSelect: onReport,
+      });
+    }
     if (canEdit) {
       items.push({
         id: "edit",
@@ -591,6 +611,13 @@ export default function ChatPage() {
   const canCreatePolls = useHasPermission("createPolls");
   const canVotePolls = useHasPermission("votePolls");
   const canManageMessages = useHasPermission("manageMessages");
+  // Report dialog — opened from a message's context menu. The target
+  // captures a frozen snapshot so the moderation queue keeps context
+  // even after the message is deleted.
+  const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null);
+  // The current user's own mute state gates the composer below.
+  const currentUserId = useAuth((s) => s.user?.id);
+  const isMuted = useIsMuted(currentUserId);
   const [pollComposerOpen, setPollComposerOpen] = useState(false);
   const [pollKind, setPollKind] = useState<"poll" | "giveaway">("poll");
   const [postComposerOpen, setPostComposerOpen] = useState(false);
@@ -740,6 +767,19 @@ export default function ChatPage() {
     });
   }
 
+  function handleReport(msg: RichMessage) {
+    setReportTarget({
+      targetType: "message",
+      targetId: msg.id,
+      reportedUserId: msg.userId,
+      channelId: activeChannel,
+      snapshot: {
+        content: msg.isPost ? msg.postTitle ?? msg.content : msg.content,
+        userName: msg.userName,
+      },
+    });
+  }
+
   async function handleCreatePost(input: {
     title: string;
     body: string;
@@ -768,7 +808,11 @@ export default function ChatPage() {
     return res !== null;
   }
 
-  const canSend = Boolean(input.trim() || pendingGif) && canSendMessages;
+  // A muted member keeps read access but loses the composer. We fold
+  // the mute into the same gate the permission check already drives so
+  // the textarea + send button disable consistently.
+  const composerEnabled = canSendMessages && !isMuted;
+  const canSend = Boolean(input.trim() || pendingGif) && composerEnabled;
   const NotifyIcon =
     notifyLevel === "none" ? BellOff : notifyLevel === "mentions" ? AtSign : Bell;
 
@@ -953,6 +997,7 @@ export default function ChatPage() {
                 onEdit={(next) => editMessage(msg.id, next)}
                 onEditPost={() => setEditingPost(msg)}
                 onDelete={() => deleteMessage(msg.id)}
+                onReport={() => handleReport(msg)}
                 canManagePolls={canManageMessages}
                 canVotePolls={canVotePolls}
                 canModerate={canManageMessages}
@@ -1011,6 +1056,7 @@ export default function ChatPage() {
                 onEdit={(next) => editMessage(msg.id, next)}
                 onEditPost={() => setEditingPost(msg)}
                 onDelete={() => deleteMessage(msg.id)}
+                onReport={() => handleReport(msg)}
                 canManagePolls={canManageMessages}
                 canVotePolls={canVotePolls}
                 canModerate={canManageMessages}
@@ -1048,6 +1094,13 @@ export default function ChatPage() {
         {!canSendMessages && (
           <div className="mb-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-[11px] text-amber-900 dark:text-amber-200">
             You don&apos;t have permission to send messages in this channel.
+          </div>
+        )}
+        {canSendMessages && isMuted && (
+          <div className="mb-2 flex items-center gap-1.5 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-1.5 text-[11px] text-destructive">
+            <Flag className="h-3.5 w-3.5 shrink-0" />
+            You&apos;ve been muted by a moderator and can&apos;t post right now.
+            You can still read the conversation.
           </div>
         )}
         {mention.open && (
@@ -1107,11 +1160,13 @@ export default function ChatPage() {
             }}
             onKeyDown={handleKeyDown}
             onSelect={syncCaret}
-            disabled={!canSendMessages}
+            disabled={!composerEnabled}
             placeholder={
-              canSendMessages
-                ? `Message #${channel?.name || "general"}…  (Shift+Enter for new line, @ to mention)`
-                : "Read-only channel"
+              isMuted
+                ? "You're muted — you can't post right now"
+                : canSendMessages
+                  ? `Message #${channel?.name || "general"}…  (Shift+Enter for new line, @ to mention)`
+                  : "Read-only channel"
             }
             rows={1}
             autoFocus
@@ -1157,6 +1212,14 @@ export default function ChatPage() {
               }
             : undefined
         }
+      />
+
+      <ReportDialog
+        open={reportTarget !== null}
+        onOpenChange={(o) => {
+          if (!o) setReportTarget(null);
+        }}
+        target={reportTarget}
       />
     </div>
   );

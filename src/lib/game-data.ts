@@ -1,3 +1,364 @@
+import type { Trip } from "./trips-data";
+
+// ===================================================================
+// IDENTITY & GAMIFICATION
+// -------------------------------------------------------------------
+// Recognition & identity, NEVER competitive ranking. Everything here
+// is pure + derivable so the UI layer (passport, badges, journey ring,
+// wrapped) stays testable and Firestore-agnostic.
+// ===================================================================
+
+// --- TRAVEL PASSPORT ---
+
+/**
+ * A member-declared passport stamp. Stored at
+ * `users/{uid}/passport/{stampId}` (see use-passport.ts). Stamps are
+ * self-declared — there is no attendance/RSVP source of truth — so the
+ * passport is an identity artifact, never a verified ledger.
+ */
+export interface PassportStamp {
+  id: string;
+  /** Optional link back to a TRIPS_DATA / PAST_TRIPS origin. */
+  tripId?: string;
+  country: string;
+  city?: string;
+  /** Display label, e.g. trip title or "Cartagena, Colombia". */
+  label: string;
+  /** Flag / vibe emoji. */
+  emoji: string;
+  year: number;
+  note?: string;
+  photoUrl?: string;
+  /** ISO timestamp; "" until the serverTimestamp resolves. */
+  addedAt: string;
+}
+
+/** Country → flag emoji + brand-leaning gradient for stamp cards. */
+export const COUNTRY_STAMPS: Record<string, { flag: string; gradient: string }> = {
+  Mexico: { flag: "🇲🇽", gradient: "from-[#FF0099] via-[#B51760] to-[#C44B3F]" },
+  Colombia: { flag: "🇨🇴", gradient: "from-[#DAA520] via-[#FF0099] to-[#9B2C8A]" },
+  USA: { flag: "🇺🇸", gradient: "from-[#9B2C8A] via-[#B51760] to-[#FF0099]" },
+  Indonesia: { flag: "🇮🇩", gradient: "from-[#2D8B6F] via-[#DAA520] to-[#FF0099]" },
+  Morocco: { flag: "🇲🇦", gradient: "from-[#C44B3F] via-[#DAA520] to-[#FF0099]" },
+  Japan: { flag: "🇯🇵", gradient: "from-[#FF0099] via-[#FF6BA8] to-[#FFB3D0]" },
+  Kenya: { flag: "🦁", gradient: "from-[#DAA520] via-[#C44B3F] to-[#8B4513]" },
+  Thailand: { flag: "🇹🇭", gradient: "from-[#00BCD4] via-[#FF0099] to-[#9B2C8A]" },
+  Peru: { flag: "🇵🇪", gradient: "from-[#C44B3F] via-[#DAA520] to-[#FF0099]" },
+  Egypt: { flag: "🇪🇬", gradient: "from-[#DAA520] via-[#C44B3F] to-[#8B4513]" },
+  "Costa Rica": { flag: "🇨🇷", gradient: "from-[#2D8B6F] via-[#DAA520] to-[#FF0099]" },
+  Greece: { flag: "🇬🇷", gradient: "from-[#2196F3] via-[#00BCD4] to-[#FF0099]" },
+  Spain: { flag: "🇪🇸", gradient: "from-[#DAA520] via-[#C44B3F] to-[#FF0099]" },
+  France: { flag: "🇫🇷", gradient: "from-[#FF0099] via-[#FF6BA8] to-[#9B2C8A]" },
+};
+
+/** Default gradient when a country isn't in the table. */
+export const DEFAULT_STAMP_GRADIENT = "from-[#FF0099] via-[#B51760] to-[#9B2C8A]";
+
+/** Flag/emoji for a country, falling back to a globe. */
+export function stampFlag(country: string): string {
+  return COUNTRY_STAMPS[country]?.flag ?? "🌍";
+}
+
+/** Brand gradient for a country, falling back to the house gradient. */
+export function stampGradient(country: string): string {
+  return COUNTRY_STAMPS[country]?.gradient ?? DEFAULT_STAMP_GRADIENT;
+}
+
+/** Pull a 4-digit year out of a free-text date string, or null. */
+function yearFromText(text: string | undefined): number | null {
+  if (!text) return null;
+  const m = text.match(/\b(19|20)\d{2}\b/);
+  return m ? Number(m[0]) : null;
+}
+
+/**
+ * Convert a TRIPS_DATA trip into a draft passport stamp. Pure — the
+ * caller adds id/addedAt when persisting. `country` + `emoji` come from
+ * the trip; the gradient is resolved at render time via stampGradient.
+ */
+export function tripToStamp(
+  trip: Pick<Trip, "id" | "title" | "destination" | "country" | "dates" | "emoji">,
+): Omit<PassportStamp, "id" | "addedAt"> {
+  return {
+    tripId: trip.id,
+    country: trip.country,
+    city: trip.destination,
+    label: trip.title || `${trip.destination}, ${trip.country}`,
+    emoji: trip.emoji || stampFlag(trip.country),
+    year: yearFromText(trip.dates) ?? new Date().getFullYear(),
+  };
+}
+
+/**
+ * Convert a PAST_TRIPS entry into a draft passport stamp. PAST_TRIPS
+ * records a location string rather than a structured country, so we
+ * keep the whole thing as the label and let the member pick a country.
+ */
+export function pastTripToStamp(past: {
+  title: string;
+  location: string;
+  emoji: string;
+  year: number;
+  country?: string;
+}): Omit<PassportStamp, "id" | "addedAt"> {
+  return {
+    country: past.country ?? past.location,
+    city: past.location,
+    label: past.title,
+    emoji: past.emoji,
+    year: past.year,
+  };
+}
+
+// --- MILESTONES & BADGES ---
+
+/**
+ * Context fed to the pure badge evaluator. Every field is derivable
+ * from data that already exists — tenure, friends graph, passport, and
+ * profile completeness — so badges never depend on chat or RSVP.
+ */
+export interface BadgeContext {
+  /** Months since joinedDate (fractional ok). 0 if unknown. */
+  tenureMonths: number;
+  /** Accepted friends count (from use-friends.ts). */
+  friendsCount: number;
+  /** Passport stamp count (feature 1). */
+  passportCount: number;
+  /** Distinct countries in the passport. */
+  countriesCount: number;
+  /** Profile completeness 0–100 (feature 3). */
+  completeness: number;
+}
+
+export type BadgeCategory = "journey" | "passport" | "community" | "profile";
+
+export interface BadgeDef {
+  id: string;
+  title: string;
+  /** Celebratory one-liner shown when earned. */
+  description: string;
+  /** Plain instruction shown on locked badges. */
+  howToEarn: string;
+  emoji: string;
+  gradient: string;
+  category: BadgeCategory;
+  /** Pure predicate over the derivable context. */
+  rule: (ctx: BadgeContext) => boolean;
+}
+
+/**
+ * All badge definitions. Recognition-first: every badge celebrates a
+ * personal milestone (showing up, exploring, connecting, sharing your
+ * story) — none rank a member against anyone else.
+ */
+export const BADGE_DEFS: BadgeDef[] = [
+  {
+    id: "welcome",
+    title: "Welcome, Amiga",
+    description: "You joined the AYMS familia. This is just the beginning. 💕",
+    howToEarn: "Join the community.",
+    emoji: "🌸",
+    gradient: "from-[#FF0099] to-[#B51760]",
+    category: "journey",
+    rule: () => true,
+  },
+  {
+    id: "first-stamp",
+    title: "First Stamp",
+    description: "Your passport has its first stamp. The world is calling!",
+    howToEarn: "Add your first passport stamp.",
+    emoji: "🛂",
+    gradient: "from-[#00BCD4] to-[#FF0099]",
+    category: "passport",
+    rule: (c) => c.passportCount >= 1,
+  },
+  {
+    id: "globetrotter",
+    title: "Globetrotter",
+    description: "Three countries stamped. You collect places, not things. 🌍",
+    howToEarn: "Add stamps from 3 different countries.",
+    emoji: "✈️",
+    gradient: "from-[#DAA520] via-[#FF0099] to-[#9B2C8A]",
+    category: "passport",
+    rule: (c) => c.countriesCount >= 3,
+  },
+  {
+    id: "world-citizen",
+    title: "World Citizen",
+    description: "Five countries! Your passport tells an incredible story.",
+    howToEarn: "Add stamps from 5 different countries.",
+    emoji: "🌎",
+    gradient: "from-[#2D8B6F] via-[#DAA520] to-[#FF0099]",
+    category: "passport",
+    rule: (c) => c.countriesCount >= 5,
+  },
+  {
+    id: "profile-complete",
+    title: "Fully You",
+    description: "Your profile is complete — the community gets to know the real you.",
+    howToEarn: "Finish every step of your intro.",
+    emoji: "🌟",
+    gradient: "from-[#FF0099] to-[#FF6BA8]",
+    category: "profile",
+    rule: (c) => c.completeness >= 100,
+  },
+  {
+    id: "connector",
+    title: "Amiga Connector",
+    description: "Five amigas in your circle. Sisterhood looks good on you. 💞",
+    howToEarn: "Become friends with 5 amigas.",
+    emoji: "🤝",
+    gradient: "from-[#9C27B0] to-[#FF0099]",
+    category: "community",
+    rule: (c) => c.friendsCount >= 5,
+  },
+  {
+    id: "rooted",
+    title: "Rooted",
+    description: "Six months with the familia. You're part of the foundation now.",
+    howToEarn: "Be a member for 6 months.",
+    emoji: "🌱",
+    gradient: "from-[#2D8B6F] to-[#8BC34A]",
+    category: "journey",
+    rule: (c) => c.tenureMonths >= 6,
+  },
+  {
+    id: "veterana",
+    title: "Veterana",
+    description: "A full year of adventures, amigas, and memories. ¡Salud!",
+    howToEarn: "Be a member for 1 year.",
+    emoji: "👑",
+    gradient: "from-[#DAA520] via-[#C44B3F] to-[#FF0099]",
+    category: "journey",
+    rule: (c) => c.tenureMonths >= 12,
+  },
+];
+
+export interface EvaluatedBadge {
+  def: BadgeDef;
+  earned: boolean;
+}
+
+/**
+ * Pure evaluation of every badge against the context. Returns the
+ * earned flag alongside each def so callers can render earned + locked
+ * in one pass and diff against already-persisted badges.
+ */
+export function evaluateBadges(ctx: BadgeContext): EvaluatedBadge[] {
+  return BADGE_DEFS.map((def) => ({ def, earned: def.rule(ctx) }));
+}
+
+/** Ids of badges currently satisfied by the context. */
+export function earnedBadgeIds(ctx: BadgeContext): string[] {
+  return BADGE_DEFS.filter((d) => d.rule(ctx)).map((d) => d.id);
+}
+
+// --- PASSPORT "WRAPPED" / YEAR-IN-REVIEW ---
+
+export interface WrappedStat {
+  label: string;
+  value: string;
+  emoji: string;
+}
+
+export interface Wrapped {
+  /** The headline year the review focuses on (most-stamped recent year). */
+  year: number;
+  /** Big celebratory headline. */
+  headline: string;
+  subhead: string;
+  stats: WrappedStat[];
+  /** Country names visited in the focus year. */
+  countries: string[];
+  /** Up to a few standout stamps to feature. */
+  topStamps: PassportStamp[];
+  /** Badges earned overall, for the closing slide. */
+  badgeCount: number;
+  /** True when there's basically nothing to celebrate yet. */
+  empty: boolean;
+}
+
+/**
+ * Build a derived "wrapped" year-in-review from the passport, earned
+ * badges, and tenure. Pure — no side effects, no Firestore. Honest
+ * empty state when the member hasn't stamped anything yet.
+ */
+export function buildWrapped(
+  passport: PassportStamp[],
+  earnedBadgeCount: number,
+  joinedDate: string | undefined,
+): Wrapped {
+  const countriesAll = Array.from(
+    new Set(passport.map((s) => s.country).filter(Boolean)),
+  );
+
+  if (passport.length === 0) {
+    return {
+      year: new Date().getFullYear(),
+      headline: "Your story is just beginning",
+      subhead:
+        "Add a passport stamp and your year-in-review will come to life. 🌎",
+      stats: [
+        { label: "Member since", value: tenureLabel(joinedDate), emoji: "🌸" },
+        { label: "Badges earned", value: String(earnedBadgeCount), emoji: "🏅" },
+      ],
+      countries: [],
+      topStamps: [],
+      badgeCount: earnedBadgeCount,
+      empty: true,
+    };
+  }
+
+  // Pick the focus year: the most recent year with the most stamps.
+  const byYear = new Map<number, PassportStamp[]>();
+  for (const s of passport) {
+    const arr = byYear.get(s.year) ?? [];
+    arr.push(s);
+    byYear.set(s.year, arr);
+  }
+  let focusYear = new Date().getFullYear();
+  let best = -1;
+  for (const [year, stamps] of byYear) {
+    // Favor more stamps, break ties toward the more recent year.
+    if (stamps.length > best || (stamps.length === best && year > focusYear)) {
+      best = stamps.length;
+      focusYear = year;
+    }
+  }
+  const yearStamps = byYear.get(focusYear) ?? [];
+  const yearCountries = Array.from(
+    new Set(yearStamps.map((s) => s.country).filter(Boolean)),
+  );
+
+  return {
+    year: focusYear,
+    headline: `${focusYear} was a year of adventures`,
+    subhead:
+      yearCountries.length > 1
+        ? `${yearCountries.length} countries, countless memories, one familia. ✨`
+        : "New places, new amigas, new memories. ✨",
+    stats: [
+      { label: "Places stamped", value: String(passport.length), emoji: "🛂" },
+      { label: "Countries", value: String(countriesAll.length), emoji: "🌍" },
+      { label: `Stamps in ${focusYear}`, value: String(yearStamps.length), emoji: "📍" },
+      { label: "Badges earned", value: String(earnedBadgeCount), emoji: "🏅" },
+    ],
+    countries: countriesAll,
+    topStamps: [...yearStamps]
+      .sort((a, b) => (b.addedAt || "").localeCompare(a.addedAt || ""))
+      .slice(0, 4),
+    badgeCount: earnedBadgeCount,
+    empty: false,
+  };
+}
+
+/** Human label for tenure, e.g. "2026" or "—". */
+function tenureLabel(joinedDate: string | undefined): string {
+  if (!joinedDate) return "—";
+  const y = yearFromText(joinedDate);
+  return y ? String(y) : "—";
+}
+
 // --- PERSONALITY QUIZ ---
 
 export interface QuizQuestion {

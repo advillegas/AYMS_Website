@@ -64,6 +64,7 @@ interface FirestoreEventDoc {
   endTime?: string;
   type?: string;
   location?: string;
+  capacity?: number | null;
   sourceCalendarId?: string;
   sourceUid?: string;
   syncedAt?: Timestamp;
@@ -95,6 +96,7 @@ function docToEvent(
     endTime: data.endTime,
     type: (data.type as EventType) ?? "social",
     location: data.location ?? "",
+    capacity: data.capacity ?? undefined,
     sourceCalendarId: data.sourceCalendarId,
     sourceUid: data.sourceUid,
     syncedAt: tsToIso(data.syncedAt),
@@ -216,6 +218,7 @@ export function useEvents(): UseEventsResult {
           endTime: ev.endTime ?? null,
           type: ev.type,
           location: ev.location,
+          capacity: ev.capacity ?? null,
           sourceCalendarId: ev.sourceCalendarId ?? null,
           sourceUid: ev.sourceUid ?? null,
           createdBy: ev.createdBy ?? null,

@@ -90,11 +90,12 @@ function ForgotPasswordInner() {
           <div className="mb-8 text-center">
             <Link href="/" className="mb-5 inline-flex items-center justify-center">
               <Image
-                src="/ayms-logo.svg"
-                alt="AYMS"
-                width={64}
-                height={64}
-                className="rounded-full shadow-[0_0_28px_rgb(255_0_153/0.25)]"
+                src="/ayms-wordmark.png"
+                alt="Amigas Y Más Social"
+                width={266}
+                height={192}
+                priority
+                className="h-24 w-auto drop-shadow-[0_0_24px_rgb(255_0_153/0.22)]"
               />
             </Link>
             <h1 className="text-title font-[family-name:var(--font-heading)] font-bold mt-4">

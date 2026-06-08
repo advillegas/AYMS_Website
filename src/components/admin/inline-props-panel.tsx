@@ -22,7 +22,7 @@ export function InlinePropsPanel() {
   return (
     <div
       className={cn(
-        "fixed top-10 right-0 z-[90] flex h-[calc(100vh-40px)] min-h-0 w-72 flex-col bg-[#2A0A1E] border-l border-white/10 shadow-2xl shadow-black/40 transition-transform duration-300",
+        "fixed top-10 right-0 z-[90] flex h-[calc(100vh-40px)] min-h-0 w-full max-w-sm sm:w-72 flex-col bg-[#2A0A1E] border-l border-white/10 shadow-2xl shadow-black/40 transition-transform duration-300",
         isOpen ? "translate-x-0" : "translate-x-full",
       )}
     >

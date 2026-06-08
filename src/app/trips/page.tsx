@@ -4,9 +4,8 @@ import { useState } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { TRIPS_DATA, type Trip } from "@/lib/trips-data";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { ReserveButton } from "@/components/trips/reserve-button";
 import {
   Dialog,
   DialogContent,
@@ -29,21 +28,7 @@ import {
   ArrowRight,
   Plane,
 } from "lucide-react";
-import Link from "next/link";
 import { CmsPageWrapper } from "@/components/admin/cms-page-wrapper";
-
-function tripInquiry(trip: Trip, kind: "booking" | "waitlist") {
-  const subject =
-    kind === "booking"
-      ? `Booking inquiry: ${trip.title}`
-      : `Waitlist request: ${trip.title}`;
-  const intro =
-    kind === "booking"
-      ? "I'd like to book this trip:"
-      : "Please add me to the waitlist for this trip:";
-  const body = `Hi AYMS team,\n\n${intro}\n\nTrip: ${trip.title} (${trip.destination}, ${trip.country})\nDates: ${trip.dates}\nPrice: $${trip.price.toLocaleString()}/person\n\nName:\nEmail:\nPhone:\n\nThank you!`;
-  window.location.href = `mailto:hello@amigasymassocial.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-}
 
 const STATUS_STYLE: Record<string, { label: string; cls: string }> = {
   available: { label: "Book Now", cls: "bg-white/90 text-green-700 border-white/50 backdrop-blur-sm shadow-sm" },
@@ -431,23 +416,10 @@ function TripDetail({ trip }: { trip: Trip }) {
             </p>
           )}
         </div>
-        {trip.status === "available" ? (
-          <Button
-            onClick={() => tripInquiry(trip, "booking")}
-            className="lift h-12 rounded-full border-0 bg-gradient-to-r from-[#FF0099] via-[#B51760] to-[#FF0099] px-8 font-semibold text-white shadow-[0_8px_30px_rgb(255_0_153/0.30)] hover:brightness-110"
-          >
-            Book This Trip ♡
-          </Button>
-        ) : trip.status === "waitlist" ? (
-          <Button
-            onClick={() => tripInquiry(trip, "waitlist")}
-            variant="outline"
-            className="h-12 rounded-full border-primary/30 text-primary hover:bg-primary/5 px-8 font-semibold"
-          >
-            Join Waitlist
-          </Button>
-        ) : (
+        {trip.status === "coming-soon" ? (
           <Badge className={`${st.cls} text-sm px-4 py-1.5`}>{st.label}</Badge>
+        ) : (
+          <ReserveButton trip={trip} variant="full" className="sm:text-right" />
         )}
       </div>
     </>

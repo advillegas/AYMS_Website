@@ -8,8 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Mail, Heart, Send, Loader2 } from "lucide-react";
+import { useNewsletter } from "@/lib/use-newsletter";
 
-const NEWSLETTER_INBOX = "hello@amigasymassocial.com";
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function InstagramIcon({ className }: { className?: string }) {
@@ -57,9 +57,9 @@ const CONTACT_ITEMS = [
 
 export function Contact() {
   const prefersReducedMotion = useReducedMotion();
+  const { submitting, subscribe } = useNewsletter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleSubscribe = async (e: React.FormEvent) => {
@@ -73,31 +73,25 @@ export function Contact() {
       return;
     }
     setError(null);
-    setSubmitting(true);
 
-    try {
-      // No third-party email provider is wired up, so we gracefully fall back
-      // to opening the visitor's mail client pre-filled with their details.
-      // This never throws and degrades cleanly if a mail client is unavailable.
-      const subject = encodeURIComponent("Newsletter signup");
-      const body = encodeURIComponent(
-        `Hi AYMS team,\n\nI'd like to join the newsletter.\n\nName: ${
-          name.trim() || "(not provided)"
-        }\nEmail: ${trimmedEmail}`,
-      );
-      window.location.href = `mailto:${NEWSLETTER_INBOX}?subject=${subject}&body=${body}`;
-      toast.success(
-        "Almost there! Send the email we opened to finish signing up ♡",
-      );
-      setName("");
-      setEmail("");
-    } catch {
-      toast.error(
-        `Couldn't open your email app. Write to us at ${NEWSLETTER_INBOX}.`,
-      );
-    } finally {
-      setSubmitting(false);
+    // Persist the signup to Firestore (capture only — no email is sent).
+    // Degrades gracefully to a local "you're on the list" when Firebase
+    // isn't configured.
+    const result = await subscribe({
+      email: trimmedEmail,
+      name: name.trim() || undefined,
+      source: "contact",
+    });
+
+    if (result.status === "error") {
+      setError(result.message);
+      toast.error(result.message);
+      return;
     }
+
+    toast.success(result.message);
+    setName("");
+    setEmail("");
   };
 
   return (

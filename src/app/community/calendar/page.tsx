@@ -57,6 +57,9 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/store";
 import { getUserCoords, haversineDistance } from "@/lib/geo";
 import { EventComments } from "@/components/community/event-comments";
+import { EventRsvp } from "@/components/community/event-rsvp";
+import { useMeetups } from "@/lib/use-meetups";
+import { useReminderScheduler } from "@/lib/use-event-reminders";
 
 const TYPE_COLORS: Record<string, string> = {
   trip: "bg-blue-500",
@@ -92,8 +95,37 @@ function getCalendarDays(month: Date): Date[] {
 type ViewMode = "calendar" | "list";
 
 export default function CalendarPage() {
-  const { events, loading } = useEvents();
+  const { events: rawEvents, loading: eventsLoading } = useEvents();
+  const { meetups, loading: meetupsLoading } = useMeetups();
   const user = useAuth((s) => s.user);
+
+  // Sweep due reminders while the member browses the calendar.
+  useReminderScheduler();
+
+  // Member-hosted meetups appear on the shared calendar as type "meetup".
+  // We keep their real Firestore ids (distinct collection + autoId, so no
+  // practical collision with event ids) and track which ids are meetups
+  // so the detail dialog can RSVP against the right subcollection.
+  const meetupIds = useMemo(
+    () => new Set(meetups.map((m) => m.id)),
+    [meetups],
+  );
+
+  const events = useMemo<CalendarEvent[]>(() => {
+    const mapped: CalendarEvent[] = meetups.map((m) => ({
+      id: m.id,
+      title: m.title,
+      description: m.description,
+      date: m.date,
+      startTime: m.startTime,
+      type: "meetup",
+      location: m.location,
+      capacity: m.capacity,
+    }));
+    return [...rawEvents, ...mapped];
+  }, [rawEvents, meetups]);
+
+  const loading = eventsLoading || meetupsLoading;
   const [month, setMonth] = useState<Date>(new Date());
   const [selected, setSelected] = useState<Date>(new Date());
   const [detail, setDetail] = useState<CalendarEvent | null>(null);
@@ -509,6 +541,24 @@ export default function CalendarPage() {
                   <span>{detail.location || "Location TBD"}</span>
                 </div>
               </div>
+              {/* RSVP — events + member meetups take RSVPs; synced
+                  feed items and one-off trips/camps don't. */}
+              {(detail.type === "meetup" ||
+                detail.type === "social" ||
+                detail.type === "camp") && (
+                <>
+                  <Separator />
+                  <EventRsvp
+                    targetType={meetupIds.has(detail.id) ? "meetup" : "event"}
+                    targetId={detail.id}
+                    title={detail.title}
+                    date={detail.date}
+                    startTime={detail.startTime}
+                    location={detail.location}
+                    capacity={detail.capacity}
+                  />
+                </>
+              )}
               <Separator />
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1">

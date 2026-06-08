@@ -26,6 +26,12 @@ import {
 import { getDb, isFirebaseConfigured } from "./firebase";
 import { useAuth, useChat as useLocalChat, type Message } from "./store";
 import { useChannels, type RichChannel } from "./use-channels-store";
+import {
+  useModeration,
+  useModerationSync,
+  isMuteActive,
+} from "./use-moderation-store";
+import { toast } from "sonner";
 
 export interface GifAttachment {
   type: "gif";
@@ -259,6 +265,18 @@ export function useChannelChat(channelId: string): UseChannelChatResult {
   const localSend = useLocalChat((s) => s.sendMessage);
   const setActive = useLocalChat((s) => s.setActiveChannel);
   const channels = useChannels((s) => s.channels);
+
+  // Moderation: keep the ban/mute config live here. The chat surface
+  // is mounted everywhere enforcement matters, so this is the slice's
+  // mount point for the `config/moderation` listener (the module-level
+  // guard makes a second mount from the shell a no-op). The store map
+  // is the local source of truth for the filter + composer gate below.
+  // NOTE: this is client-side defense-in-depth ONLY — Firestore
+  // security rules are the real backstop (deny writes from banned/
+  // muted uids). See use-moderation-store.ts.
+  useModerationSync();
+  const bans = useModeration((s) => s.bans);
+  const mutes = useModeration((s) => s.mutes);
   const channel = useMemo(
     () => channels.find((c) => c.id === channelId),
     [channels, channelId],
@@ -334,10 +352,16 @@ export function useChannelChat(channelId: string): UseChannelChatResult {
   // callback) so changes to the channel's anchors/radius take effect
   // immediately without resubscribing.
   const mergedMessages = useMemo(() => {
-    const confirmed = fbMessages.filter((m) => passesGeoFilter(m, channel));
+    const confirmed = fbMessages.filter(
+      // Hide messages authored by banned members alongside the geo
+      // filter. This is the read-side half of enforcement; the
+      // write-side (sendMessage early-return) is below, and Firestore
+      // rules are the true server-side backstop.
+      (m) => !bans[m.userId] && passesGeoFilter(m, channel),
+    );
     if (pendingMessages.length === 0) return confirmed;
     return [...confirmed, ...pendingMessages];
-  }, [fbMessages, pendingMessages, channel]);
+  }, [fbMessages, pendingMessages, channel, bans]);
 
   const sendMessage = useCallback(
     async (content: string, opts: SendOptions = {}) => {
@@ -349,6 +373,24 @@ export function useChannelChat(channelId: string): UseChannelChatResult {
         return null;
       }
       if (!user) return null;
+
+      // Enforcement: a banned or actively-muted author can't post.
+      // We early-return BEFORE the optimistic insert so nothing flashes
+      // on screen, and surface a toast explaining why. (Firestore
+      // rules remain the real server-side backstop.)
+      if (bans[user.id]) {
+        toast.error("You're banned from posting in the community.");
+        return null;
+      }
+      if (isMuteActive(mutes[user.id])) {
+        const until = mutes[user.id]?.until;
+        toast.error(
+          until
+            ? `You're muted until ${new Date(until).toLocaleString()}.`
+            : "You're muted and can't post right now.",
+        );
+        return null;
+      }
 
       if (!isFirebaseConfigured) {
         localSend(text || (hasPost ? opts.post!.title : "(poll)"));
@@ -461,7 +503,7 @@ export function useChannelChat(channelId: string): UseChannelChatResult {
         return null;
       }
     },
-    [channelId, user, localSend, fbMessages, channel],
+    [channelId, user, localSend, fbMessages, channel, bans, mutes],
   );
 
   const toggleReaction = useCallback(

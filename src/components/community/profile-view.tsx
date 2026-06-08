@@ -6,9 +6,7 @@
  */
 
 import { useState } from "react";
-import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,19 +21,24 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useAuth, type User } from "@/lib/store";
+import { type User } from "@/lib/store";
 import { useUserRoles } from "@/lib/use-roles-store";
 import { useMemberStatus } from "@/lib/use-community-members";
 import { useEmailVisible } from "@/lib/profile-lookup";
 import { formatDisplayName } from "@/lib/name-format";
 import { LANGUAGE_OPTIONS } from "@/lib/profile-constants";
 import { geocodeLocation, type ManualLocation } from "@/lib/geo";
+import { useProfileGamification } from "@/lib/use-badges";
 import { AvatarStatusOverlay, statusLabel } from "./status-indicator";
 import { AvatarUploader } from "./avatar-uploader";
 import { CoverPhotoUploader } from "./cover-photo-uploader";
 import { InterestPicker } from "./interest-picker";
 import { TopFriendsEditor } from "./top-friends-editor";
 import { PhotoGallery } from "./photo-gallery";
+import { PassportSection } from "./passport-section";
+import { BadgeShelf } from "./badge-shelf";
+import { JourneyRing } from "./journey-ring";
+import { PassportWrapped } from "./passport-wrapped";
 import { cn, initials } from "@/lib/utils";
 import { format, parseISO, isValid } from "date-fns";
 
@@ -51,6 +54,13 @@ export function ProfileView({ profile, isSelf, onSave }: ProfileViewProps) {
   const emailVisible = useEmailVisible(profile);
   const primaryColor = roles[0]?.color;
   const displayName = formatDisplayName(profile.name, profile.nameDisplay);
+
+  // --- Identity & Gamification ---------------------------------------
+  // One facade hook subscribes to the viewed profile's passport + badges,
+  // computes completeness, and (for the owner only) persists + celebrates
+  // newly-earned milestones. See use-badges.ts.
+  const { stamps, badgeItems, earnedCount, completeness } =
+    useProfileGamification(profile, isSelf);
 
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -225,6 +235,20 @@ export function ProfileView({ profile, isSelf, onSave }: ProfileViewProps) {
         )}
       </div>
 
+      {/* Journey Ring (self-only) + Travel Wrapped (self-only) */}
+      {isSelf && !editing && (
+        <div className="px-4 sm:px-6 mt-5 space-y-4">
+          {!completeness.complete && (
+            <JourneyRing profile={profile} onEdit={startEdit} />
+          )}
+          <PassportWrapped
+            stamps={stamps}
+            earnedBadgeCount={earnedCount}
+            joinedDate={profile.joinedDate}
+          />
+        </div>
+      )}
+
       <div className="px-4 sm:px-6 mt-6 space-y-6">
         {/* About */}
         <section>
@@ -330,6 +354,16 @@ export function ProfileView({ profile, isSelf, onSave }: ProfileViewProps) {
             <p className="text-xs text-muted-foreground italic">No photos yet.</p>
           )}
         </section>
+
+        {/* Travel Passport + Milestones (display view; self + others) */}
+        {!editing && (
+          <>
+            <Separator />
+            <PassportSection uid={profile.id} isSelf={isSelf} name={displayName} />
+            <Separator />
+            <BadgeShelf items={badgeItems} isSelf={isSelf} name={displayName} />
+          </>
+        )}
 
         {/* Location Settings (edit only) */}
         {editing && (

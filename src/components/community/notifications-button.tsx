@@ -14,7 +14,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Bell, Check, MessageCircle, AtSign, Users, Smile, MessageSquare } from "lucide-react";
+import { Bell, Check, MessageCircle, AtSign, Users, Smile, MessageSquare, ArrowRight } from "lucide-react";
 import { formatDistanceToNowStrict } from "date-fns";
 import {
   useNotifications,
@@ -22,6 +22,7 @@ import {
   type NotificationItem,
 } from "@/lib/use-notifications";
 import { useNotificationReadState } from "@/lib/use-notifications";
+import { usePushedNotifications } from "@/lib/notify";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { FloatingPopover } from "./floating-popover";
 import { cn, initials } from "@/lib/utils";
@@ -100,8 +101,19 @@ export function NotificationsButton() {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const { notifications, unreadCount } = useNotifications();
+  // Persistent stream (friend requests, welcomes, badges, RSVPs…) lives
+  // in a separate system; fold its unread count into the bell badge so
+  // the dot reflects EVERYTHING, not just the derived message feed.
+  const { unreadCount: pushedUnread, markAllRead: markAllPushedRead } =
+    usePushedNotifications();
   const lastSeenAt = useNotificationReadState((s) => s.lastSeenAt);
-  const markAllRead = useNotificationReadState((s) => s.markAllRead);
+  const markAllDerivedRead = useNotificationReadState((s) => s.markAllRead);
+  // Combined badge total across both notification systems.
+  const totalUnread = unreadCount + pushedUnread;
+  const markAllRead = () => {
+    markAllDerivedRead();
+    markAllPushedRead();
+  };
   // Tick every 30s while the popover is open so relative-time labels
   // ("5s", "2m") actually advance instead of being stuck at whatever
   // they were on first render. We don't tick when closed because the
@@ -115,10 +127,11 @@ export function NotificationsButton() {
 
   function handleClose() {
     setOpen(false);
-    // Stamp lastSeenAt so the badge clears once the user has actually
-    // looked at the list. We do it on close (not open) so a quick
-    // peek doesn't strip the unread indicator off everything.
-    if (unreadCount > 0) markAllRead();
+    // Stamp lastSeenAt (and clear the pushed stream) so the badge clears
+    // once the user has actually looked at the list. We do it on close
+    // (not open) so a quick peek doesn't strip the unread indicator off
+    // everything.
+    if (totalUnread > 0) markAllRead();
   }
 
   return (
@@ -129,19 +142,19 @@ export function NotificationsButton() {
         onClick={() => setOpen((v) => !v)}
         className="relative inline-flex h-9 w-9 items-center justify-center rounded-full text-foreground/70 hover:bg-primary/10 hover:text-primary transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         aria-label={
-          unreadCount > 0
-            ? `Notifications (${unreadCount} unread)`
+          totalUnread > 0
+            ? `Notifications (${totalUnread} unread)`
             : "Notifications"
         }
         title="Notifications"
       >
         <Bell className="h-4 w-4" />
-        {unreadCount > 0 && (
+        {totalUnread > 0 && (
           <span
             className="absolute -top-0.5 -right-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary text-primary-foreground text-[9px] font-bold px-1 ring-2 ring-card"
             aria-hidden
           >
-            {unreadCount > 9 ? "9+" : unreadCount}
+            {totalUnread > 9 ? "9+" : totalUnread}
           </span>
         )}
       </button>
@@ -165,7 +178,7 @@ export function NotificationsButton() {
             <button
               type="button"
               onClick={() => markAllRead()}
-              disabled={unreadCount === 0}
+              disabled={totalUnread === 0}
               className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-primary disabled:opacity-40"
             >
               <Check className="h-3 w-3" />
@@ -177,7 +190,7 @@ export function NotificationsButton() {
               <div className="flex flex-col items-center gap-2 py-12 text-center">
                 <Bell className="h-8 w-8 text-primary/30" />
                 <p className="text-xs text-muted-foreground">
-                  You're all caught up.
+                  You&apos;re all caught up.
                 </p>
                 <p className="text-[10px] text-muted-foreground/80 max-w-[260px]">
                   Mentions, thread replies, reactions, and DMs will show
@@ -197,6 +210,17 @@ export function NotificationsButton() {
               </div>
             )}
           </div>
+          {/* Footer: jump to the full Notification Center, which merges
+              this derived feed with the persistent stream (friend
+              requests, welcomes, badges, RSVPs…). */}
+          <Link
+            href="/community/notifications"
+            onClick={() => setOpen(false)}
+            className="flex shrink-0 items-center justify-center gap-1.5 border-t border-rosa/20 bg-gradient-to-r from-rosa/10 to-blush/10 px-3 py-2.5 text-xs font-semibold text-primary transition-colors hover:from-rosa/20 hover:to-blush/20"
+          >
+            See all notifications
+            <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
         </div>
       </FloatingPopover>
     </>

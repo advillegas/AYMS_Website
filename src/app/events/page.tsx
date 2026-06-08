@@ -20,6 +20,10 @@ import { Calendar, MapPin, Clock, Sparkles } from "lucide-react";
 import { format, parseISO, isPast, isValid } from "date-fns";
 import Link from "next/link";
 import { CmsPageWrapper } from "@/components/admin/cms-page-wrapper";
+import { EventRsvp } from "@/components/community/event-rsvp";
+
+/** Event types that take RSVPs on the public page (not trips/synced feeds). */
+const RSVP_TYPES = new Set(["social", "meetup", "camp"]);
 
 const TYPE_STYLE: Record<string, { cls: string; emoji: string }> = {
   trip: { cls: "bg-magenta/15 text-magenta border-magenta/20", emoji: "✈️" },
@@ -338,6 +342,20 @@ export default function EventsPage() {
                   </div>
                 )}
               </div>
+              {RSVP_TYPES.has(detail.type ?? "") && (
+                <>
+                  <Separator className="border-rosa/20" />
+                  <EventRsvp
+                    targetType="event"
+                    targetId={detail.id}
+                    title={detail.title}
+                    date={detail.date}
+                    startTime={detail.startTime}
+                    location={detail.location}
+                    capacity={detail.capacity}
+                  />
+                </>
+              )}
             </>
           )}
         </DialogContent>

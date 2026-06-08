@@ -3,10 +3,21 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { useState } from "react";
 import { useCommunityUI } from "@/lib/community-ui-store";
 import { useProfileLookup, useEmailVisible } from "@/lib/profile-lookup";
-import { useUserRoles } from "@/lib/use-roles-store";
+import { useUserRoles, useMe } from "@/lib/use-roles-store";
 import { useAuth } from "@/lib/store";
+import {
+  useModeration,
+  useIsBanned,
+  useIsMuted,
+} from "@/lib/use-moderation-store";
+import { useConfirm } from "@/components/ui/confirm-dialog";
+import {
+  ReportDialog,
+  type ReportTarget,
+} from "@/components/community/report-dialog";
 import {
   useCommunityMembers,
   useMemberStatus,
@@ -21,6 +32,11 @@ import {
   UserPlus,
   AtSign,
   Copy,
+  Flag,
+  Ban,
+  MicOff,
+  Mic,
+  UserX,
 } from "lucide-react";
 import { cn, initials } from "@/lib/utils";
 import { AvatarStatusOverlay, statusLabel } from "./status-indicator";
@@ -50,9 +66,26 @@ function MemberRow({ member }: MemberRowProps) {
   const relationship = useRelationship(member.id);
   const friendIds = useFriendIdSet();
 
+  // Moderation: gate the ban/mute affordances by permission, and read
+  // this member's live ban/mute state so the menu shows the inverse
+  // action (Unban/Unmute) when they're already actioned.
+  const { hasPermission } = useMe();
+  const canBan = hasPermission("banMembers");
+  const canMute = hasPermission("muteMembers");
+  const canKick = hasPermission("kickMembers");
+  const isBanned = useIsBanned(member.id);
+  const isMuted = useIsMuted(member.id);
+  const moderation = useModeration();
+  const confirm = useConfirm();
+  const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null);
+
   const color = roles[0]?.color;
   const isSelf = currentUserId === member.id;
   const displayName = formatDisplayName(member.name, member.nameDisplay);
+
+  const actor = currentUser
+    ? { id: currentUser.id, name: currentUser.name }
+    : null;
 
   const ctx = useContextMenu(() => {
     const items: ContextMenuItem[] = [
@@ -124,7 +157,132 @@ function MemberRow({ member }: MemberRowProps) {
           toast.success(`Copied ${handle} - paste into the chat composer.`);
         },
       });
+      // Report — any member can flag another for the mod team.
+      items.push({ kind: "separator" });
+      items.push({
+        id: "report-member",
+        label: "Report member",
+        icon: <Flag className="h-3.5 w-3.5" />,
+        onSelect: () =>
+          setReportTarget({
+            targetType: "member",
+            targetId: member.id,
+            reportedUserId: member.id,
+            snapshot: { userName: member.name },
+          }),
+      });
     }
+
+    // Moderator actions — only shown to members who hold the matching
+    // permission. The reason here is a quick default; the moderation
+    // queue page captures richer reasons. Notifications + audit log
+    // are emitted inside the store actions.
+    if (!isSelf && actor && (canMute || canBan || canKick)) {
+      items.push({ kind: "separator" });
+      items.push({ kind: "label", label: "Moderation" });
+      if (canMute) {
+        if (isMuted) {
+          items.push({
+            id: "unmute",
+            label: "Unmute member",
+            icon: <Mic className="h-3.5 w-3.5" />,
+            onSelect: () =>
+              moderation.unmute(member.id, actor, member.name),
+          });
+        } else {
+          items.push({
+            id: "mute-1h",
+            label: "Mute for 1 hour",
+            icon: <MicOff className="h-3.5 w-3.5" />,
+            onSelect: () =>
+              moderation.mute(
+                member.id,
+                actor,
+                "Muted from member list",
+                60 * 60 * 1000,
+                member.name,
+              ),
+          });
+          items.push({
+            id: "mute-24h",
+            label: "Mute for 24 hours",
+            icon: <MicOff className="h-3.5 w-3.5" />,
+            onSelect: () =>
+              moderation.mute(
+                member.id,
+                actor,
+                "Muted from member list",
+                24 * 60 * 60 * 1000,
+                member.name,
+              ),
+          });
+        }
+      }
+      if (canBan) {
+        if (isBanned) {
+          items.push({
+            id: "unban",
+            label: "Unban member",
+            icon: <Ban className="h-3.5 w-3.5" />,
+            onSelect: () => moderation.unban(member.id, actor, member.name),
+          });
+        } else {
+          items.push({
+            id: "ban",
+            label: "Ban member",
+            icon: <Ban className="h-3.5 w-3.5" />,
+            danger: true,
+            onSelect: () => {
+              void (async () => {
+                const ok = await confirm({
+                  title: `Ban ${displayName}?`,
+                  description:
+                    "They'll be blocked from posting and their messages hidden. You can unban them later.",
+                  destructive: true,
+                  confirmText: "Ban member",
+                });
+                if (!ok) return;
+                moderation.ban(
+                  member.id,
+                  actor,
+                  "Banned from member list",
+                  member.name,
+                );
+                toast.success(`${displayName} has been banned.`);
+              })();
+            },
+          });
+        }
+      }
+      if (canKick) {
+        items.push({
+          id: "kick",
+          label: "Kick member",
+          icon: <UserX className="h-3.5 w-3.5" />,
+          danger: true,
+          onSelect: () => {
+            void (async () => {
+              const ok = await confirm({
+                title: `Kick ${displayName}?`,
+                description:
+                  "They'll be removed from the community directory but can re-join. Their auth account is unaffected.",
+                destructive: true,
+                confirmText: "Kick member",
+              });
+              if (!ok) return;
+              await moderation.kick(
+                member.id,
+                actor,
+                "Kicked from member list",
+                member.name,
+              );
+              toast.success(`${displayName} has been removed.`);
+            })();
+          },
+        });
+      }
+    }
+
     items.push({ kind: "separator" });
     items.push({
       id: "copy-id",
@@ -147,6 +305,13 @@ function MemberRow({ member }: MemberRowProps) {
       {({ triggerRef, onClick, open }) => (
         <>
           {ctx.menu}
+          <ReportDialog
+            open={reportTarget !== null}
+            onOpenChange={(o) => {
+              if (!o) setReportTarget(null);
+            }}
+            target={reportTarget}
+          />
         <button
           type="button"
           ref={triggerRef as React.RefObject<HTMLButtonElement>}

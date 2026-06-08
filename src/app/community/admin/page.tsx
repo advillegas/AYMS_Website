@@ -2,7 +2,14 @@
 
 import Link from "next/link";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Shield, Hash, UserCog, Calendar } from "lucide-react";
+import {
+  Shield,
+  Hash,
+  UserCog,
+  Calendar,
+  ShieldAlert,
+  BarChart3,
+} from "lucide-react";
 
 const TILES = [
   {
@@ -21,7 +28,19 @@ const TILES = [
     href: "/community/admin/members",
     icon: UserCog,
     title: "Members",
-    desc: "Live Firestore directory. Edit roles, see presence, and remove stale profiles.",
+    desc: "Live Firestore directory. Edit roles, see presence, ban/mute, and remove profiles.",
+  },
+  {
+    href: "/community/admin/moderation",
+    icon: ShieldAlert,
+    title: "Moderation",
+    desc: "Triage reports, delete messages, ban/mute members, and review the audit log.",
+  },
+  {
+    href: "/community/admin/analytics",
+    icon: BarChart3,
+    title: "Analytics",
+    desc: "Member growth, channel activity, and upcoming events at a glance.",
   },
   {
     href: "/community/admin/calendar",

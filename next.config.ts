@@ -1,6 +1,13 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Next 16.1+ enables Turbopack's filesystem cache for `next dev` by default.
+  // On this project's ExFAT volume the cache persistence directory fails to
+  // load ("invalid digit found in string"), which crashes the dev server.
+  // Disable it for dev to keep `next dev` stable. Production build is unaffected.
+  experimental: {
+    turbopackFileSystemCacheForDev: false,
+  },
   images: {
     remotePatterns: [
       // GIPHY GIFs rendered in the community chat

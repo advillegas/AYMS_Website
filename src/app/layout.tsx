@@ -4,6 +4,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "sonner";
 import { ChatProvider } from "@/components/chatbot/chat-provider";
+import { ConfirmProvider } from "@/components/ui/confirm-dialog";
 import { AuthBootstrap } from "@/components/auth-bootstrap";
 import { OrganizationJsonLd, WebSiteJsonLd } from "@/components/seo/json-ld";
 import "./globals.css";
@@ -122,6 +123,12 @@ export default function RootLayout({
       className={`${montserrat.variable} ${geistMono.variable} ${playfair.variable} ${cormorant.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col font-sans">
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-primary-foreground focus:shadow-lg focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+        >
+          Skip to content
+        </a>
         <OrganizationJsonLd />
         <WebSiteJsonLd />
         <ThemeProvider
@@ -131,10 +138,18 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <TooltipProvider>
-            <AuthBootstrap />
-            {children}
-            <ChatProvider />
-            <Toaster richColors position="bottom-right" />
+            <ConfirmProvider>
+              <AuthBootstrap />
+              <div
+                id="main-content"
+                tabIndex={-1}
+                className="flex flex-1 flex-col outline-none"
+              >
+                {children}
+              </div>
+              <ChatProvider />
+              <Toaster richColors position="bottom-right" />
+            </ConfirmProvider>
           </TooltipProvider>
         </ThemeProvider>
       </body>

@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -39,6 +39,7 @@ const TRIPS = [
 ];
 
 export function Trips() {
+  const prefersReducedMotion = useReducedMotion();
   return (
     <section id="trips" className="grain relative overflow-hidden py-32 bg-[#3A1020]">
       {/* Coral-tinted dark bg — trips section only uses coral */}
@@ -49,7 +50,7 @@ export function Trips() {
 
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <motion.div
-          initial={{ opacity: 0, y: 24 }}
+          initial={prefersReducedMotion ? false : { opacity: 0, y: 24 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
@@ -72,10 +73,10 @@ export function Trips() {
           {TRIPS.map((trip, i) => (
             <motion.div
               key={trip.en.title}
-              initial={{ opacity: 0, y: 28 }}
+              initial={prefersReducedMotion ? false : { opacity: 0, y: 28 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ delay: i * 0.15, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+              transition={{ delay: prefersReducedMotion ? 0 : i * 0.15, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
             >
               <FlipCard
                 className="ring-gradient h-[440px] cursor-pointer rounded-3xl"
@@ -83,7 +84,7 @@ export function Trips() {
                   <div className="flex h-full flex-col rounded-3xl bg-white/[0.06] overflow-hidden border border-white/10 backdrop-blur-sm">
                     <div className={`h-48 bg-gradient-to-br ${trip.gradient} flex items-center justify-center relative`}>
                       <div className="absolute inset-0 pattern-dots opacity-15" />
-                      <span className="text-6xl relative z-10 drop-shadow-lg">{trip.emoji}</span>
+                      <span className="text-6xl relative z-10 drop-shadow-lg" aria-hidden="true">{trip.emoji}</span>
                     </div>
                     <div className="flex-1 p-6 flex flex-col">
                       <div className="flex items-center justify-between mb-3">
@@ -91,7 +92,7 @@ export function Trips() {
                         <Badge className="bg-[#FF7F50]/15 text-[#FF7F50] border-[#FF7F50]/20 text-[10px] font-bold">{trip.tag}</Badge>
                       </div>
                       <div className="flex items-center gap-2 text-sm text-white/55 mb-3">
-                        <Calendar className="h-4 w-4 text-[#FF7F50]" />
+                        <Calendar className="h-4 w-4 text-[#FF7F50]" aria-hidden="true" />
                         {trip.date}
                       </div>
                       <p className="text-sm text-white/60 leading-relaxed flex-1">{trip.en.desc}</p>
@@ -105,7 +106,7 @@ export function Trips() {
                   <div className={`flex h-full flex-col rounded-3xl bg-gradient-to-br ${trip.gradientBack} overflow-hidden text-white`}>
                     <div className="h-48 flex items-center justify-center relative bg-black/10">
                       <div className="absolute inset-0 pattern-dots opacity-10" />
-                      <span className="text-6xl relative z-10 drop-shadow-lg">{trip.emoji}</span>
+                      <span className="text-6xl relative z-10 drop-shadow-lg" aria-hidden="true">{trip.emoji}</span>
                     </div>
                     <div className="flex-1 p-6 flex flex-col">
                       <div className="flex items-center justify-between mb-3">
@@ -113,7 +114,7 @@ export function Trips() {
                         <Badge className="bg-white/15 text-white border-white/20 text-[10px] font-bold">{trip.tag}</Badge>
                       </div>
                       <div className="flex items-center gap-2 text-sm text-white/70 mb-3">
-                        <Calendar className="h-4 w-4" />
+                        <Calendar className="h-4 w-4" aria-hidden="true" />
                         {trip.date}
                       </div>
                       <p className="text-sm text-white/85 leading-relaxed flex-1">{trip.es.desc}</p>

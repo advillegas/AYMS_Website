@@ -42,7 +42,8 @@ import {
   Settings,
 } from "lucide-react";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
+import { cn, initials } from "@/lib/utils";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { MembersPanel, MemberDetailCard } from "./members-panel";
 import { ThreadPanel } from "./thread-panel";
 import { useNotificationPrefs } from "@/lib/use-channel-notifications";
@@ -91,15 +92,6 @@ const CATEGORY_LABELS: Record<string, string> = {
   events: "Events",
   fun: "Fun & Lifestyle",
 };
-
-function initials(name: string) {
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-}
 
 interface ChannelSidebarProps {
   onChannelClick?: () => void;
@@ -296,6 +288,7 @@ function ChannelSidebar({ onChannelClick }: ChannelSidebarProps) {
   const setNotifyLevel = useNotificationPrefs((s) => s.setLevel);
   const canManage = useHasPermission("manageChannels");
   const canReorder = useHasPermission("reorderChannels");
+  const confirm = useConfirm();
 
   const [editingChannel, setEditingChannel] = useState<RichChannel | null>(
     null,
@@ -322,14 +315,15 @@ function ChannelSidebar({ onChannelClick }: ChannelSidebarProps) {
     onChannelClick?.();
   }
 
-  function handleDelete(ch: RichChannel) {
-    if (
-      !window.confirm(
-        `Delete #${ch.name}? Members will lose access immediately. Messages stay archived.`,
-      )
-    ) {
-      return;
-    }
+  async function handleDelete(ch: RichChannel) {
+    const ok = await confirm({
+      title: `Delete #${ch.name}?`,
+      description:
+        "Members will lose access immediately. Messages stay archived.",
+      destructive: true,
+      confirmText: "Delete channel",
+    });
+    if (!ok) return;
     deleteChannel(ch.id, false);
     toast.success(`#${ch.name} archived.`);
   }

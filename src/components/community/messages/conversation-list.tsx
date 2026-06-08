@@ -12,7 +12,6 @@ import {
   type Conversation,
 } from "@/lib/use-conversations";
 import { formatDisplayName } from "@/lib/name-format";
-import { isFirebaseConfigured } from "@/lib/firebase";
 import { useDMPrefs } from "@/lib/use-dm-prefs";
 import { formatDistanceToNowStrict } from "date-fns";
 import {
@@ -26,21 +25,13 @@ import {
   User,
   LogOut,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, initials } from "@/lib/utils";
 import { toast } from "sonner";
 import {
   useContextMenu,
   type ContextMenuItem,
 } from "../context-menu";
-
-function initials(name: string) {
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-}
+import { useConfirm } from "@/components/ui/confirm-dialog";
 
 interface ConversationListProps {
   activeId: string | null;
@@ -76,6 +67,7 @@ function ConversationRow({
   const currentUser = useAuth((s) => s.user);
   const setMuted = useDMPrefs((s) => s.toggleMute);
   const selectProfile = useCommunityUI((s) => s.selectProfile);
+  const confirm = useConfirm();
 
   const ctx = useContextMenu(() => {
     const items: ContextMenuItem[] = [
@@ -145,17 +137,28 @@ function ConversationRow({
       danger: true,
       onSelect: () => {
         if (!currentUser) return;
-        const verb = row.isGroup ? "leave this group" : "delete this DM";
-        if (!window.confirm(`Are you sure you want to ${verb}?`)) return;
-        void leaveConversation(row.conversation.id, currentUser.id).then(
-          (ok) => {
-            if (ok) {
-              toast.success(row.isGroup ? "Left the group." : "DM deleted.");
-            } else {
-              toast.error("Couldn't complete that action.");
-            }
-          },
-        );
+        const verb = row.isGroup ? "Leave group" : "Delete conversation";
+        void confirm({
+          title: row.isGroup
+            ? `Leave ${row.title}?`
+            : `Delete this conversation?`,
+          description: row.isGroup
+            ? "You'll stop receiving messages from this group. You can be re-added later."
+            : "This removes the conversation for both of you. This can't be undone.",
+          confirmText: verb,
+          destructive: true,
+        }).then((confirmed) => {
+          if (!confirmed) return;
+          void leaveConversation(row.conversation.id, currentUser.id).then(
+            (ok) => {
+              if (ok) {
+                toast.success(row.isGroup ? "Left the group." : "DM deleted.");
+              } else {
+                toast.error("Couldn't complete that action.");
+              }
+            },
+          );
+        });
       },
     });
     return items;

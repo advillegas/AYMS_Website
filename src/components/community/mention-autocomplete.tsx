@@ -5,7 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useCommunity, type User } from "@/lib/store";
 import { useCommunityMembers } from "@/lib/use-community-members";
 import { AtSign, Megaphone, Users } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, initials } from "@/lib/utils";
 
 /**
  * Mention autocomplete primitives + UI for the chat composer.
@@ -118,15 +118,6 @@ const SPECIAL_ITEMS: MentionItem[] = [
     kind: "channel",
   },
 ];
-
-function initials(name: string) {
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-}
 
 /** Slug a full name: "Maria Garcia" -> "maria-garcia". Used both
  * as the inserted token and by message-content.tsx to resolve. */

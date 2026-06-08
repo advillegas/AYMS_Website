@@ -43,6 +43,8 @@ async function loadEventsFromFirestore(): Promise<CalendarEvent[] | null> {
           description: f.description?.stringValue ?? "",
           date: f.date?.stringValue ?? "",
           endDate: f.endDate?.stringValue || undefined,
+          startTime: f.startTime?.stringValue || undefined,
+          endTime: f.endTime?.stringValue || undefined,
           type: (f.type?.stringValue ?? "social") as CalendarEvent["type"],
           location: f.location?.stringValue ?? "",
         };

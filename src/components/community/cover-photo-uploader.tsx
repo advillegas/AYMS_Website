@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import Image from "next/image";
 import { Camera, X, Loader2 } from "lucide-react";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { toast } from "sonner";
 import { getStorageInstance, isStorageConfigured } from "@/lib/firebase";
 import { cn } from "@/lib/utils";
 
@@ -24,9 +25,23 @@ export function CoverPhotoUploader({
   const [uploading, setUploading] = useState(false);
 
   async function handleFile(file: File) {
-    if (!isStorageConfigured) return;
+    if (!isStorageConfigured) {
+      toast.error("Photo uploads need Firebase Storage to be enabled.");
+      return;
+    }
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please choose an image file.");
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      toast.error("That image is over 8 MB. Try a smaller one.");
+      return;
+    }
     const storage = getStorageInstance();
-    if (!storage) return;
+    if (!storage) {
+      toast.error("Storage isn't available right now.");
+      return;
+    }
     setUploading(true);
     try {
       const storageRef = ref(
@@ -36,8 +51,10 @@ export function CoverPhotoUploader({
       await uploadBytes(storageRef, file);
       const downloadUrl = await getDownloadURL(storageRef);
       onChange(downloadUrl);
+      toast.success("Cover photo updated!");
     } catch (err) {
       console.error("[cover-upload]", err);
+      toast.error("Couldn't upload that cover photo. Please try again.");
     } finally {
       setUploading(false);
     }
@@ -66,9 +83,11 @@ export function CoverPhotoUploader({
             type="file"
             accept="image/*"
             className="hidden"
+            aria-label={url ? "Change cover photo" : "Add a cover photo"}
             onChange={(e) => {
               const f = e.target.files?.[0];
               if (f) void handleFile(f);
+              e.target.value = ""; // allow re-picking the same file
             }}
           />
           <button

@@ -41,31 +41,47 @@ function SortableNavItem({ link }: { link: NavLink }) {
 
   return (
     <div ref={setNodeRef} style={style} className="flex items-center gap-2 rounded-lg border border-white/8 bg-white/[0.02] px-2 py-2">
-      <div {...attributes} {...listeners} className="cursor-grab text-white/20 hover:text-white/50">
-        <GripVertical className="h-4 w-4" />
+      <div
+        {...attributes}
+        {...listeners}
+        aria-label={`Drag to reorder ${link.label || "link"}`}
+        title="Drag to reorder"
+        className="cursor-grab text-white/20 hover:text-white/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099] rounded"
+      >
+        <GripVertical className="h-4 w-4" aria-hidden="true" />
       </div>
       <Input
         value={link.label}
         onChange={(e) => updateNavLink(link.id, { label: e.target.value })}
+        aria-label="Link label"
+        placeholder="Label"
         className="flex-1 bg-transparent border-0 text-white text-xs h-7 p-0 focus-visible:ring-0"
       />
       <Input
         value={link.href}
         onChange={(e) => updateNavLink(link.id, { href: e.target.value })}
+        aria-label="Link URL"
+        placeholder="URL"
         className="w-24 bg-transparent border-0 text-white/40 text-[10px] h-7 p-0 focus-visible:ring-0"
       />
       <button
+        type="button"
         onClick={() => updateNavLink(link.id, { isVisible: !link.isVisible })}
-        className={`shrink-0 p-1 rounded transition-colors ${link.isVisible ? "text-green-400 hover:text-green-300" : "text-white/20 hover:text-white/40"}`}
-        title={link.isVisible ? "Visible" : "Hidden"}
+        className={`shrink-0 p-1 rounded transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099] ${link.isVisible ? "text-green-400 hover:text-green-300" : "text-white/20 hover:text-white/40"}`}
+        title={link.isVisible ? `Hide ${link.label || "link"} in nav` : `Show ${link.label || "link"} in nav`}
+        aria-label={link.isVisible ? `Hide ${link.label || "link"} in navigation` : `Show ${link.label || "link"} in navigation`}
+        aria-pressed={link.isVisible}
       >
-        {link.isVisible ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+        {link.isVisible ? <Eye className="h-3.5 w-3.5" aria-hidden="true" /> : <EyeOff className="h-3.5 w-3.5" aria-hidden="true" />}
       </button>
       <button
+        type="button"
         onClick={() => removeNavLink(link.id)}
-        className="shrink-0 p-1 rounded text-white/20 hover:text-red-400 transition-colors"
+        title={`Remove ${link.label || "link"}`}
+        aria-label={`Remove ${link.label || "link"} from navigation`}
+        className="shrink-0 p-1 rounded text-white/20 hover:text-red-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]"
       >
-        <Trash2 className="h-3.5 w-3.5" />
+        <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
       </button>
     </div>
   );
@@ -125,12 +141,20 @@ export function NavEditor() {
             value={newLabel}
             onChange={(e) => setNewLabel(e.target.value)}
             placeholder="Label (e.g. Blog)"
+            aria-label="New link label"
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleAdd();
+            }}
             className="bg-white/5 border-white/10 text-white text-xs h-8"
           />
           <Input
             value={newHref}
             onChange={(e) => setNewHref(e.target.value)}
             placeholder="URL (e.g. /p/blog)"
+            aria-label="New link URL"
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleAdd();
+            }}
             className="bg-white/5 border-white/10 text-white text-xs h-8"
           />
           <Button
@@ -140,7 +164,7 @@ export function NavEditor() {
             size="sm"
             className="w-full text-xs border-white/10 text-white/60 hover:text-white hover:bg-white/5"
           >
-            <Plus className="h-3 w-3 mr-1.5" /> Add to Navigation
+            <Plus className="h-3 w-3 mr-1.5" aria-hidden="true" /> Add to Navigation
           </Button>
         </div>
       </ScrollArea>

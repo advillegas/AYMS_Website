@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { Heart, Globe, Coffee, Sparkles } from "lucide-react";
 import { FlipCard } from "@/components/ui/flip-card";
 
@@ -40,6 +40,7 @@ const VALUES = [
 ];
 
 export function About() {
+  const prefersReducedMotion = useReducedMotion();
   return (
     <section id="about" className="grain relative overflow-hidden py-32 bg-[#1a0a12]">
       {/* Dark layered bg */}
@@ -49,7 +50,7 @@ export function About() {
 
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <motion.div
-          initial={{ opacity: 0, y: 24 }}
+          initial={prefersReducedMotion ? false : { opacity: 0, y: 24 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
@@ -74,17 +75,17 @@ export function About() {
           {VALUES.map((v, i) => (
             <motion.div
               key={v.en.title}
-              initial={{ opacity: 0, y: 28 }}
+              initial={prefersReducedMotion ? false : { opacity: 0, y: 28 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ delay: i * 0.12, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+              transition={{ delay: prefersReducedMotion ? 0 : i * 0.12, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
             >
               <FlipCard
                 className="ring-gradient h-64 cursor-pointer rounded-3xl"
                 front={
                   <div className="flex h-full flex-col items-center justify-center gap-4 rounded-3xl bg-white/[0.05] p-8 text-center backdrop-blur-sm border border-white/10">
                     <div className={`flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 backdrop-blur-sm ${v.iconColor}`}>
-                      <v.icon className="h-7 w-7" />
+                      <v.icon className="h-7 w-7" aria-hidden="true" />
                     </div>
                     <h3 className="text-lg font-bold font-[family-name:var(--font-heading)] text-white">{v.en.title}</h3>
                     <p className="text-sm text-white/60 leading-relaxed">{v.en.description}</p>
@@ -93,7 +94,7 @@ export function About() {
                 back={
                   <div className={`flex h-full flex-col items-center justify-center gap-4 rounded-3xl bg-gradient-to-br ${v.gradientBack} p-8 text-center text-white`}>
                     <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/15 backdrop-blur-sm">
-                      <v.icon className="h-7 w-7 text-white" />
+                      <v.icon className="h-7 w-7 text-white" aria-hidden="true" />
                     </div>
                     <h3 className="text-lg font-bold font-[family-name:var(--font-heading)]">{v.es.title}</h3>
                     <p className="text-sm text-white/85 leading-relaxed">{v.es.description}</p>
@@ -106,10 +107,10 @@ export function About() {
 
         {/* Founder spotlight */}
         <motion.div
-          initial={{ opacity: 0, y: 24 }}
+          initial={prefersReducedMotion ? false : { opacity: 0, y: 24 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ delay: 0.3, duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ delay: prefersReducedMotion ? 0 : 0.3, duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
           className="mt-24 flex flex-col items-center text-center"
         >
           <div className="elevate-float h-24 w-24 rounded-full bg-gradient-to-br from-[#FF0099] via-[#B51760] to-[#C44B3F] flex items-center justify-center text-white text-3xl font-bold font-[family-name:var(--font-heading)] animate-pulse-glow">

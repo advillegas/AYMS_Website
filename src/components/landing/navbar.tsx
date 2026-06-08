@@ -25,19 +25,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetTrigger, SheetContent } from "@/components/ui/sheet";
-import { cn } from "@/lib/utils";
+import { cn, initials } from "@/lib/utils";
 import { useAuth } from "@/lib/store";
 import { useCms } from "@/lib/cms-store";
 import { toast } from "sonner";
-
-function userInitials(name: string) {
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-}
 
 const FALLBACK_LINKS = [
   { label: "Home", href: "/" },
@@ -151,7 +142,7 @@ export function Navbar() {
                         <AvatarImage src={user.avatar} alt={user.name} />
                       )}
                       <AvatarFallback className="bg-gradient-to-br from-[#FF0099] to-[#B51760] text-white text-[10px] font-bold">
-                        {userInitials(user.name)}
+                        {initials(user.name)}
                       </AvatarFallback>
                     </Avatar>
                     <ChevronDown className="h-3 w-3 opacity-60" />
@@ -224,12 +215,18 @@ export function Navbar() {
           {/* Mobile hamburger */}
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger
+              aria-label={open ? "Close menu" : "Open menu"}
+              aria-expanded={open}
               className={cn(
                 buttonVariants({ variant: "ghost", size: "icon" }),
                 "lg:hidden text-[#6A1B4D] hover:bg-[#FACDE8]/30",
               )}
             >
-              {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              {open ? (
+                <X className="h-5 w-5" aria-hidden="true" />
+              ) : (
+                <Menu className="h-5 w-5" aria-hidden="true" />
+              )}
             </SheetTrigger>
             <SheetContent side="right" className="w-72">
               <div className="flex items-center gap-2 mb-6">
@@ -272,7 +269,7 @@ export function Navbar() {
                           <AvatarImage src={user.avatar} alt={user.name} />
                         )}
                         <AvatarFallback className="bg-gradient-to-br from-primary to-magenta text-white text-[10px] font-bold">
-                          {userInitials(user.name)}
+                          {initials(user.name)}
                         </AvatarFallback>
                       </Avatar>
                       <div className="min-w-0 flex-1">

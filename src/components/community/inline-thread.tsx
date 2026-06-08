@@ -32,7 +32,8 @@ import { useProfileLookup } from "@/lib/profile-lookup";
 import { useMemberStatus } from "@/lib/use-community-members";
 import { useNameColor } from "@/lib/use-roles-store";
 import { formatDisplayName } from "@/lib/name-format";
-import { cn } from "@/lib/utils";
+import { cn, initials } from "@/lib/utils";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { AvatarStatusOverlay } from "./status-indicator";
 import { ProfileMiniTrigger } from "./profile-mini-card";
 import {
@@ -59,15 +60,6 @@ import { Plus } from "lucide-react";
 import { useCommunity } from "@/lib/store";
 import { useCommunityMembers } from "@/lib/use-community-members";
 
-function initials(name: string) {
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-}
-
 function formatReplyTime(ts: string | null | undefined) {
   // Empty / unresolved serverTimestamp() values would throw "Invalid
   // time value" inside format(). Show a soft fallback instead.
@@ -93,6 +85,7 @@ interface ReplyRowProps {
 
 function ReplyRow({ reply, onReact, onDelete, onReplyTo, canModerate }: ReplyRowProps) {
   const currentUser = useAuth((s) => s.user);
+  const confirm = useConfirm();
   const isAuthor = currentUser?.id === reply.userId;
   const canDelete = isAuthor || canModerate;
   const liveProfile = useProfileLookup(reply.userId, {
@@ -106,6 +99,19 @@ function ReplyRow({ reply, onReact, onDelete, onReplyTo, canModerate }: ReplyRow
   const displayAvatar = liveProfile?.avatar || reply.userAvatar;
   const [fullPickerOpen, setFullPickerOpen] = useState(false);
   const rowRef = useRef<HTMLDivElement>(null);
+
+  async function handleDelete() {
+    const ok = await confirm({
+      title: "Delete reply?",
+      description: "This can't be undone.",
+      destructive: true,
+      confirmText: "Delete",
+    });
+    if (!ok) return;
+    const deleted = await onDelete();
+    if (deleted) toast.success("Reply deleted.");
+    else toast.error("Couldn't delete reply.");
+  }
 
   const ctx = useContextMenu(() => {
     const items: ContextMenuItem[] = [
@@ -143,13 +149,7 @@ function ReplyRow({ reply, onReact, onDelete, onReplyTo, canModerate }: ReplyRow
         id: "delete",
         label: "Delete reply",
         danger: true,
-        onSelect: () => {
-          if (!window.confirm("Delete this reply?")) return;
-          void onDelete().then((ok) => {
-            if (ok) toast.success("Reply deleted.");
-            else toast.error("Couldn't delete reply.");
-          });
-        },
+        onSelect: () => void handleDelete(),
       });
     }
     return items;
@@ -282,13 +282,7 @@ function ReplyRow({ reply, onReact, onDelete, onReplyTo, canModerate }: ReplyRow
         {canDelete && (
           <button
             type="button"
-            onClick={() => {
-              if (!window.confirm("Delete this reply?")) return;
-              void onDelete().then((ok) => {
-                if (ok) toast.success("Reply deleted.");
-                else toast.error("Couldn't delete reply.");
-              });
-            }}
+            onClick={() => void handleDelete()}
             className="rounded-full p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
             aria-label="Delete reply"
             title="Delete reply"
@@ -488,6 +482,8 @@ export function InlineThread({
               type="button"
               onClick={() => setPendingGif(null)}
               className="mt-0.5 inline-flex items-center gap-0.5 text-[10px] text-destructive hover:underline shrink-0"
+              aria-label="Remove GIF"
+              title="Remove GIF"
             >
               <X className="h-3 w-3" />
             </button>

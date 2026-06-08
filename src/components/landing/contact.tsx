@@ -1,12 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Mail, Heart, Send } from "lucide-react";
+import { Mail, Heart, Send, Loader2 } from "lucide-react";
+
+const NEWSLETTER_INBOX = "hello@amigasymassocial.com";
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function InstagramIcon({ className }: { className?: string }) {
   return (
@@ -52,16 +56,48 @@ const CONTACT_ITEMS = [
 ];
 
 export function Contact() {
+  const prefersReducedMotion = useReducedMotion();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubscribe = (e: React.FormEvent) => {
+  const handleSubscribe = async (e: React.FormEvent) => {
     e.preventDefault();
-    const subject = encodeURIComponent("Newsletter signup");
-    const body = encodeURIComponent(
-      `Hi AYMS team,\n\nI'd like to join the newsletter.\n\nName: ${name}\nEmail: ${email}`,
-    );
-    window.location.href = `mailto:hello@amigasymassocial.com?subject=${subject}&body=${body}`;
+    if (submitting) return;
+
+    const trimmedEmail = email.trim();
+    if (!EMAIL_RE.test(trimmedEmail)) {
+      setError("Please enter a valid email address.");
+      toast.error("Please enter a valid email address.");
+      return;
+    }
+    setError(null);
+    setSubmitting(true);
+
+    try {
+      // No third-party email provider is wired up, so we gracefully fall back
+      // to opening the visitor's mail client pre-filled with their details.
+      // This never throws and degrades cleanly if a mail client is unavailable.
+      const subject = encodeURIComponent("Newsletter signup");
+      const body = encodeURIComponent(
+        `Hi AYMS team,\n\nI'd like to join the newsletter.\n\nName: ${
+          name.trim() || "(not provided)"
+        }\nEmail: ${trimmedEmail}`,
+      );
+      window.location.href = `mailto:${NEWSLETTER_INBOX}?subject=${subject}&body=${body}`;
+      toast.success(
+        "Almost there! Send the email we opened to finish signing up ♡",
+      );
+      setName("");
+      setEmail("");
+    } catch {
+      toast.error(
+        `Couldn't open your email app. Write to us at ${NEWSLETTER_INBOX}.`,
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -72,7 +108,7 @@ export function Contact() {
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="grid items-start gap-14 lg:grid-cols-2">
           <motion.div
-            initial={{ opacity: 0, x: -30 }}
+            initial={prefersReducedMotion ? false : { opacity: 0, x: -30 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
@@ -95,7 +131,7 @@ export function Contact() {
                 const inner = (
                   <>
                     <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${item.gradient} elevate-2`}>
-                      <item.icon className={`h-5 w-5 ${item.iconColor}`} />
+                      <item.icon className={`h-5 w-5 ${item.iconColor}`} aria-hidden="true" />
                     </div>
                     <div>
                       <p className="text-sm font-semibold text-[#6A1B4D]">
@@ -116,6 +152,11 @@ export function Contact() {
                     href={item.href}
                     target={item.external ? "_blank" : undefined}
                     rel={item.external ? "noopener noreferrer" : undefined}
+                    aria-label={
+                      item.external
+                        ? `${item.en.sub} (opens in a new tab)`
+                        : item.en.sub
+                    }
                     className={`${cls} cursor-pointer`}
                   >
                     {inner}
@@ -130,7 +171,7 @@ export function Contact() {
           </motion.div>
 
           <motion.div
-            initial={{ opacity: 0, x: 30 }}
+            initial={prefersReducedMotion ? false : { opacity: 0, x: 30 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
@@ -149,9 +190,12 @@ export function Contact() {
                     <Label htmlFor="name" className="font-semibold text-[#6A1B4D]">Name</Label>
                     <Input
                       id="name"
+                      name="name"
+                      autoComplete="name"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       placeholder="Your name"
+                      disabled={submitting}
                       className="rounded-xl border-[#FACDE8]/50 focus-visible:ring-[#FF0099]/40 bg-white/60"
                     />
                   </div>
@@ -159,18 +203,52 @@ export function Contact() {
                     <Label htmlFor="email" className="font-semibold text-[#6A1B4D]">Email</Label>
                     <Input
                       id="email"
+                      name="email"
                       type="email"
                       required
+                      autoComplete="email"
                       value={email}
-                      onChange={(e) => setEmail(e.target.value)}
+                      onChange={(e) => {
+                        setEmail(e.target.value);
+                        if (error) setError(null);
+                      }}
                       placeholder="you@example.com"
+                      disabled={submitting}
+                      aria-invalid={error ? true : undefined}
+                      aria-describedby={error ? "newsletter-email-error" : undefined}
                       className="rounded-xl border-[#FACDE8]/50 focus-visible:ring-[#FF0099]/40 bg-white/60"
                     />
+                    {error ? (
+                      <p
+                        id="newsletter-email-error"
+                        role="alert"
+                        className="text-xs font-medium text-destructive"
+                      >
+                        {error}
+                      </p>
+                    ) : null}
                   </div>
-                  <Button type="submit" className="lift w-full h-12 rounded-full bg-gradient-to-r from-[#FF0099] via-[#B51760] to-[#FF0099] text-white border-0 hover:brightness-110 shadow-[0_6px_24px_rgb(255_0_153/0.30)] font-semibold">
-                    <Send className="h-4 w-4 mr-2" />
-                    Subscribe ♡
+                  <Button
+                    type="submit"
+                    disabled={submitting}
+                    aria-busy={submitting}
+                    className="lift w-full h-12 rounded-full bg-gradient-to-r from-[#FF0099] via-[#B51760] to-[#FF0099] text-white border-0 hover:brightness-110 shadow-[0_6px_24px_rgb(255_0_153/0.30)] font-semibold disabled:opacity-70"
+                  >
+                    {submitting ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden="true" />
+                        Subscribing…
+                      </>
+                    ) : (
+                      <>
+                        <Send className="h-4 w-4 mr-2" aria-hidden="true" />
+                        Subscribe ♡
+                      </>
+                    )}
                   </Button>
+                  <p className="text-center text-[11px] text-[#6A1B4D]/55">
+                    No spam, ever. Unsubscribe anytime.
+                  </p>
                 </form>
               </CardContent>
             </Card>

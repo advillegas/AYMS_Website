@@ -15,7 +15,7 @@ import {
 import type { PollData } from "@/lib/use-firebase-chat";
 import { useProfileLookup } from "@/lib/profile-lookup";
 import { useCommunityUI } from "@/lib/community-ui-store";
-import { cn } from "@/lib/utils";
+import { cn, initials } from "@/lib/utils";
 
 interface PollCardProps {
   messageId: string;
@@ -39,15 +39,6 @@ function totalVoters(poll: PollData): number {
     for (const id of ids) all.add(id);
   }
   return all.size;
-}
-
-function initials(name: string) {
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
 }
 
 function useCountdown(closesAt?: string) {

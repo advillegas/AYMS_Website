@@ -92,18 +92,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { format, isToday, isYesterday } from "date-fns";
-import { cn } from "@/lib/utils";
+import { cn, initials } from "@/lib/utils";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { formatDisplayName } from "@/lib/name-format";
 import { ProfileMiniTrigger } from "@/components/community/profile-mini-card";
-
-function initials(name: string) {
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-}
 
 function formatMessageTime(ts: string | null | undefined) {
   // tsToIso returns "" for unresolved serverTimestamp() values; show
@@ -124,6 +116,9 @@ interface ChatMessageProps {
   onVotePoll: (optionId: string) => void;
   onPickWinner: () => void;
   onEdit: (newContent: string) => Promise<boolean>;
+  /** Bulletin posts edit via the full composer (title + body + media)
+   *  owned by the page, not the inline single-field MessageEditor. */
+  onEditPost: () => void;
   onDelete: () => Promise<boolean>;
   canManagePolls: boolean;
   canVotePolls: boolean;
@@ -138,12 +133,14 @@ function ChatMessage({
   onVotePoll,
   onPickWinner,
   onEdit,
+  onEditPost,
   onDelete,
   canManagePolls,
   canVotePolls,
   canModerate,
 }: ChatMessageProps) {
   const currentUser = useAuth((s) => s.user);
+  const confirm = useConfirm();
   const [editing, setEditing] = useState(false);
   // Thread expansion state. Inline expansion is the default UX
   // (Facebook-style); popping out into the side panel is a power-
@@ -232,26 +229,37 @@ function ChatMessage({
     if (canEdit) {
       items.push({
         id: "edit",
-        label: "Edit message",
+        label: msg.isPost ? "Edit post" : "Edit message",
         icon: <Pencil className="h-3.5 w-3.5" />,
-        onSelect: () => setEditing(true),
+        onSelect: () => (msg.isPost ? onEditPost() : setEditing(true)),
       });
     }
     if (canDelete) {
       items.push({ kind: "separator" });
       items.push({
         id: "delete",
-        label: "Delete message",
+        label: msg.isPost ? "Delete post" : "Delete message",
         icon: <Trash2 className="h-3.5 w-3.5" />,
         danger: true,
         onSelect: () => {
-          if (!window.confirm("Delete this message? This can't be undone.")) {
-            return;
-          }
-          void onDelete().then((ok) => {
-            if (ok) toast.success("Message deleted.");
-            else toast.error("Couldn't delete the message.");
-          });
+          void (async () => {
+            const ok = await confirm({
+              title: msg.isPost ? "Delete post?" : "Delete message?",
+              description: "This can't be undone.",
+              destructive: true,
+              confirmText: "Delete",
+            });
+            if (!ok) return;
+            const deleted = await onDelete();
+            if (deleted)
+              toast.success(msg.isPost ? "Post deleted." : "Message deleted.");
+            else
+              toast.error(
+                msg.isPost
+                  ? "Couldn't delete the post."
+                  : "Couldn't delete the message.",
+              );
+          })();
         },
       });
     }
@@ -272,7 +280,6 @@ function ChatMessage({
   // be jarring to look at a chat message you posted and see your name
   // truncated.
   const rawName = liveProfile?.name || msg.userName;
-  const isSelf = currentUser?.id === msg.userId;
   // The author's chosen privacy setting applies everywhere - including
   // their own view - so what they see matches what others see.
   const displayName = formatDisplayName(rawName, liveProfile?.nameDisplay);
@@ -304,54 +311,44 @@ function ChatMessage({
           }}
           placement="top-end"
         />
-        {editing ? (
-          <div className="rounded-xl border border-rosa/20 bg-card p-3">
-            <MessageEditor
-              initialContent={msg.postBody ?? msg.content}
-              onSave={async (next) => {
-                const ok = await onEdit(next);
-                return ok;
-              }}
-              onCancel={() => setEditing(false)}
-            />
-          </div>
-        ) : (
-          <PostCard
-            msg={msg}
-            footer={
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <MessageReactions
-                  reactions={msg.reactions ?? {}}
-                  currentUserId={currentUser?.id}
-                  onToggle={onReact}
+        <PostCard
+          msg={msg}
+          footer={
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <MessageReactions
+                reactions={msg.reactions ?? {}}
+                currentUserId={currentUser?.id}
+                onToggle={onReact}
+              />
+              <div className="flex items-center gap-1.5">
+                <AddReactionButton onSelect={onReact} align="end" />
+                <button
+                  type="button"
+                  onClick={handleStartReply}
+                  className="text-xs font-medium text-muted-foreground hover:text-primary inline-flex items-center gap-1"
+                  title="Reply in thread"
+                  aria-label={`Reply in thread to ${displayName}'s post`}
+                >
+                  <CornerUpLeft className="h-3.5 w-3.5" />
+                  Reply
+                </button>
+                <ThreadToggleButton
+                  expanded={threadExpanded}
+                  count={msg.threadCount ?? 0}
+                  onToggle={handleToggleThread}
                 />
-                <div className="flex items-center gap-1.5">
-                  <AddReactionButton onSelect={onReact} align="end" />
-                  <button
-                    type="button"
-                    onClick={handleStartReply}
-                    className="text-xs font-medium text-muted-foreground hover:text-primary inline-flex items-center gap-1"
-                    title="Reply in thread"
-                  >
-                    <CornerUpLeft className="h-3.5 w-3.5" />
-                    Reply
-                  </button>
-                  <ThreadToggleButton
-                    expanded={threadExpanded}
-                    count={msg.threadCount ?? 0}
-                    onToggle={handleToggleThread}
-                  />
-                  <MessageActionButtons
-                    canEdit={canEdit}
-                    canDelete={canDelete}
-                    onEdit={() => setEditing(true)}
-                    onDelete={onDelete}
-                  />
-                </div>
+                <MessageActionButtons
+                  canEdit={canEdit}
+                  canDelete={canDelete}
+                  onEdit={onEditPost}
+                  onDelete={onDelete}
+                  destructiveDeleteLabel="Delete post"
+                  confirmDeletePrompt="Delete this post? This can't be undone."
+                />
               </div>
-            }
-          />
-        )}
+            </div>
+          }
+        />
         {threadExpanded && (
           <InlineThread
             parentId={msg.id}
@@ -597,6 +594,10 @@ export default function ChatPage() {
   const [pollComposerOpen, setPollComposerOpen] = useState(false);
   const [pollKind, setPollKind] = useState<"poll" | "giveaway">("poll");
   const [postComposerOpen, setPostComposerOpen] = useState(false);
+  // The post currently being edited (null = composer is in "create"
+  // mode). Driving both create + edit through one PostComposer keeps
+  // the rich title/body/media editing consistent.
+  const [editingPost, setEditingPost] = useState<RichMessage | null>(null);
   // Stream / posts tab toggle. Reset to "stream" whenever the active
   // channel changes so a saved tab state from another channel doesn't
   // bleed in.
@@ -744,6 +745,19 @@ export default function ChatPage() {
     body: string;
     media: PostMedia[];
   }): Promise<boolean> {
+    // Edit mode: persist the post's title, body, and media back to the
+    // existing doc (the composer seeds all three, so all three must
+    // save — otherwise removing/adding an attachment while editing
+    // would be silently dropped).
+    if (editingPost) {
+      const ok = await editMessage(editingPost.id, {
+        postTitle: input.title,
+        postBody: input.body,
+        postMedia: input.media,
+      });
+      if (ok) setEditingPost(null);
+      return ok;
+    }
     const res = await sendMessage("", {
       post: {
         title: input.title,
@@ -937,6 +951,7 @@ export default function ChatPage() {
                 onVotePoll={(optionId) => voteOnPoll(msg.id, optionId)}
                 onPickWinner={() => void pickWinner(msg.id)}
                 onEdit={(next) => editMessage(msg.id, next)}
+                onEditPost={() => setEditingPost(msg)}
                 onDelete={() => deleteMessage(msg.id)}
                 canManagePolls={canManageMessages}
                 canVotePolls={canVotePolls}
@@ -994,6 +1009,7 @@ export default function ChatPage() {
                 onVotePoll={(optionId) => voteOnPoll(msg.id, optionId)}
                 onPickWinner={() => void pickWinner(msg.id)}
                 onEdit={(next) => editMessage(msg.id, next)}
+                onEditPost={() => setEditingPost(msg)}
                 onDelete={() => deleteMessage(msg.id)}
                 canManagePolls={canManageMessages}
                 canVotePolls={canVotePolls}
@@ -1121,10 +1137,26 @@ export default function ChatPage() {
       />
 
       <PostComposer
-        open={postComposerOpen}
-        onOpenChange={setPostComposerOpen}
+        open={postComposerOpen || editingPost !== null}
+        onOpenChange={(o) => {
+          if (!o) {
+            setPostComposerOpen(false);
+            setEditingPost(null);
+          } else {
+            setPostComposerOpen(true);
+          }
+        }}
         onSubmit={handleCreatePost}
         channelName={channel?.name}
+        initialValues={
+          editingPost
+            ? {
+                title: editingPost.postTitle ?? "",
+                body: editingPost.postBody ?? editingPost.content ?? "",
+                media: editingPost.postMedia ?? [],
+              }
+            : undefined
+        }
       />
     </div>
   );

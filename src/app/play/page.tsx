@@ -1,12 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
   QUIZ_QUESTIONS,
   MAP_CITIES,
   STORIES,
-  DESTINATIONS,
   matchDestination,
   type MapCity,
   type StoryNode,
@@ -41,6 +40,29 @@ export default function PlayPage() {
   const [selectedCity, setSelectedCity] = useState<MapCity | null>(null);
   const [storyNodeId, setStoryNodeId] = useState("start");
   const [storyPath, setStoryPath] = useState<string[]>([]);
+  const reduceMotion = useReducedMotion();
+  const stageRef = useRef<HTMLDivElement | null>(null);
+
+  const backToMenu = useCallback(() => setMode("menu"), []);
+
+  // Escape returns to the menu from any sub-experience (quiz / map / story / result).
+  useEffect(() => {
+    if (mode === "menu") return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        backToMenu();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [mode, backToMenu]);
+
+  // Move focus to the active stage when the mode or quiz/story step changes,
+  // so keyboard + screen-reader users land on the new content.
+  useEffect(() => {
+    if (mode !== "menu") stageRef.current?.focus();
+  }, [mode, quizStep, storyNodeId]);
 
   function handleQuizAnswer(traitScores: Record<string, number>) {
     const updated = { ...traits };
@@ -77,25 +99,30 @@ export default function PlayPage() {
   }
 
   const currentQuestion = QUIZ_QUESTIONS[quizStep];
-  const story = selectedCity ? STORIES[selectedCity.storyId] : null;
-  const currentNode: StoryNode | null = story ? story.nodes[storyNodeId] : null;
+  const story = selectedCity ? STORIES[selectedCity.storyId] ?? null : null;
+  const currentNode: StoryNode | null = story
+    ? story.nodes[storyNodeId] ?? null
+    : null;
+  // Story selected but the node/story data is missing or broken.
+  const storyBroken = mode === "story" && (!story || !currentNode);
 
   return (
     <CmsPageWrapper slug="play">
       <Navbar />
       <main className="min-h-screen pt-[88px]">
         {/* Hero banner */}
-        <section className="grain aurora relative overflow-hidden bg-[#1a0a12] py-24">
+        <section className="grain relative overflow-hidden bg-[#1a0a12] py-24">
           <div className="absolute inset-0 bg-gradient-to-b from-[#3A0F2A] via-[#1a0a12] to-[#1A0814]" />
+          <div className="aurora opacity-50" />
           <div className="absolute inset-0 pattern-dots opacity-[0.07]" />
           <motion.div
-            initial={{ opacity: 0, y: 28 }}
+            initial={reduceMotion ? false : { opacity: 0, y: 28 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
             className="relative mx-auto max-w-4xl px-4 text-center"
           >
             <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/[0.08] backdrop-blur-md border border-white/15 shadow-[0_0_32px_rgb(255_0_153/0.25)]">
-              <Compass className="h-8 w-8 text-[#FFB3D0]" />
+              <Compass className="h-8 w-8 text-[#FFB3D0]" aria-hidden="true" />
             </div>
             <p className="mb-5 text-xs font-semibold uppercase tracking-[0.32em] text-[#FFB3D0]">Quiz · Map · Adventure</p>
             <h1 className="text-hero font-[family-name:var(--font-heading)] font-extrabold text-white text-balance">
@@ -108,17 +135,36 @@ export default function PlayPage() {
           </motion.div>
         </section>
 
-        <div className="relative bg-[#1A0814] min-h-[70vh]">
+        <div
+          ref={stageRef}
+          tabIndex={-1}
+          role="region"
+          aria-label={
+            mode === "menu"
+              ? "Travel playground games"
+              : mode === "quiz" || mode === "quiz-result"
+                ? "Travel quiz"
+                : mode === "map"
+                  ? "Interactive world map"
+                  : "Adventure story"
+          }
+          className="relative bg-[#1A0814] min-h-[70vh] outline-none"
+        >
           <div className="absolute inset-0 pattern-grid opacity-5" />
+
+          {/* Escape hint for keyboard users when inside a sub-experience */}
+          {mode !== "menu" && (
+            <p className="sr-only">Press Escape to return to the games menu.</p>
+          )}
 
           <AnimatePresence mode="wait">
             {/* === MAIN MENU === */}
             {mode === "menu" && (
               <motion.div
                 key="menu"
-                initial={{ opacity: 0, y: 20 }}
+                initial={reduceMotion ? false : { opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
+                exit={reduceMotion ? undefined : { opacity: 0, y: -20 }}
                 className="relative mx-auto max-w-4xl px-4 py-16"
               >
                 <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
@@ -154,20 +200,20 @@ export default function PlayPage() {
                   ].map((item, idx) => (
                     <motion.button
                       key={item.title}
-                      initial={{ opacity: 0, y: 20 }}
+                      initial={reduceMotion ? false : { opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: idx * 0.1, ease: [0.16, 1, 0.3, 1] }}
+                      transition={reduceMotion ? { duration: 0 } : { delay: idx * 0.1, ease: [0.16, 1, 0.3, 1] }}
                       onClick={item.onClick}
                       className={`ring-gradient group relative overflow-hidden rounded-3xl bg-gradient-to-br ${item.gradient} p-8 text-left text-white transition-all hover:-translate-y-2 hover:shadow-2xl hover:shadow-[#FF0099]/25`}
                     >
                       <div className="absolute inset-0 pattern-dots opacity-[0.12]" />
                       <div className="relative">
-                        <span className="text-5xl block mb-5 drop-shadow-lg transition-transform group-hover:scale-110">{item.emoji}</span>
-                        <item.icon className="h-5 w-5 mb-2 text-white/60" />
+                        <span className="text-5xl block mb-5 drop-shadow-lg transition-transform group-hover:scale-110" aria-hidden="true">{item.emoji}</span>
+                        <item.icon className="h-5 w-5 mb-2 text-white/60" aria-hidden="true" />
                         <h3 className="text-xl font-bold font-[family-name:var(--font-heading)]">{item.title}</h3>
                         <p className="mt-2 text-sm text-white/65 leading-relaxed">{item.desc}</p>
                         <div className="mt-5 flex items-center gap-1.5 text-xs font-bold text-white/90 uppercase tracking-wider">
-                          Play Now <ArrowRight className="h-3 w-3 group-hover:translate-x-1 transition-transform" />
+                          Play Now <ArrowRight className="h-3 w-3 group-hover:translate-x-1 transition-transform" aria-hidden="true" />
                         </div>
                       </div>
                     </motion.button>
@@ -179,16 +225,24 @@ export default function PlayPage() {
             {mode === "quiz" && currentQuestion && (
               <motion.div
                 key={`quiz-${quizStep}`}
-                initial={{ opacity: 0, x: 50 }}
+                initial={reduceMotion ? false : { opacity: 0, x: 50 }}
                 animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -50 }}
+                exit={reduceMotion ? undefined : { opacity: 0, x: -50 }}
                 className="relative mx-auto max-w-2xl px-4 py-16"
               >
                 <div className="text-center mb-8">
-                  <div className="flex justify-center gap-1.5 mb-6">
+                  <div
+                    className="flex justify-center gap-1.5 mb-6"
+                    role="progressbar"
+                    aria-valuemin={1}
+                    aria-valuemax={QUIZ_QUESTIONS.length}
+                    aria-valuenow={quizStep + 1}
+                    aria-label={`Question ${quizStep + 1} of ${QUIZ_QUESTIONS.length}`}
+                  >
                     {QUIZ_QUESTIONS.map((_, i) => (
                       <div
                         key={i}
+                        aria-hidden="true"
                         className={cn(
                           "h-1.5 rounded-full transition-all",
                           i === quizStep ? "w-8 bg-[#FF0099]" : i < quizStep ? "w-4 bg-[#FF0099]/40" : "w-4 bg-white/10",
@@ -199,7 +253,7 @@ export default function PlayPage() {
                   <p className="text-xs text-white/65 uppercase tracking-wider mb-2">
                     Question {quizStep + 1} of {QUIZ_QUESTIONS.length}
                   </p>
-                  <span className="text-5xl block mb-4">{currentQuestion.emoji}</span>
+                  <span className="text-5xl block mb-4" aria-hidden="true">{currentQuestion.emoji}</span>
                   <h2 className="text-2xl font-bold text-white font-[family-name:var(--font-heading)]">
                     {currentQuestion.question}
                   </h2>
@@ -224,15 +278,15 @@ export default function PlayPage() {
             {mode === "quiz-result" && matchedDest && (
               <motion.div
                 key="result"
-                initial={{ opacity: 0, scale: 0.9 }}
+                initial={reduceMotion ? false : { opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0 }}
+                exit={reduceMotion ? undefined : { opacity: 0 }}
                 className="relative mx-auto max-w-2xl px-4 py-16 text-center"
               >
-                <Sparkles className="mx-auto h-8 w-8 text-[#FFB3D0] mb-3" />
+                <Sparkles className="mx-auto h-8 w-8 text-[#FFB3D0] mb-3" aria-hidden="true" />
                 <p className="text-xs uppercase tracking-[0.3em] text-[#FFB3D0] font-bold mb-2">Your Perfect Match</p>
                 <div className={`mx-auto mt-6 inline-flex items-center gap-3 rounded-2xl bg-gradient-to-r ${matchedDest.gradient} px-8 py-5 shadow-2xl shadow-[#FF0099]/20`}>
-                  <span className="text-5xl">{matchedDest.emoji}</span>
+                  <span className="text-5xl" aria-hidden="true">{matchedDest.emoji}</span>
                   <div className="text-left text-white">
                     <h2 className="text-3xl font-bold font-[family-name:var(--font-heading)]">{matchedDest.name}</h2>
                     <p className="text-sm text-white/60">{matchedDest.country}</p>
@@ -251,7 +305,7 @@ export default function PlayPage() {
                       href={matchedDest.tripLink}
                       className={cn(buttonVariants(), "bg-gradient-to-r from-[#FF0099] to-[#B51760] text-white border-0 hover:brightness-110 gap-2 px-6")}
                     >
-                      <Sparkles className="h-4 w-4" /> Book This Trip
+                      <Sparkles className="h-4 w-4" aria-hidden="true" /> Book This Trip
                     </Link>
                   )}
                   <Button
@@ -259,7 +313,7 @@ export default function PlayPage() {
                     onClick={startQuiz}
                     className="border-white/15 text-white/60 hover:text-white hover:bg-white/5 gap-2"
                   >
-                    <RotateCcw className="h-4 w-4" /> Retake Quiz
+                    <RotateCcw className="h-4 w-4" aria-hidden="true" /> Retake Quiz
                   </Button>
                   <Button
                     variant="outline"
@@ -270,7 +324,7 @@ export default function PlayPage() {
                     }}
                     className="border-white/15 text-white/60 hover:text-white hover:bg-white/5 gap-2"
                   >
-                    <BookOpen className="h-4 w-4" /> Play the Adventure
+                    <BookOpen className="h-4 w-4" aria-hidden="true" /> Play the Adventure
                   </Button>
                 </div>
 
@@ -286,14 +340,14 @@ export default function PlayPage() {
             {mode === "map" && (
               <motion.div
                 key="map"
-                initial={{ opacity: 0 }}
+                initial={reduceMotion ? false : { opacity: 0 }}
                 animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
+                exit={reduceMotion ? undefined : { opacity: 0 }}
                 className="relative mx-auto max-w-5xl px-4 py-10"
               >
                 <div className="text-center mb-6">
                   <h2 className="text-xl font-bold text-white font-[family-name:var(--font-heading)]">
-                    <Map className="inline h-5 w-5 mr-2 text-[#FFB3D0]" />
+                    <Map className="inline h-5 w-5 mr-2 text-[#FFB3D0]" aria-hidden="true" />
                     Click a city to start your adventure
                   </h2>
                   <button onClick={() => setMode("menu")} className="mt-2 text-xs text-white/65 hover:text-white/60">
@@ -306,7 +360,7 @@ export default function PlayPage() {
                   <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_50%,oklch(0.20_0.05_340/0.15),transparent)]" />
 
                   {/* Simplified continent shapes */}
-                  <svg viewBox="0 0 100 50" className="absolute inset-0 w-full h-full" xmlns="http://www.w3.org/2000/svg">
+                  <svg viewBox="0 0 100 50" className="absolute inset-0 w-full h-full" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
                     {/* North America */}
                     <path d="M10,8 L28,8 L30,12 L28,18 L25,22 L22,25 L18,22 L15,18 L10,15 Z" fill="white" opacity="0.06" />
                     {/* Central America */}
@@ -337,6 +391,7 @@ export default function PlayPage() {
                     <button
                       key={city.id}
                       onClick={() => openStory(city)}
+                      aria-label={`Start the ${city.name}, ${city.country} adventure`}
                       className="absolute group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]"
                       style={{
                         left: `${city.x}%`,
@@ -345,15 +400,15 @@ export default function PlayPage() {
                       }}
                     >
                       {/* Ping animation */}
-                      <span className="absolute inset-0 flex items-center justify-center">
-                        <span className="absolute h-6 w-6 rounded-full bg-[#FF0099] opacity-20 animate-ping" />
+                      <span className="absolute inset-0 flex items-center justify-center" aria-hidden="true">
+                        <span className={cn("absolute h-6 w-6 rounded-full bg-[#FF0099] opacity-20", !reduceMotion && "animate-ping")} />
                       </span>
                       {/* Pin dot */}
-                      <span className="relative flex h-4 w-4 items-center justify-center">
+                      <span className="relative flex h-4 w-4 items-center justify-center" aria-hidden="true">
                         <span className={`h-3 w-3 rounded-full bg-gradient-to-br ${city.gradient} shadow-lg shadow-[#FF0099]/30 transition-transform group-hover:scale-150`} />
                       </span>
                       {/* Label */}
-                      <span className="absolute left-1/2 -translate-x-1/2 top-5 whitespace-nowrap rounded-md bg-black/80 px-2 py-0.5 text-[9px] font-bold text-white opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm border border-white/10">
+                      <span className="absolute left-1/2 -translate-x-1/2 top-5 whitespace-nowrap rounded-md bg-black/80 px-2 py-0.5 text-[9px] font-bold text-white opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm border border-white/10" aria-hidden="true">
                         {city.emoji} {city.name}
                       </span>
                     </button>
@@ -366,9 +421,10 @@ export default function PlayPage() {
                     <button
                       key={city.id}
                       onClick={() => openStory(city)}
+                      aria-label={`Start the ${city.name}, ${city.country} adventure`}
                       className="flex items-center gap-2.5 rounded-xl border border-white/8 bg-white/[0.02] p-3 text-left transition-all hover:border-[#FF0099]/30 hover:bg-[#FF0099]/5 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]"
                     >
-                      <span className="text-2xl">{city.emoji}</span>
+                      <span className="text-2xl" aria-hidden="true">{city.emoji}</span>
                       <div>
                         <p className="text-sm font-bold text-white group-hover:text-[#FFB3D0] transition-colors">{city.name}</p>
                         <p className="text-[10px] text-white/65">{city.country}</p>
@@ -382,15 +438,15 @@ export default function PlayPage() {
             {mode === "story" && story && currentNode && (
               <motion.div
                 key={`story-${storyNodeId}`}
-                initial={{ opacity: 0, y: 30 }}
+                initial={reduceMotion ? false : { opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -30 }}
+                exit={reduceMotion ? undefined : { opacity: 0, y: -30 }}
                 className="relative mx-auto max-w-2xl px-4 py-16"
               >
                 {/* Story header */}
                 <div className="text-center mb-2">
                   <Badge className={`bg-gradient-to-r ${selectedCity?.gradient} text-white border-0 px-3 py-1 text-xs font-bold`}>
-                    {selectedCity?.emoji} {selectedCity?.name} Adventure
+                    <span aria-hidden="true">{selectedCity?.emoji}</span> {selectedCity?.name} Adventure
                   </Badge>
                 </div>
 
@@ -406,10 +462,11 @@ export default function PlayPage() {
                   /* === ENDING === */
                   <div className="text-center">
                     <motion.div
-                      initial={{ scale: 0 }}
+                      initial={reduceMotion ? false : { scale: 0 }}
                       animate={{ scale: 1 }}
-                      transition={{ type: "spring", damping: 12 }}
+                      transition={reduceMotion ? { duration: 0 } : { type: "spring", damping: 12 }}
                       className="text-7xl mb-4"
+                      aria-hidden="true"
                     >
                       {currentNode.ending.emoji}
                     </motion.div>
@@ -427,14 +484,14 @@ export default function PlayPage() {
                         onClick={() => { setStoryNodeId("start"); setStoryPath([]); }}
                         className="bg-gradient-to-r from-[#FF0099] to-[#B51760] text-white border-0 hover:brightness-110 gap-2"
                       >
-                        <RotateCcw className="h-4 w-4" /> Replay
+                        <RotateCcw className="h-4 w-4" aria-hidden="true" /> Replay
                       </Button>
                       <Button
                         variant="outline"
                         onClick={() => setMode("map")}
                         className="border-white/15 text-white/60 hover:text-white hover:bg-white/5 gap-2"
                       >
-                        <Map className="h-4 w-4" /> Try Another City
+                        <Map className="h-4 w-4" aria-hidden="true" /> Try Another City
                       </Button>
                       <Button
                         variant="outline"
@@ -449,7 +506,7 @@ export default function PlayPage() {
                   /* === STORY NODE === */
                   <div>
                     <div className="text-center mb-8">
-                      <span className="text-5xl block mb-4">{currentNode.emoji}</span>
+                      <span className="text-5xl block mb-4" aria-hidden="true">{currentNode.emoji}</span>
                       <p className="text-white/80 leading-relaxed max-w-lg mx-auto text-lg">
                         {currentNode.text}
                       </p>
@@ -460,9 +517,9 @@ export default function PlayPage() {
                         {currentNode.choices.map((choice, i) => (
                           <motion.button
                             key={i}
-                            initial={{ opacity: 0, x: 20 }}
+                            initial={reduceMotion ? false : { opacity: 0, x: 20 }}
                             animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: 0.2 + i * 0.1 }}
+                            transition={reduceMotion ? { duration: 0 } : { delay: 0.2 + i * 0.1 }}
                             onClick={() => advanceStory(choice.nextId)}
                             className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-6 py-4 text-left text-white transition-all hover:border-[#FF0099]/40 hover:bg-[#FF0099]/10 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-[#FF0099]/10 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]"
                           >
@@ -470,7 +527,7 @@ export default function PlayPage() {
                               <span className="text-sm font-medium group-hover:text-[#FFB3D0] transition-colors">
                                 {choice.text}
                               </span>
-                              <ArrowRight className="h-4 w-4 text-white/20 group-hover:text-[#FFB3D0] transition-colors" />
+                              <ArrowRight className="h-4 w-4 text-white/20 group-hover:text-[#FFB3D0] transition-colors" aria-hidden="true" />
                             </span>
                           </motion.button>
                         ))}
@@ -494,6 +551,40 @@ export default function PlayPage() {
                     )}
                   </div>
                 )}
+              </motion.div>
+            )}
+
+            {/* Graceful fallback if a story/node is missing or malformed */}
+            {storyBroken && (
+              <motion.div
+                key="story-error"
+                initial={reduceMotion ? false : { opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="relative mx-auto max-w-lg px-4 py-24 text-center"
+              >
+                <span className="mb-4 block text-5xl" aria-hidden="true">🧭</span>
+                <h2 className="text-xl font-bold text-white font-[family-name:var(--font-heading)]">
+                  This adventure took a wrong turn
+                </h2>
+                <p className="mt-2 text-sm text-white/60">
+                  We couldn&apos;t load that story. Pick another city and try again!
+                </p>
+                <div className="mt-6 flex items-center justify-center gap-3">
+                  <Button
+                    onClick={() => setMode("map")}
+                    className="bg-gradient-to-r from-[#FF0099] to-[#B51760] text-white border-0 hover:brightness-110 gap-2"
+                  >
+                    <Map className="h-4 w-4" aria-hidden="true" /> Try Another City
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={backToMenu}
+                    className="border-white/15 text-white/60 hover:text-white hover:bg-white/5"
+                  >
+                    Menu
+                  </Button>
+                </div>
               </motion.div>
             )}
           </AnimatePresence>

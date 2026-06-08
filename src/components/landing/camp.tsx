@@ -25,7 +25,7 @@ export function Camp() {
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="grid items-center gap-16 lg:grid-cols-2">
           <motion.div
-            initial={{ opacity: 0, x: -30 }}
+            initial={prefersReducedMotion ? false : { opacity: 0, x: -30 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
@@ -49,7 +49,7 @@ export function Camp() {
                   key={item.en}
                   className="glass lift group flex items-center gap-3 rounded-2xl p-4 cursor-default elevate-2"
                 >
-                  <item.icon className="h-5 w-5 shrink-0 text-[#FF0099]" />
+                  <item.icon className="h-5 w-5 shrink-0 text-[#FF0099]" aria-hidden="true" />
                   <span className="text-sm font-medium text-[#6A1B4D]">
                     <span className="group-hover:hidden">{item.en}</span>
                     <span className="hidden group-hover:inline text-[#FF0099] font-semibold">{item.es}</span>
@@ -70,7 +70,7 @@ export function Camp() {
           </motion.div>
 
           <motion.div
-            initial={{ opacity: 0, x: 30 }}
+            initial={prefersReducedMotion ? false : { opacity: 0, x: 30 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
@@ -85,7 +85,7 @@ export function Camp() {
                   transition={prefersReducedMotion ? undefined : { duration: 6, repeat: Infinity, ease: "easeInOut" }}
                   className="ring-gradient mx-auto h-28 w-28 rounded-full bg-gradient-to-br from-[#FF0099] via-[#B51760] to-[#FF7F50] flex items-center justify-center shadow-2xl"
                 >
-                  <Sun className="h-14 w-14 text-white" />
+                  <Sun className="h-14 w-14 text-white" aria-hidden="true" />
                 </motion.div>
                 <p className="mt-6 text-3xl font-extrabold font-[family-name:var(--font-heading)] text-gradient-brand">
                   Camp AYMS
@@ -93,7 +93,7 @@ export function Camp() {
                 <p className="mt-2 text-[#6A1B4D]/80 text-sm tracking-[0.2em] uppercase font-semibold">
                   connect · empower · celebrate
                 </p>
-                <div className="mt-4 flex justify-center gap-1">
+                <div className="mt-4 flex justify-center gap-1" aria-hidden="true">
                   {[...Array(5)].map((_, i) => (
                     <Star key={i} className="h-4 w-4 fill-[#F4B860] text-[#F4B860]" />
                   ))}

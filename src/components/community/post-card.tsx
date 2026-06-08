@@ -22,16 +22,7 @@ import { format, isToday, isYesterday } from "date-fns";
 import type { RichMessage, PostMedia } from "@/lib/use-firebase-chat";
 import { ProfileMiniTrigger } from "./profile-mini-card";
 import { useNameColor } from "@/lib/use-roles-store";
-import { cn } from "@/lib/utils";
-
-function initials(name: string) {
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-}
+import { cn, initials } from "@/lib/utils";
 
 function formatPostTime(ts: string | null | undefined) {
   if (!ts) return "Just now";

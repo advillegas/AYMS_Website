@@ -101,6 +101,8 @@ export function InterestPicker({
                 type="button"
                 onClick={() => remove(i)}
                 className="inline-flex h-4 w-4 items-center justify-center rounded-full hover:bg-black/10"
+                aria-label={`Remove ${i}`}
+                title={`Remove ${i}`}
               >
                 <X className="h-3 w-3" />
               </button>
@@ -114,6 +116,7 @@ export function InterestPicker({
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search interests..."
+          aria-label="Search interests"
           className="pl-8 h-8 text-xs"
         />
       </div>
@@ -144,6 +147,7 @@ export function InterestPicker({
             }
           }}
           placeholder="Add your own..."
+          aria-label="Add a custom interest"
           className="h-8 text-xs flex-1"
         />
         <button

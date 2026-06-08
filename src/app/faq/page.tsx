@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { Navbar } from "@/components/landing/navbar";
 import { Footer } from "@/components/landing/footer";
 import { Input } from "@/components/ui/input";
@@ -58,6 +58,7 @@ const FAQ_DATA = [
 
 export default function FAQPage() {
   const [search, setSearch] = useState("");
+  const reduceMotion = useReducedMotion();
 
   const filteredCategories = FAQ_DATA.map((cat) => ({
     ...cat,
@@ -76,22 +77,23 @@ export default function FAQPage() {
       <Navbar />
       <main className="min-h-screen pt-[88px]">
         {/* Hero */}
-        <section className="grain aurora relative overflow-hidden bg-[#1a0a12] py-28">
+        <section className="grain relative overflow-hidden bg-[#1a0a12] py-28">
           <div className="absolute inset-0 bg-gradient-to-b from-[#3A0F2A] via-[#1a0a12] to-[#1A0814]" />
+          <div className="aurora opacity-50" />
           <div className="absolute inset-0 pattern-dots opacity-[0.07]" />
           <motion.div
-            initial={{ opacity: 0, y: 32 }}
+            initial={reduceMotion ? false : { opacity: 0, y: 32 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
             className="relative mx-auto max-w-4xl px-4 text-center sm:px-6 lg:px-8"
           >
             <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
+              initial={reduceMotion ? false : { scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ duration: 0.5, ease: [0.34, 1.56, 0.64, 1] }}
               className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/[0.08] backdrop-blur-md border border-white/15 shadow-[0_0_32px_rgb(255_0_153/0.25)]"
             >
-              <HelpCircle className="h-8 w-8 text-[#FFB3D0]" />
+              <HelpCircle className="h-8 w-8 text-[#FFB3D0]" aria-hidden="true" />
             </motion.div>
             <div className="mx-auto mb-6 flex w-fit items-center gap-2.5 rounded-full border border-white/15 bg-white/[0.06] px-4 py-1.5 backdrop-blur-md">
               <span className="text-xs font-semibold uppercase tracking-[0.32em] text-[#FFB3D0]">
@@ -113,19 +115,22 @@ export default function FAQPage() {
         <section className="border-b border-rosa/15 bg-background/95 backdrop-blur-sm sticky top-[88px] z-10">
           <div className="mx-auto max-w-3xl px-4 py-4 sm:px-6 lg:px-8">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" aria-hidden="true" />
+              <label htmlFor="faq-search" className="sr-only">
+                Search frequently asked questions
+              </label>
               <Input
+                id="faq-search"
+                type="search"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search questions..."
                 className="pl-9 border-rosa/30 focus-visible:ring-primary/30 glass"
               />
             </div>
-            {search && (
-              <p className="mt-2 text-xs text-muted-foreground">
-                {totalResults} result{totalResults !== 1 ? "s" : ""} found
-              </p>
-            )}
+            <p className="mt-2 text-xs text-muted-foreground" aria-live="polite" role="status">
+              {search ? `${totalResults} result${totalResults !== 1 ? "s" : ""} found` : ""}
+            </p>
           </div>
         </section>
 
@@ -136,10 +141,10 @@ export default function FAQPage() {
             {filteredCategories.map((cat, catIdx) => (
               <motion.div
                 key={cat.category}
-                initial={{ opacity: 0, y: 20 }}
+                initial={reduceMotion ? false : { opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ delay: catIdx * 0.08, ease: [0.16, 1, 0.3, 1] }}
+                transition={{ delay: reduceMotion ? 0 : catIdx * 0.08, ease: [0.16, 1, 0.3, 1] }}
               >
                 <div className="mb-5 flex items-center gap-3">
                   <div className="h-px flex-1 bg-gradient-to-r from-transparent via-rosa/30 to-transparent" />
@@ -169,17 +174,25 @@ export default function FAQPage() {
 
             {filteredCategories.length === 0 && (
               <motion.div
-                initial={{ opacity: 0 }}
+                initial={reduceMotion ? false : { opacity: 0 }}
                 animate={{ opacity: 1 }}
                 className="py-24 text-center"
               >
                 <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl glass elevate-2">
-                  <HelpCircle className="h-7 w-7 text-muted-foreground/50" />
+                  <HelpCircle className="h-7 w-7 text-muted-foreground/50" aria-hidden="true" />
                 </div>
                 <p className="text-lg font-semibold font-[family-name:var(--font-heading)]">No matches yet, amiga</p>
                 <p className="text-sm text-muted-foreground mt-1">
                   Try another word — or just ask us, we&apos;re here ♡
                 </p>
+                {search && (
+                  <button
+                    onClick={() => setSearch("")}
+                    className="mt-5 rounded-full border border-primary/25 px-5 py-1.5 text-sm font-medium text-primary transition-colors hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]"
+                  >
+                    Clear search
+                  </button>
+                )}
               </motion.div>
             )}
           </div>
@@ -190,7 +203,7 @@ export default function FAQPage() {
           <div className="absolute inset-0 bg-gradient-to-b from-rosa/8 via-background to-background" />
           <div className="absolute inset-0 pattern-dots opacity-[0.05]" />
           <motion.div
-            initial={{ opacity: 0, y: 24 }}
+            initial={reduceMotion ? false : { opacity: 0, y: 24 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}

@@ -83,12 +83,12 @@ export function Hero() {
       <div className="relative z-10 flex min-h-screen flex-col items-center justify-center px-4 py-28 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-5xl text-center">
           <motion.div
-            initial={{ opacity: 0, y: 30 }}
+            initial={prefersReducedMotion ? false : { opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
           >
             <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
+              initial={prefersReducedMotion ? false : { scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ duration: 0.6, ease: [0.34, 1.56, 0.64, 1] }}
               className="mx-auto mb-8 w-fit"
@@ -105,12 +105,12 @@ export function Hero() {
 
             {/* Glass kicker pill */}
             <motion.div
-              initial={{ opacity: 0, y: 8 }}
+              initial={prefersReducedMotion ? false : { opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
+              transition={{ delay: prefersReducedMotion ? 0 : 0.3 }}
               className="mx-auto mb-7 flex w-fit items-center gap-2.5 rounded-full border border-white/15 bg-white/[0.06] px-4 py-1.5 backdrop-blur-md"
             >
-              <span className="relative flex h-2 w-2">
+              <span className="relative flex h-2 w-2" aria-hidden="true">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#FF0099] opacity-75" />
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-[#FF0099]" />
               </span>
@@ -132,9 +132,9 @@ export function Hero() {
 
             {/* Real-destination chips */}
             <motion.div
-              initial={{ opacity: 0 }}
+              initial={prefersReducedMotion ? false : { opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ delay: 0.55 }}
+              transition={{ delay: prefersReducedMotion ? 0 : 0.55 }}
               className="mx-auto mt-7 flex max-w-xl flex-wrap items-center justify-center gap-2"
             >
               {DESTINATIONS.map((d) => (
@@ -149,9 +149,9 @@ export function Hero() {
           </motion.div>
 
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={prefersReducedMotion ? false : { opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ delay: prefersReducedMotion ? 0 : 0.6, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
             className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row"
           >
             <Link
@@ -175,30 +175,30 @@ export function Hero() {
           </motion.div>
 
           <motion.div
-            initial={{ opacity: 0 }}
+            initial={prefersReducedMotion ? false : { opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.9, duration: 0.8 }}
+            transition={{ delay: prefersReducedMotion ? 0 : 0.9, duration: 0.8 }}
             className="mx-auto mt-20 grid max-w-3xl grid-cols-1 gap-6 sm:grid-cols-3"
           >
             {PILLARS.map((item, i) => (
               <motion.div
                 key={item.en.label}
-                initial={{ opacity: 0, y: 20 }}
+                initial={prefersReducedMotion ? false : { opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 1.1 + i * 0.15, ease: [0.16, 1, 0.3, 1] }}
+                transition={{ delay: prefersReducedMotion ? 0 : 1.1 + i * 0.15, ease: [0.16, 1, 0.3, 1] }}
               >
                 <FlipCard
                   className="ring-gradient h-48 cursor-pointer rounded-3xl"
                   front={
                     <div className={`flex h-full flex-col items-center justify-center gap-3 rounded-3xl bg-gradient-to-br ${item.bg} p-6 shadow-lg shadow-black/30`}>
-                      <item.icon className="h-9 w-9 text-white/90" />
+                      <item.icon className="h-9 w-9 text-white/90" aria-hidden="true" />
                       <h3 className="font-[family-name:var(--font-heading)] text-lg font-bold text-white">{item.en.label}</h3>
                       <p className="text-sm text-white/75">{item.en.desc}</p>
                     </div>
                   }
                   back={
                     <div className={`flex h-full flex-col items-center justify-center gap-3 rounded-3xl bg-gradient-to-br ${item.bgBack} p-6 shadow-lg shadow-black/30`}>
-                      <item.icon className="h-9 w-9 text-white/90" />
+                      <item.icon className="h-9 w-9 text-white/90" aria-hidden="true" />
                       <h3 className="font-[family-name:var(--font-heading)] text-lg font-bold text-white">{item.es.label}</h3>
                       <p className="text-sm text-white/75">{item.es.desc}</p>
                     </div>
@@ -212,9 +212,9 @@ export function Hero() {
           <motion.a
             href="#about"
             aria-label="Scroll to learn more"
-            initial={{ opacity: 0 }}
+            initial={prefersReducedMotion ? false : { opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 1.6 }}
+            transition={{ delay: prefersReducedMotion ? 0 : 1.6 }}
             className="mx-auto mt-16 flex w-fit flex-col items-center gap-2 text-white/65 transition-colors hover:text-white/70"
           >
             <span className="text-[10px] font-medium uppercase tracking-[0.3em]">Scroll</span>
@@ -222,7 +222,7 @@ export function Hero() {
               animate={prefersReducedMotion ? undefined : { y: [0, 6, 0] }}
               transition={prefersReducedMotion ? undefined : { duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
             >
-              <ArrowDown className="h-4 w-4" />
+              <ArrowDown className="h-4 w-4" aria-hidden="true" />
             </motion.span>
           </motion.a>
         </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 const DESTINATIONS = [
@@ -16,6 +16,7 @@ const DESTINATIONS = [
 ];
 
 export function Destinations() {
+  const prefersReducedMotion = useReducedMotion();
   return (
     <section className="grain relative overflow-hidden py-32 bg-[#1a0a12]">
       <div className="absolute inset-0 bg-gradient-to-b from-[#1a0a12] via-[#2A0A1E] to-[#1a0a12]" />
@@ -24,7 +25,7 @@ export function Destinations() {
 
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <motion.div
-          initial={{ opacity: 0, y: 24 }}
+          initial={prefersReducedMotion ? false : { opacity: 0, y: 24 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
@@ -43,10 +44,10 @@ export function Destinations() {
           {DESTINATIONS.map((dest, i) => (
             <motion.div
               key={dest.name}
-              initial={{ opacity: 0, y: 28 }}
+              initial={prefersReducedMotion ? false : { opacity: 0, y: 28 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ delay: i * 0.06, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+              transition={{ delay: prefersReducedMotion ? 0 : i * 0.06, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
             >
               <Link
                 href="/trips"
@@ -57,7 +58,7 @@ export function Destinations() {
               >
                 <div className="absolute inset-0 pattern-dots opacity-10" />
                 <div className="absolute inset-0 bg-black/15 transition-colors group-hover:bg-black/0" />
-                <span className="relative text-5xl mb-2 transition-transform group-hover:scale-115 drop-shadow-lg">
+                <span className="relative text-5xl mb-2 transition-transform group-hover:scale-115 drop-shadow-lg" aria-hidden="true">
                   {dest.emoji}
                 </span>
                 <h3 className="relative text-lg font-bold font-[family-name:var(--font-heading)] drop-shadow-md">

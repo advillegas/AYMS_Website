@@ -16,21 +16,13 @@ import { useAuth } from "@/lib/store";
 import { useCommunityMembers } from "@/lib/use-community-members";
 import {
   addParticipants,
+  resolveToFirebaseUid,
   type Conversation,
 } from "@/lib/use-conversations";
 import { formatDisplayName } from "@/lib/name-format";
 import { toast } from "sonner";
 import { Search, Check, Loader2, UserPlus } from "lucide-react";
-import { cn } from "@/lib/utils";
-
-function initials(name: string) {
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-}
+import { cn, initials } from "@/lib/utils";
 
 interface AddParticipantsDialogProps {
   open: boolean;
@@ -49,7 +41,7 @@ export function AddParticipantsDialog({
   conversation,
 }: AddParticipantsDialogProps) {
   const currentUser = useAuth((s) => s.user);
-  const { members } = useCommunityMembers();
+  const { members, loading: membersLoading } = useCommunityMembers();
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [busy, setBusy] = useState(false);
@@ -89,10 +81,19 @@ export function AddParticipantsDialog({
     if (selected.size === 0) return;
     setBusy(true);
     try {
-      const ok = await addParticipants(
-        conversation.id,
-        Array.from(selected),
+      // Resolve each selected member to their canonical Firebase UID
+      // before persisting. Selecting a mock-seed or registry id would
+      // otherwise stamp a non-canonical id onto participantIds, and the
+      // added person's own array-contains snapshot would never see the
+      // conversation (the same class of bug resolveToFirebaseUid guards
+      // against in getOrCreateDM / createGroupConversation).
+      const resolvedIds = await Promise.all(
+        Array.from(selected).map((id) => {
+          const m = members.find((x) => x.id === id);
+          return resolveToFirebaseUid(id, m?.email);
+        }),
       );
+      const ok = await addParticipants(conversation.id, resolvedIds);
       if (ok) {
         toast.success(
           selected.size === 1
@@ -145,9 +146,14 @@ export function AddParticipantsDialog({
         </div>
 
         <div className="max-h-72 overflow-y-auto rounded-lg border border-rosa/15 divide-y divide-rosa/10">
-          {candidates.length === 0 ? (
+          {membersLoading && candidates.length === 0 ? (
+            <p className="flex items-center justify-center gap-2 px-3 py-4 text-center text-xs text-muted-foreground">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              Loading amigas...
+            </p>
+          ) : candidates.length === 0 ? (
             <p className="px-3 py-4 text-center text-xs text-muted-foreground">
-              No amigas to add.
+              {search.trim() ? "No amigas match your search." : "No amigas to add."}
             </p>
           ) : (
             candidates.map((m) => {

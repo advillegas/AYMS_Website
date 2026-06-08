@@ -23,21 +23,13 @@ import {
   Loader2,
   Clock,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, initials } from "@/lib/utils";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { ProfileMiniTrigger } from "../profile-mini-card";
 import { AvatarStatusOverlay } from "../status-indicator";
 import { useMemberStatus } from "@/lib/use-community-members";
-
-function initials(name: string) {
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-}
+import { useConfirm } from "@/components/ui/confirm-dialog";
 
 interface FriendRowProps {
   userId: string;
@@ -56,6 +48,7 @@ function FriendRow({
   acceptedFriendshipId,
 }: FriendRowProps) {
   const router = useRouter();
+  const confirm = useConfirm();
   const currentUser = useAuth((s) => s.user);
   const profile = useProfileLookup(userId);
   const { status } = useMemberStatus(userId);
@@ -81,8 +74,15 @@ function FriendRow({
     const fid =
       incomingFriendshipId ?? outgoingFriendshipId ?? acceptedFriendshipId;
     if (!fid) return;
-    if (acceptedFriendshipId && !window.confirm(`${label} ${displayName}?`)) {
-      return;
+    if (acceptedFriendshipId) {
+      const ok = await confirm({
+        title: `${label} ${displayName}?`,
+        description:
+          "You'll need to send a new friend request to reconnect later.",
+        confirmText: label,
+        destructive: true,
+      });
+      if (!ok) return;
     }
     setBusy(true);
     try {
@@ -161,7 +161,7 @@ function FriendRow({
           )}
         </ProfileMiniTrigger>
         <p className="text-[10px] text-muted-foreground truncate">
-          {profile.location || profile.email || "Member"}
+          {profile.location || "Member"}
         </p>
       </div>
 

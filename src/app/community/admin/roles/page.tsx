@@ -20,7 +20,7 @@ import {
   X as XIcon,
   UserPlus,
 } from "lucide-react";
-import { useRoles } from "@/lib/use-roles-store";
+import { useRoles, useHasPermission } from "@/lib/use-roles-store";
 import { useCommunity, useAuth } from "@/lib/store";
 import {
   ALL_PERMISSIONS,
@@ -30,16 +30,7 @@ import {
   type Role,
 } from "@/lib/roles";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
-
-function initials(name: string) {
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-}
+import { cn, initials } from "@/lib/utils";
 
 const PERMISSION_GROUPS: Record<PermissionDef["category"], string> = {
   general: "General",
@@ -56,6 +47,7 @@ export default function RolesAdminPage() {
   const updateRole = useRoles((s) => s.updateRole);
   const deleteRole = useRoles((s) => s.deleteRole);
   const toggleUserRole = useRoles((s) => s.toggleUserRole);
+  const canManage = useHasPermission("manageRoles");
 
   const members = useCommunity((s) => s.members);
   const registry = useAuth((s) => s.registry);
@@ -122,6 +114,22 @@ export default function RolesAdminPage() {
       toast.success(`Deleted "${role.name}"`);
       setSelectedRoleId(sortedRoles.find((r) => r.id !== role.id)?.id ?? null);
     }
+  }
+
+  if (!canManage) {
+    return (
+      <div className="flex h-full items-center justify-center p-6">
+        <div className="max-w-sm text-center">
+          <Lock className="mx-auto mb-3 h-10 w-10 text-muted-foreground/40" />
+          <p className="text-sm font-semibold">Roles are locked</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            You need the{" "}
+            <span className="font-medium text-foreground">Manage Roles</span>{" "}
+            permission to edit roles and assignments.
+          </p>
+        </div>
+      </div>
+    );
   }
 
   return (

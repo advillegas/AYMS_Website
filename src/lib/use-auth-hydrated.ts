@@ -23,10 +23,14 @@ import { readUserProfile, upsertUserProfile } from "./firebase-auth";
  * login page on every cold load.
  */
 export function useAuthHydrated(): boolean {
-  const [hydrated, setHydrated] = useState<boolean>(() => {
-    if (typeof window === "undefined") return false;
-    return useAuth.persist.hasHydrated();
-  });
+  // Always start `false` so the first client render matches the server
+  // (which has no localStorage). Zustand's persist rehydrates
+  // synchronously the moment the store module loads — so reading
+  // `hasHydrated()` in the initializer returns `true` on the very first
+  // client render while the server rendered with `false`, which makes
+  // React throw a hydration mismatch. Deferring the flip to a post-mount
+  // effect keeps SSR and the first client render in agreement.
+  const [hydrated, setHydrated] = useState<boolean>(false);
 
   useEffect(() => {
     if (hydrated) return;

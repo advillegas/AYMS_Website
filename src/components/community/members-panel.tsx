@@ -4,7 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useCommunityUI } from "@/lib/community-ui-store";
-import { useProfileLookup } from "@/lib/profile-lookup";
+import { useProfileLookup, useEmailVisible } from "@/lib/profile-lookup";
 import { useUserRoles } from "@/lib/use-roles-store";
 import { useAuth } from "@/lib/store";
 import {
@@ -22,9 +22,9 @@ import {
   AtSign,
   Copy,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, initials } from "@/lib/utils";
 import { AvatarStatusOverlay, statusLabel } from "./status-indicator";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, format, parseISO, isValid } from "date-fns";
 import { formatDisplayName } from "@/lib/name-format";
 import { ProfileMiniTrigger } from "./profile-mini-card";
 import { useContextMenu, type ContextMenuItem } from "./context-menu";
@@ -36,15 +36,6 @@ import {
 } from "@/lib/use-friends";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-
-function initials(name: string) {
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-}
 
 interface MemberRowProps {
   member: MemberWithStatus;
@@ -278,7 +269,7 @@ export function MemberDetailCard() {
   const { status } = useMemberStatus(profile?.id);
   const { members } = useCommunityMembers();
   const roles = useUserRoles(profile?.id);
-  const currentUserId = useAuth((s) => s.user?.id);
+  const emailVisible = useEmailVisible(profile);
 
   if (!target || !profile) return null;
   const live = members.find((m) => m.id === profile.id);
@@ -291,11 +282,21 @@ export function MemberDetailCard() {
   // recently-synced source of truth). Fall back to whatever the
   // profile lookup returned, then to "full". Applied to the user's
   // own view too so what they see matches what others see.
-  const isSelf = currentUserId === profile.id;
   const displayName = formatDisplayName(
     profile.name,
     live?.nameDisplay ?? profile.nameDisplay,
   );
+
+  // joinedDate may be missing or an unparseable string for snapshot /
+  // legacy users. Only render the "Joined" row when it resolves to a
+  // real date so we never show "Invalid Date".
+  const joinedParsed = profile.joinedDate
+    ? parseISO(profile.joinedDate)
+    : null;
+  const joinedLabel =
+    joinedParsed && isValid(joinedParsed)
+      ? format(joinedParsed, "MMMM yyyy")
+      : null;
 
   return (
     <div className="flex h-full flex-col">
@@ -391,7 +392,7 @@ export function MemberDetailCard() {
                 <p className="mt-0.5">{profile.location}</p>
               </div>
             )}
-            {profile.email && (
+            {emailVisible && (
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                   Email
@@ -399,12 +400,14 @@ export function MemberDetailCard() {
                 <p className="mt-0.5 break-all">{profile.email}</p>
               </div>
             )}
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Joined
-              </p>
-              <p className="mt-0.5">{profile.joinedDate}</p>
-            </div>
+            {joinedLabel && (
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Joined
+                </p>
+                <p className="mt-0.5">{joinedLabel}</p>
+              </div>
+            )}
           </div>
         </div>
       </ScrollArea>

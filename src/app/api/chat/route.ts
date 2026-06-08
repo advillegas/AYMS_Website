@@ -1,6 +1,7 @@
 import { anthropic } from "@ai-sdk/anthropic";
 import { streamText, convertToModelMessages, type UIMessage } from "ai";
 import { buildSystemPrompt } from "@/lib/chatbot-system-prompt";
+import { rateLimit, clientIp } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -25,6 +26,23 @@ export async function POST(req: Request) {
     );
   }
 
+  // Per-IP throttle so a single client can't drain the API budget.
+  const limit = rateLimit(`chat:${clientIp(req)}`, 20, 60_000);
+  if (!limit.allowed) {
+    return new Response(
+      JSON.stringify({
+        error: "You're sending messages too fast — please slow down a moment.",
+      }),
+      {
+        status: 429,
+        headers: {
+          "Content-Type": "application/json",
+          "Retry-After": String(limit.retryAfterSeconds),
+        },
+      },
+    );
+  }
+
   let body: { messages?: UIMessage[] };
   try {
     body = await req.json();
@@ -35,7 +53,11 @@ export async function POST(req: Request) {
     );
   }
 
-  const messages = Array.isArray(body.messages) ? body.messages : [];
+  // Cap history so a crafted client can't send a huge backlog and blow up
+  // token cost. Keep the most recent turns only.
+  const messages = (Array.isArray(body.messages) ? body.messages : []).slice(
+    -24,
+  );
   if (messages.length === 0) {
     return new Response(
       JSON.stringify({ error: "No messages provided" }),

@@ -26,16 +26,7 @@ import { formatDisplayName } from "@/lib/name-format";
 import { isFirebaseConfigured } from "@/lib/firebase";
 import { toast } from "sonner";
 import { Search, X, Check, Users, MessageCircle, Loader2 } from "lucide-react";
-import { cn } from "@/lib/utils";
-
-function initials(name: string) {
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-}
+import { cn, initials } from "@/lib/utils";
 
 interface NewConversationDialogProps {
   open: boolean;
@@ -57,7 +48,7 @@ export function NewConversationDialog({
 }: NewConversationDialogProps) {
   const router = useRouter();
   const currentUser = useAuth((s) => s.user);
-  const { members } = useCommunityMembers();
+  const { members, loading: membersLoading } = useCommunityMembers();
   const friendIds = useFriendIdSet();
 
   const [search, setSearch] = useState("");
@@ -234,9 +225,14 @@ export function NewConversationDialog({
           </div>
 
           <div className="max-h-60 overflow-y-auto rounded-lg border border-rosa/15 divide-y divide-rosa/10">
-            {candidates.length === 0 ? (
+            {membersLoading && candidates.length === 0 ? (
+              <p className="flex items-center justify-center gap-2 px-3 py-4 text-center text-xs text-muted-foreground">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                Loading amigas...
+              </p>
+            ) : candidates.length === 0 ? (
               <p className="px-3 py-4 text-center text-xs text-muted-foreground">
-                No amigas found.
+                {search.trim() ? "No amigas match your search." : "No amigas found."}
               </p>
             ) : (
               candidates.map((m) => {

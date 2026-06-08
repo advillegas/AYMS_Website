@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
 import { StreamClient } from "@stream-io/node-sdk";
+import {
+  FIREBASE_AUTH_ENABLED,
+  verifyFirebaseIdToken,
+  readBearerToken,
+} from "@/lib/firebase-verify";
 
 /**
  * Mints a short-lived JWT for the requesting user so the Stream Video
@@ -12,11 +17,10 @@ import { StreamClient } from "@stream-io/node-sdk";
  *    JWT. NEVER expose it client-side or via a NEXT_PUBLIC_ env.
  *  - Tokens carry the user_id claim and an exp claim 1 hour out, so a
  *    leaked token can only impersonate one user for a bounded window.
- *
- * The client passes its identity in the request body. Long term you'd
- * tie this to a server-side session check; for now we trust the
- * client because the rest of the auth surface (admin / Firebase /
- * localStorage user registry) is the same trust level.
+ *  - When Firebase auth is configured the caller MUST send a valid
+ *    Firebase ID token (Authorization: Bearer <token>); the verified
+ *    uid becomes the Stream user id and any body id is ignored. With
+ *    Firebase unconfigured (local dev) it falls back to the body id.
  */
 
 interface TokenPayload {
@@ -26,6 +30,8 @@ interface TokenPayload {
 }
 
 const TOKEN_TTL_SECONDS = 60 * 60; // 1 hour
+
+export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   const apiKey = process.env.NEXT_PUBLIC_STREAM_API_KEY;
@@ -48,14 +54,34 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Malformed request body" }, { status: 400 });
   }
 
-  const userId = (body.userId ?? "").trim();
-  if (!userId) {
+  // Resolve the *trusted* identity. With Firebase live we ignore the
+  // body id entirely and trust only the verified token uid.
+  let trustedId = (body.userId ?? "").trim();
+  if (FIREBASE_AUTH_ENABLED) {
+    const idToken = readBearerToken(request);
+    if (!idToken) {
+      return NextResponse.json(
+        { error: "Authentication required to join the room." },
+        { status: 401 },
+      );
+    }
+    const uid = await verifyFirebaseIdToken(idToken);
+    if (!uid) {
+      return NextResponse.json(
+        { error: "Your session has expired. Please sign in again." },
+        { status: 401 },
+      );
+    }
+    trustedId = uid;
+  }
+
+  if (!trustedId) {
     return NextResponse.json({ error: "userId is required" }, { status: 400 });
   }
-  // Stream allows letters, numbers, underscore, dash. Sanitize to
-  // match - users created via our local auth might have characters
-  // outside that set.
-  const safeUserId = userId.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 64);
+
+  // Stream allows letters, numbers, underscore, dash. Sanitize to match -
+  // users created via our local auth might have characters outside that set.
+  const safeUserId = trustedId.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 64);
 
   try {
     const client = new StreamClient(apiKey, apiSecret);
@@ -66,7 +92,6 @@ export async function POST(request: Request) {
         id: safeUserId,
         name: body.userName ?? "AYMS Member",
         image: body.image,
-        role: "user",
       },
     ]);
 

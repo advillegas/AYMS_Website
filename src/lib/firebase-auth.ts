@@ -301,9 +301,16 @@ export function friendlyAuthError(err: unknown): string {
     case "auth/wrong-password":
     case "auth/invalid-credential":
       return "Email or password is incorrect.";
+    case "auth/missing-password":
+      return "Enter your password.";
+    case "auth/user-disabled":
+      return "This account has been disabled. Contact an admin for help.";
     case "auth/too-many-requests":
-      return "Too many failed attempts. Try again in a few minutes.";
+      return "Too many failed attempts. Try again in a few minutes, or reset your password.";
+    case "auth/requires-recent-login":
+      return "For your security, please sign in again to continue.";
     case "auth/network-request-failed":
+    case "auth/timeout":
       return "Network error. Check your connection and try again.";
     case "auth/popup-blocked":
       return "Your browser blocked the sign-in popup. Allow popups for this site and try again.";
@@ -321,7 +328,21 @@ export function friendlyAuthError(err: unknown): string {
       return "This sign-in method isn't enabled yet. Open Firebase Console → Authentication → Sign-in method and enable Email/Password (and Google for Gmail sign-in).";
     case "auth/missing-email":
       return "Enter your email address first.";
-    default:
-      return (err as { message?: string })?.message ?? "Something went wrong.";
+    case "auth/internal-error":
+      return "Something went wrong on our end. Please try again.";
+    default: {
+      // Fall through to the raw message, but strip Firebase's noisy
+      // "Firebase: ... (auth/code)." wrapper so users don't see
+      // internal codes when we don't have a specific mapping.
+      const raw = (err as { message?: string })?.message;
+      if (raw) {
+        const cleaned = raw
+          .replace(/^Firebase:\s*/i, "")
+          .replace(/\s*\(auth\/[^)]+\)\.?$/i, "")
+          .trim();
+        if (cleaned) return cleaned;
+      }
+      return "Something went wrong. Please try again.";
+    }
   }
 }

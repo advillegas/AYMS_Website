@@ -12,6 +12,17 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { useAuth } from "@/lib/store";
 import { useCommunityMembers } from "@/lib/use-community-members";
 import { useProfileLookup } from "@/lib/profile-lookup";
@@ -62,15 +73,7 @@ import { ProfileMiniTrigger } from "../profile-mini-card";
 import { AvatarStatusOverlay } from "../status-indicator";
 import { useMemberStatus } from "@/lib/use-community-members";
 import { AddParticipantsDialog } from "./add-participants-dialog";
-
-function initials(name: string) {
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-}
+import { initials } from "@/lib/utils";
 
 function formatMessageTime(ts: string | null | undefined) {
   // Empty / invalid strings happen during the brief window between
@@ -185,6 +188,7 @@ function MessageBubble({
   toggleReaction: toggleReactionParent,
   deleteMessage: deleteMessageParent,
 }: BubbleProps) {
+  const confirm = useConfirm();
   const liveProfile = useProfileLookup(msg.userId, {
     name: msg.userName,
     avatar: msg.userAvatar,
@@ -256,12 +260,17 @@ function MessageBubble({
         icon: <Trash2 className="h-3.5 w-3.5" />,
         danger: true,
         onSelect: () => {
-          if (!window.confirm("Delete this message? This can't be undone.")) {
-            return;
-          }
-          void onDelete().then((ok) => {
-            if (ok) toast.success("Message deleted.");
-            else toast.error("Couldn't delete the message.");
+          void confirm({
+            title: "Delete this message?",
+            description: "This can't be undone.",
+            confirmText: "Delete",
+            destructive: true,
+          }).then((confirmed) => {
+            if (!confirmed) return;
+            void onDelete().then((ok) => {
+              if (ok) toast.success("Message deleted.");
+              else toast.error("Couldn't delete the message.");
+            });
           });
         },
       });
@@ -365,7 +374,6 @@ function MessageBubble({
           msg.content && (
             <MessageContent
               content={msg.content}
-              currentUserName={currentUserId ? undefined : undefined}
               className="text-sm leading-relaxed"
             />
           )
@@ -516,6 +524,7 @@ interface ConversationViewProps {
 
 export function ConversationView({ conversationId }: ConversationViewProps) {
   const currentUser = useAuth((s) => s.user);
+  const confirm = useConfirm();
   const {
     messages,
     conversation,
@@ -538,6 +547,9 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
   const [pendingGif, setPendingGif] = useState<GifAttachment | null>(null);
   const [sending, setSending] = useState(false);
   const [addPeopleOpen, setAddPeopleOpen] = useState(false);
+  const [renameOpen, setRenameOpen] = useState(false);
+  const [renameValue, setRenameValue] = useState("");
+  const [renaming, setRenaming] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const header = useConversationHeader(conversation);
@@ -628,24 +640,44 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
     inputRef.current?.focus();
   }
 
-  async function handleRename() {
+  function handleRename() {
     if (!conversation || conversation.type !== "group") return;
-    const next = window.prompt("Group name", conversation.name ?? "");
-    if (next === null) return;
-    const ok = await renameConversation(conversation.id, next);
-    if (ok) toast.success("Group renamed.");
-    else toast.error("Couldn't rename the group.");
+    setRenameValue(conversation.name ?? "");
+    setRenameOpen(true);
+  }
+
+  async function submitRename(e: React.FormEvent) {
+    e.preventDefault();
+    if (!conversation || conversation.type !== "group") return;
+    setRenaming(true);
+    try {
+      const ok = await renameConversation(conversation.id, renameValue);
+      if (ok) {
+        toast.success("Group renamed.");
+        setRenameOpen(false);
+      } else {
+        toast.error("Couldn't rename the group.");
+      }
+    } finally {
+      setRenaming(false);
+    }
   }
 
   async function handleLeave() {
     if (!conversation || !currentUser) return;
-    const verb = conversation.type === "dm" ? "delete this DM" : "leave this group";
-    if (!window.confirm(`Are you sure you want to ${verb}?`)) return;
-    const ok = await leaveConversation(conversation.id, currentUser.id);
-    if (ok) {
-      toast.success(
-        conversation.type === "dm" ? "DM deleted." : "Left the group.",
-      );
+    const isDm = conversation.type === "dm";
+    const ok = await confirm({
+      title: isDm ? "Delete this conversation?" : `Leave ${header.title}?`,
+      description: isDm
+        ? "This removes the conversation for both of you. This can't be undone."
+        : "You'll stop receiving messages from this group. You can be re-added later.",
+      confirmText: isDm ? "Delete conversation" : "Leave group",
+      destructive: true,
+    });
+    if (!ok) return;
+    const done = await leaveConversation(conversation.id, currentUser.id);
+    if (done) {
+      toast.success(isDm ? "DM deleted." : "Left the group.");
       window.location.search = "";
     } else {
       toast.error("Couldn't complete that action.");
@@ -707,6 +739,7 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
           onClick={() => setAddPeopleOpen(true)}
           className="h-8 gap-1.5 text-xs"
           title="Add people"
+          aria-label="Add people to this conversation"
         >
           <UserPlus className="h-3.5 w-3.5" />
           <span className="hidden sm:inline">Add people</span>
@@ -862,7 +895,8 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
             onClick={handleSend}
             disabled={(!input.trim() && !pendingGif) || sending}
             className="h-8 w-8 rounded-full bg-gradient-to-r from-[#FF0099] to-[#B51760] text-white hover:brightness-110 disabled:opacity-30 shadow-[0_4px_14px_rgb(255_0_153/0.3)]"
-            aria-label="Send"
+            aria-label="Send message"
+            title="Send message"
           >
             {sending ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -883,6 +917,61 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
           conversation={conversation}
         />
       )}
+
+      {/* Rename group dialog (accessible replacement for window.prompt) */}
+      <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
+        <DialogContent className="max-w-sm">
+          <form onSubmit={submitRename}>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 font-[family-name:var(--font-heading)] text-[#B51760]">
+                <Pencil className="h-4 w-4 text-[#FF0099]" />
+                Rename group
+              </DialogTitle>
+              <DialogDescription>
+                Give this group chat a name everyone will recognize.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-1.5 py-2">
+              <Label htmlFor="rename-group" className="text-xs">
+                Group name
+              </Label>
+              <Input
+                id="rename-group"
+                value={renameValue}
+                onChange={(e) => setRenameValue(e.target.value)}
+                placeholder="e.g. Cancún Crew"
+                maxLength={60}
+                autoFocus
+                className="h-9 text-sm"
+              />
+            </div>
+            <DialogFooter className="gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setRenameOpen(false)}
+                disabled={renaming}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={renaming}
+                className="bg-primary text-primary-foreground hover:bg-magenta"
+              >
+                {renaming ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  "Save name"
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

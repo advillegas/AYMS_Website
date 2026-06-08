@@ -26,6 +26,7 @@ import {
   ChevronRight,
   List,
   Grid3X3,
+  Loader2,
 } from "lucide-react";
 import {
   format,
@@ -91,7 +92,7 @@ function getCalendarDays(month: Date): Date[] {
 type ViewMode = "calendar" | "list";
 
 export default function CalendarPage() {
-  const { events } = useEvents();
+  const { events, loading } = useEvents();
   const user = useAuth((s) => s.user);
   const [month, setMonth] = useState<Date>(new Date());
   const [selected, setSelected] = useState<Date>(new Date());
@@ -167,7 +168,9 @@ export default function CalendarPage() {
               <span className="truncate">Events Calendar</span>
             </h1>
             <p className="text-xs text-muted-foreground mt-0.5 hidden sm:block">
-              {events.length} events · Click any day to see details
+              {loading
+                ? "Loading events…"
+                : `${events.length} ${events.length === 1 ? "event" : "events"} · Click any day to see details`}
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
@@ -183,6 +186,8 @@ export default function CalendarPage() {
                     : "border-rosa/30 bg-background text-foreground/70 hover:bg-primary/10",
                 )}
                 title={`Show events within ${eventRadius} miles`}
+                aria-pressed={showNearbyOnly}
+                aria-label={`Show only events within ${eventRadius} miles`}
               >
                 <MapPin className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">
@@ -191,7 +196,11 @@ export default function CalendarPage() {
               </button>
             )}
             {/* View toggle */}
-            <div className="flex rounded-lg border border-rosa/30 overflow-hidden">
+            <div
+              className="flex rounded-lg border border-rosa/30 overflow-hidden"
+              role="group"
+              aria-label="Calendar view"
+            >
               <button
                 type="button"
                 onClick={() => setView("calendar")}
@@ -201,6 +210,8 @@ export default function CalendarPage() {
                     ? "bg-primary text-primary-foreground"
                     : "bg-background text-foreground/70 hover:bg-primary/10",
                 )}
+                aria-pressed={view === "calendar"}
+                aria-label="Calendar grid view"
               >
                 <Grid3X3 className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">Calendar</span>
@@ -214,6 +225,8 @@ export default function CalendarPage() {
                     ? "bg-primary text-primary-foreground"
                     : "bg-background text-foreground/70 hover:bg-primary/10",
                 )}
+                aria-pressed={view === "list"}
+                aria-label="Event list view"
               >
                 <List className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">Events</span>
@@ -231,6 +244,7 @@ export default function CalendarPage() {
           size="icon"
           onClick={() => setMonth(subMonths(month, 1))}
           className="h-8 w-8"
+          aria-label="Previous month"
         >
           <ChevronLeft className="h-4 w-4" />
         </Button>
@@ -254,6 +268,7 @@ export default function CalendarPage() {
           size="icon"
           onClick={() => setMonth(addMonths(month, 1))}
           className="h-8 w-8"
+          aria-label="Next month"
         >
           <ChevronRight className="h-4 w-4" />
         </Button>
@@ -261,7 +276,16 @@ export default function CalendarPage() {
 
       {/* Content area */}
       <div className="flex-1 min-h-0 overflow-auto">
-        {view === "calendar" ? (
+        {loading && events.length === 0 ? (
+          <div
+            className="flex h-full flex-col items-center justify-center gap-2 py-16 text-muted-foreground"
+            role="status"
+            aria-live="polite"
+          >
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            <p className="text-sm">Loading events…</p>
+          </div>
+        ) : view === "calendar" ? (
           <div className="p-2 sm:p-4 lg:p-6">
             {/* Weekday headers */}
             <div className="grid grid-cols-7 mb-1">
@@ -558,6 +582,7 @@ function SubscribeButton({ origin }: { origin: string }) {
         onClick={() => setOpen(true)}
         size="sm"
         className="bg-gradient-to-r from-primary to-magenta text-white"
+        aria-label="Subscribe to calendar feed"
       >
         <Rss className="h-3.5 w-3.5 mr-1" />
         <span className="hidden sm:inline">Subscribe</span>

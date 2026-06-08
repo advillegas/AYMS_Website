@@ -1,4 +1,8 @@
 import { NextResponse } from "next/server";
+import { timingSafeEqual, createHash } from "node:crypto";
+import { rateLimit, clientIp } from "@/lib/rate-limit";
+
+export const runtime = "nodejs";
 
 /**
  * Server-side credential validator for the admin account.
@@ -14,6 +18,13 @@ import { NextResponse } from "next/server";
  */
 
 const ADMIN_USERNAMES = new Set(["admin", "admin@ayms.com"]);
+
+/** Constant-time credential comparison (avoids timing enumeration). */
+function safeEqual(a: string, b: string): boolean {
+  const ah = createHash("sha256").update(a).digest();
+  const bh = createHash("sha256").update(b).digest();
+  return timingSafeEqual(ah, bh);
+}
 
 interface LoginPayload {
   identifier?: string;
@@ -47,6 +58,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, fallback: true });
   }
 
+  // Throttle admin password attempts per IP to blunt brute-force.
+  const limit = rateLimit(`login:admin:${clientIp(request)}`, 8, 5 * 60_000);
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { ok: false, error: "Too many attempts. Please try again in a few minutes." },
+      {
+        status: 429,
+        headers: { "Retry-After": String(limit.retryAfterSeconds) },
+      },
+    );
+  }
+
   const expected = process.env.ADMIN_PASSWORD;
   if (!expected) {
     // Fail closed: refuse admin auth when no password is configured server-side.
@@ -55,7 +78,7 @@ export async function POST(request: Request) {
       { status: 503 },
     );
   }
-  if (password !== expected) {
+  if (!safeEqual(password, expected)) {
     return NextResponse.json(
       { ok: false, error: "Invalid admin credentials" },
       { status: 401 },

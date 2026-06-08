@@ -20,16 +20,32 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [errors, setErrors] = useState<{ identifier?: string; password?: string }>({});
   const login = useAuth((s) => s.login);
   const loginWithGoogle = useAuth((s) => s.loginWithGoogle);
   const router = useRouter();
 
+  function validate() {
+    const next: { identifier?: string; password?: string } = {};
+    const id = identifier.trim();
+    if (!id) {
+      next.identifier = "Enter your username or email.";
+    } else if (id.includes("@") && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(id)) {
+      // Only enforce email format when it looks like an email attempt;
+      // usernames (no "@") are allowed through to the server.
+      next.identifier = "That doesn't look like a valid email address.";
+    }
+    if (!password) {
+      next.password = "Enter your password.";
+    }
+    setErrors(next);
+    return Object.keys(next).length === 0;
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!identifier.trim() || !password) {
-      toast.error("Please fill in all fields");
-      return;
-    }
+    if (submitting || googleLoading) return;
+    if (!validate()) return;
     setSubmitting(true);
     try {
       const result = await login(identifier, password);
@@ -40,7 +56,12 @@ export default function LoginPage() {
         // community admin panel via the Admin tab inside /community.
         router.push("/community");
       } else {
-        toast.error(result.error ?? "Invalid credentials");
+        const message = result.error ?? "Invalid credentials";
+        // Surface auth failures inline on the password field (the most
+        // common cause) as well as a toast, so the error is visible
+        // whether or not the toast is noticed.
+        setErrors({ password: message });
+        toast.error(message);
       }
     } finally {
       setSubmitting(false);
@@ -48,6 +69,7 @@ export default function LoginPage() {
   }
 
   async function handleGoogle() {
+    if (submitting || googleLoading) return;
     setGoogleLoading(true);
     try {
       const result = await loginWithGoogle();
@@ -123,10 +145,20 @@ export default function LoginPage() {
                     autoComplete="username"
                     placeholder="you@example.com"
                     value={identifier}
-                    onChange={(e) => setIdentifier(e.target.value)}
+                    onChange={(e) => {
+                      setIdentifier(e.target.value);
+                      if (errors.identifier) setErrors((p) => ({ ...p, identifier: undefined }));
+                    }}
                     disabled={submitting || googleLoading}
+                    aria-invalid={errors.identifier ? true : undefined}
+                    aria-describedby={errors.identifier ? "identifier-error" : undefined}
                     className="h-11 rounded-xl border-rosa/30 bg-white/60 focus-visible:ring-primary/30 focus-visible:border-primary/40 backdrop-blur-sm"
                   />
+                  {errors.identifier && (
+                    <p id="identifier-error" role="alert" className="text-xs font-medium text-destructive">
+                      {errors.identifier}
+                    </p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
@@ -148,10 +180,20 @@ export default function LoginPage() {
                     autoComplete="current-password"
                     placeholder="••••••••"
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      if (errors.password) setErrors((p) => ({ ...p, password: undefined }));
+                    }}
                     disabled={submitting || googleLoading}
+                    aria-invalid={errors.password ? true : undefined}
+                    aria-describedby={errors.password ? "password-error" : undefined}
                     className="h-11 rounded-xl border-rosa/30 bg-white/60 focus-visible:ring-primary/30 focus-visible:border-primary/40 backdrop-blur-sm"
                   />
+                  {errors.password && (
+                    <p id="password-error" role="alert" className="text-xs font-medium text-destructive">
+                      {errors.password}
+                    </p>
+                  )}
                 </div>
                 <Button
                   type="submit"

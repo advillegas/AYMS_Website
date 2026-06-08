@@ -1,12 +1,11 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import {
   Dialog,
   DialogContent,
@@ -20,7 +19,6 @@ import {
   Plus,
   Trash2,
   RefreshCw,
-  Link2,
   CheckCircle2,
   XCircle,
   Loader2,
@@ -29,13 +27,14 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/store";
+import { getAuthInstance } from "@/lib/firebase";
 import {
   useEvents,
   useSyncConfigs,
   type FirestoreEvent,
   type CalendarSyncConfig,
 } from "@/lib/use-events";
-import { cn } from "@/lib/utils";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { formatDistanceToNowStrict } from "date-fns";
 
 /**
@@ -80,6 +79,7 @@ const EVENT_TYPES = [
 
 export default function AdminCalendarPage() {
   const user = useAuth((s) => s.user);
+  const confirm = useConfirm();
   const {
     events,
     loading: eventsLoading,
@@ -112,11 +112,16 @@ export default function AdminCalendarPage() {
   async function handleSyncNow(configId: string) {
     setSyncing(configId);
     try {
-      const res = await fetch("/api/calendar/sync", {
+      const headers: Record<string, string> = {};
+      try {
+        const idToken = await getAuthInstance()?.currentUser?.getIdToken();
+        if (idToken) headers.authorization = `Bearer ${idToken}`;
+      } catch {
+        /* no Firebase session — proxy will reject if auth is required */
+      }
+      const res = await fetch("/api/calendar/sync-now", {
         method: "POST",
-        headers: {
-          authorization: `Bearer ${process.env.NEXT_PUBLIC_CRON_SECRET ?? ""}`,
-        },
+        headers,
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
@@ -140,12 +145,14 @@ export default function AdminCalendarPage() {
   }
 
   async function handleDeleteFeed(config: CalendarSyncConfig) {
-    if (
-      !window.confirm(
-        `Delete "${config.name}"? All synced events from this feed will also be removed.`,
-      )
-    )
-      return;
+    const confirmed = await confirm({
+      title: `Delete "${config.name}"?`,
+      description:
+        "All synced events from this feed will also be removed. This can't be undone.",
+      confirmText: "Delete feed",
+      destructive: true,
+    });
+    if (!confirmed) return;
     // Delete all events from this source
     const sourceEvents = events.filter(
       (e) => e.sourceCalendarId === config.id,
@@ -159,7 +166,13 @@ export default function AdminCalendarPage() {
   }
 
   async function handleDeleteManualEvent(ev: FirestoreEvent) {
-    if (!window.confirm(`Delete "${ev.title}"?`)) return;
+    const confirmed = await confirm({
+      title: `Delete "${ev.title}"?`,
+      description: "This event will be permanently removed.",
+      confirmText: "Delete event",
+      destructive: true,
+    });
+    if (!confirmed) return;
     const ok = await deleteEvent(ev.id);
     if (ok) toast.success("Event deleted.");
     else toast.error("Couldn't delete the event.");
@@ -447,6 +460,8 @@ export default function AdminCalendarPage() {
               description: data.description ?? "",
               date: data.date ?? "",
               endDate: data.endDate,
+              startTime: data.startTime,
+              endTime: data.endTime,
               type: data.type ?? "social",
               location: data.location ?? "",
               createdBy: user?.id,
@@ -590,30 +605,24 @@ function EventDialog({
   const [location, setLocation] = useState("");
   const [busy, setBusy] = useState(false);
 
-  // Reset when dialog opens
   const isEdit = !!event;
-  useState(() => {
-    if (event) {
-      setTitle(event.title);
-      setDescription(event.description);
-      setDate(event.date);
-      setEndDate(event.endDate ?? "");
-      setType(event.type);
-      setLocation(event.location);
-    }
-  });
 
-  // Sync when event changes
-  if (open && event && title !== event.title && !busy) {
-    setTitle(event.title);
-    setDescription(event.description);
-    setDate(event.date);
-    setEndDate(event.endDate ?? "");
-    setStartTime(event.startTime ?? "");
-    setEndTime(event.endTime ?? "");
-    setType(event.type);
-    setLocation(event.location);
-  }
+  // Initialize the form whenever the dialog opens or the target event
+  // changes. Keying on event?.id (not a live field compare) means typing
+  // in any field — including the title — is never clobbered mid-edit,
+  // and start/end times are populated too.
+  useEffect(() => {
+    if (!open) return;
+    setTitle(event?.title ?? "");
+    setDescription(event?.description ?? "");
+    setDate(event?.date ?? "");
+    setEndDate(event?.endDate ?? "");
+    setStartTime(event?.startTime ?? "");
+    setEndTime(event?.endTime ?? "");
+    setType(event?.type ?? "social");
+    setLocation(event?.location ?? "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, event?.id]);
 
   function reset() {
     setTitle("");

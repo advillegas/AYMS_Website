@@ -26,6 +26,7 @@ import { toast } from "sonner";
 import { useAuth, type User } from "@/lib/store";
 import { useUserRoles } from "@/lib/use-roles-store";
 import { useMemberStatus } from "@/lib/use-community-members";
+import { useEmailVisible } from "@/lib/profile-lookup";
 import { formatDisplayName } from "@/lib/name-format";
 import { LANGUAGE_OPTIONS } from "@/lib/profile-constants";
 import { geocodeLocation, type ManualLocation } from "@/lib/geo";
@@ -35,12 +36,8 @@ import { CoverPhotoUploader } from "./cover-photo-uploader";
 import { InterestPicker } from "./interest-picker";
 import { TopFriendsEditor } from "./top-friends-editor";
 import { PhotoGallery } from "./photo-gallery";
-import { cn } from "@/lib/utils";
-import { format, parseISO } from "date-fns";
-
-function initials(name: string) {
-  return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
-}
+import { cn, initials } from "@/lib/utils";
+import { format, parseISO, isValid } from "date-fns";
 
 interface ProfileViewProps {
   profile: User;
@@ -51,6 +48,7 @@ interface ProfileViewProps {
 export function ProfileView({ profile, isSelf, onSave }: ProfileViewProps) {
   const roles = useUserRoles(profile.id);
   const { status } = useMemberStatus(profile.id);
+  const emailVisible = useEmailVisible(profile);
   const primaryColor = roles[0]?.color;
   const displayName = formatDisplayName(profile.name, profile.nameDisplay);
 
@@ -133,14 +131,21 @@ export function ProfileView({ profile, isSelf, onSave }: ProfileViewProps) {
       });
       toast.success("Profile updated!");
       setEditing(false);
+    } catch (err) {
+      console.error("[profile-save]", err);
+      toast.error("Couldn't save your profile. Please try again.");
+      // Stay in edit mode so the user's unsaved changes aren't lost.
     } finally {
       setSaving(false);
     }
   }
 
+  // joinedDate may be missing or unparseable; only show a label when it
+  // resolves to a valid date so we never render "Invalid Date".
   let joinedLabel = "";
   if (profile.joinedDate) {
-    try { joinedLabel = format(parseISO(profile.joinedDate), "MMMM yyyy"); } catch { joinedLabel = profile.joinedDate; }
+    const parsed = parseISO(profile.joinedDate);
+    if (isValid(parsed)) joinedLabel = format(parsed, "MMMM yyyy");
   }
 
   const socialLinks = [
@@ -163,7 +168,7 @@ export function ProfileView({ profile, isSelf, onSave }: ProfileViewProps) {
 
       {/* Avatar + name hero */}
       <div className="relative px-4 sm:px-6">
-        <div className="-mt-12 sm:-mt-16 flex items-end gap-4">
+        <div className="-mt-12 sm:-mt-16 flex flex-wrap items-end gap-4 sm:flex-nowrap">
           <div className="relative">
             {editing ? (
               <AvatarUploader />
@@ -201,7 +206,7 @@ export function ProfileView({ profile, isSelf, onSave }: ProfileViewProps) {
             )}
           </div>
           {isSelf && !editing && (
-            <Button variant="outline" size="sm" onClick={startEdit} className="shrink-0">
+            <Button variant="outline" size="sm" onClick={startEdit} className="w-full shrink-0 sm:w-auto">
               <Pencil className="h-3.5 w-3.5 mr-1" /> Edit Profile
             </Button>
           )}
@@ -254,7 +259,7 @@ export function ProfileView({ profile, isSelf, onSave }: ProfileViewProps) {
               <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
                 {profile.location && (<span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />{profile.location}</span>)}
                 {joinedLabel && (<span className="inline-flex items-center gap-1"><CalendarDays className="h-3 w-3" />Joined {joinedLabel}</span>)}
-                {profile.email && profile.emailVisibility !== "hidden" && (<span className="inline-flex items-center gap-1"><Mail className="h-3 w-3" />{profile.email}</span>)}
+                {emailVisible && (<span className="inline-flex items-center gap-1"><Mail className="h-3 w-3" />{profile.email}</span>)}
               </div>
               {(profile.languages ?? []).length > 0 && (
                 <div className="flex flex-wrap gap-1">

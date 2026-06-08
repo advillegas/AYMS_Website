@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { useCms } from "@/lib/cms-store";
 import { ElementRenderer } from "@/components/builder/element-renderer";
 import { Navbar } from "@/components/landing/navbar";
 import { Footer } from "@/components/landing/footer";
 import { CmsPageWrapper } from "@/components/admin/cms-page-wrapper";
-import { FileX } from "lucide-react";
+import { FileX, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -18,9 +18,34 @@ export default function DynamicPage() {
   const loadFromStorage = useCms((s) => s.loadFromStorage);
   const page = useCms((s) => s.pages[slug]);
 
+  // Page content is hydrated from localStorage on the client only. Until that
+  // happens, render a neutral placeholder so the first client render matches
+  // the server-rendered HTML (avoids a hydration mismatch).
+  const [mounted, setMounted] = useState(false);
+
   useEffect(() => {
     loadFromStorage();
+    setMounted(true);
   }, [loadFromStorage]);
+
+  if (!mounted) {
+    return (
+      <CmsPageWrapper slug={slug}>
+        <Navbar />
+        <main className="min-h-screen pt-[88px]">
+          <section className="relative overflow-hidden bg-[#1a0a12] py-32">
+            <div className="absolute inset-0 bg-gradient-to-b from-[#3A0F2A] to-[#1A0814]" />
+            <div className="relative mx-auto flex max-w-3xl flex-col items-center px-4 text-center" aria-busy="true" aria-live="polite">
+              <Loader2 className="h-8 w-8 animate-spin text-[#FFB3D0]" aria-hidden="true" />
+              <p className="mt-4 text-sm text-white/40">Loading page…</p>
+              <span className="sr-only">Loading page content</span>
+            </div>
+          </section>
+        </main>
+        <Footer />
+      </CmsPageWrapper>
+    );
+  }
 
   return (
     <CmsPageWrapper slug={slug}>

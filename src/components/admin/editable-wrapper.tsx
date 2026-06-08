@@ -88,23 +88,23 @@ export function EditableWrapper({
         )}
       >
         {!isFirst && (
-          <ActionBtn onClick={onMoveUp} title="Move up">
-            <ChevronUp className="h-3 w-3" />
+          <ActionBtn onClick={onMoveUp} title={label ? `Move ${label} up` : "Move up"}>
+            <ChevronUp className="h-3 w-3" aria-hidden="true" />
           </ActionBtn>
         )}
         {!isLast && (
-          <ActionBtn onClick={onMoveDown} title="Move down">
-            <ChevronDown className="h-3 w-3" />
+          <ActionBtn onClick={onMoveDown} title={label ? `Move ${label} down` : "Move down"}>
+            <ChevronDown className="h-3 w-3" aria-hidden="true" />
           </ActionBtn>
         )}
-        <ActionBtn onClick={onOpenProps} title="Properties">
-          <Settings className="h-3 w-3" />
+        <ActionBtn onClick={onOpenProps} title={label ? `Edit ${label} properties` : "Properties"}>
+          <Settings className="h-3 w-3" aria-hidden="true" />
         </ActionBtn>
-        <ActionBtn onClick={onDuplicate} title="Duplicate">
-          <Copy className="h-3 w-3" />
+        <ActionBtn onClick={onDuplicate} title={label ? `Duplicate ${label}` : "Duplicate"}>
+          <Copy className="h-3 w-3" aria-hidden="true" />
         </ActionBtn>
-        <ActionBtn onClick={onDelete} title="Delete" danger>
-          <Trash2 className="h-3 w-3" />
+        <ActionBtn onClick={onDelete} title={label ? `Delete ${label}` : "Delete"} danger>
+          <Trash2 className="h-3 w-3" aria-hidden="true" />
         </ActionBtn>
       </div>
 
@@ -126,13 +126,16 @@ function ActionBtn({
 }) {
   return (
     <button
+      type="button"
       onClick={(e) => {
         e.stopPropagation();
         onClick(e);
       }}
       title={title}
+      aria-label={title}
       className={cn(
         "flex h-5 w-5 items-center justify-center rounded transition-colors",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099] focus-visible:ring-offset-1 focus-visible:ring-offset-[#1a0f18]",
         danger
           ? "text-white/40 hover:text-red-400 hover:bg-red-500/10"
           : "text-white/40 hover:text-white hover:bg-white/10",

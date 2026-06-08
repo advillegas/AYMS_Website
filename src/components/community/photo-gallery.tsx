@@ -4,11 +4,13 @@ import { useRef, useState } from "react";
 import Image from "next/image";
 import { Plus, X, Loader2, Maximize2 } from "lucide-react";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { toast } from "sonner";
 import { getStorageInstance, isStorageConfigured } from "@/lib/firebase";
 import {
   Dialog,
   DialogContent,
 } from "@/components/ui/dialog";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { cn } from "@/lib/utils";
 
 interface PhotoGalleryProps {
@@ -25,18 +27,31 @@ export function PhotoGallery({
   max = 6,
 }: PhotoGalleryProps) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const confirm = useConfirm();
   const [uploading, setUploading] = useState(false);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
   async function handleFiles(files: FileList) {
-    if (!isStorageConfigured || !onChange) return;
+    if (!onChange) return;
+    if (!isStorageConfigured) {
+      toast.error("Photo uploads need Firebase Storage to be enabled.");
+      return;
+    }
     const storage = getStorageInstance();
-    if (!storage) return;
+    if (!storage) {
+      toast.error("Storage isn't available right now.");
+      return;
+    }
     setUploading(true);
     try {
       const urls = [...photos];
+      let skipped = false;
       for (let i = 0; i < files.length && urls.length < max; i++) {
         const file = files[i];
+        if (!file.type.startsWith("image/") || file.size > 8 * 1024 * 1024) {
+          skipped = true;
+          continue;
+        }
         const storageRef = ref(
           storage,
           `gallery/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.]/g, "_")}`,
@@ -46,15 +61,26 @@ export function PhotoGallery({
         urls.push(url);
       }
       onChange(urls);
+      if (skipped) {
+        toast.error("Some files were skipped (must be images under 8 MB).");
+      }
     } catch (err) {
       console.error("[gallery-upload]", err);
+      toast.error("Couldn't upload your photos. Please try again.");
     } finally {
       setUploading(false);
     }
   }
 
-  function removePhoto(index: number) {
+  async function removePhoto(index: number) {
     if (!onChange) return;
+    const ok = await confirm({
+      title: "Remove this photo?",
+      description: "It will be removed from your gallery.",
+      confirmText: "Remove",
+      destructive: true,
+    });
+    if (!ok) return;
     onChange(photos.filter((_, i) => i !== index));
   }
 
@@ -95,9 +121,10 @@ export function PhotoGallery({
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  removePhoto(i);
+                  void removePhoto(i);
                 }}
                 className="absolute top-1 right-1 h-6 w-6 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                aria-label={`Remove gallery photo ${i + 1}`}
               >
                 <X className="h-3.5 w-3.5" />
               </button>

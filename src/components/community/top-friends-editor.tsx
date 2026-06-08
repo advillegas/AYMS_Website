@@ -5,14 +5,10 @@ import { useCommunityMembers } from "@/lib/use-community-members";
 import { useFriendships } from "@/lib/use-friends";
 import { useAuth } from "@/lib/store";
 import { formatDisplayName } from "@/lib/name-format";
-import { cn } from "@/lib/utils";
+import { initials } from "@/lib/utils";
 import { X, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
 import Link from "next/link";
-
-function initials(name: string) {
-  return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
-}
 
 interface TopFriendsEditorProps {
   topFriendIds: string[];
@@ -103,6 +99,8 @@ export function TopFriendsEditor({
                     onChange(topFriendIds.filter((id) => id !== f.id))
                   }
                   className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-destructive text-white flex items-center justify-center shadow-sm"
+                  aria-label={`Remove ${name.split(" ")[0]} from top friends`}
+                  title="Remove from top friends"
                 >
                   <X className="h-3 w-3" />
                 </button>

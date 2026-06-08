@@ -32,6 +32,7 @@ function ForgotPasswordInner() {
   const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [sentTo, setSentTo] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   // Pre-fill from ?email= (passed by the login page when the user
   // already typed something into the identifier field).
@@ -42,11 +43,17 @@ function ForgotPasswordInner() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (submitting) return;
     const trimmed = email.trim();
     if (!trimmed) {
-      toast.error("Enter your email address first.");
+      setError("Enter your email address first.");
       return;
     }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      setError("That doesn't look like a valid email address.");
+      return;
+    }
+    setError(null);
     setSubmitting(true);
     try {
       const result = await sendPasswordReset(trimmed);
@@ -54,7 +61,9 @@ function ForgotPasswordInner() {
         setSentTo(trimmed);
         toast.success("Check your inbox for a reset link.");
       } else {
-        toast.error(result.error ?? "Couldn't send the reset email.");
+        const message = result.error ?? "Couldn't send the reset email.";
+        setError(message);
+        toast.error(message);
       }
     } finally {
       setSubmitting(false);
@@ -105,7 +114,7 @@ function ForgotPasswordInner() {
             )}
 
             {sentTo && (
-              <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/8 px-4 py-3.5 text-xs text-emerald-800 dark:text-emerald-200 flex items-start gap-3">
+              <div role="status" aria-live="polite" className="rounded-xl border border-emerald-500/40 bg-emerald-500/8 px-4 py-3.5 text-xs text-emerald-800 dark:text-emerald-200 flex items-start gap-3">
                 <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5 text-emerald-600" />
                 <div className="space-y-0.5">
                   <p className="font-semibold">Check your inbox.</p>
@@ -133,11 +142,21 @@ function ForgotPasswordInner() {
                     autoComplete="email"
                     placeholder="you@example.com"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (error) setError(null);
+                    }}
                     disabled={submitting || !isFirebaseConfigured}
+                    aria-invalid={error ? true : undefined}
+                    aria-describedby={error ? "reset-email-error" : undefined}
                     className="h-11 rounded-xl pl-10 border-rosa/30 bg-white/60 focus-visible:ring-primary/30 focus-visible:border-primary/40 backdrop-blur-sm"
                   />
                 </div>
+                {error && (
+                  <p id="reset-email-error" role="alert" className="text-xs font-medium text-destructive">
+                    {error}
+                  </p>
+                )}
               </div>
               <Button
                 type="submit"

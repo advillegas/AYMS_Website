@@ -39,6 +39,7 @@ import {
   statusLabel,
 } from "@/components/community/status-indicator";
 import { cn } from "@/lib/utils";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { toast } from "sonner";
 import { doc, deleteDoc } from "firebase/firestore";
 import { getDb } from "@/lib/firebase";
@@ -279,6 +280,7 @@ function MemberDetail({ member, onClose }: MemberDetailProps) {
   const allRoles = useRoles((s) => s.roles);
   const userRoles = useRoles((s) => s.userRoles);
   const toggleUserRole = useRoles((s) => s.toggleUserRole);
+  const confirm = useConfirm();
   const myRoleIds = userRoles[member.id] ?? [];
   const lastSeen =
     member.lastActiveAt
@@ -294,13 +296,13 @@ function MemberDetail({ member, onClose }: MemberDetailProps) {
       );
       return;
     }
-    if (
-      !window.confirm(
-        `Delete ${member.name}'s Firestore profile? Their auth account is unaffected.`,
-      )
-    ) {
-      return;
-    }
+    const confirmed = await confirm({
+      title: `Delete ${member.name}'s profile?`,
+      description: `This removes ${member.name}'s Firestore profile (their auth account is unaffected). This can't be undone.`,
+      confirmText: "Delete profile",
+      destructive: true,
+    });
+    if (!confirmed) return;
     const db = getDb();
     if (!db) return;
     try {

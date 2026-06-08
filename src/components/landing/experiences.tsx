@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 
 const EXPERIENCES = [
   { title: "Cenote Swimming in the Yucatán", location: "Mexico", emoji: "🏊‍♀️", gradient: "from-[#2D8B6F] to-[#1a5c4a]" },
@@ -12,6 +12,7 @@ const EXPERIENCES = [
 ];
 
 export function Experiences() {
+  const prefersReducedMotion = useReducedMotion();
   return (
     <section className="relative py-32 overflow-hidden bg-[#FFF7FB]">
       <div className="absolute inset-0 pattern-dots opacity-[0.35]" />
@@ -19,7 +20,7 @@ export function Experiences() {
 
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <motion.div
-          initial={{ opacity: 0, y: 24 }}
+          initial={prefersReducedMotion ? false : { opacity: 0, y: 24 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
@@ -43,10 +44,10 @@ export function Experiences() {
           {EXPERIENCES.map((exp, i) => (
             <motion.div
               key={exp.title}
-              initial={{ opacity: 0, y: 28 }}
+              initial={prefersReducedMotion ? false : { opacity: 0, y: 28 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ delay: i * 0.08, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+              transition={{ delay: prefersReducedMotion ? 0 : i * 0.08, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
               className="shrink-0 w-72 snap-center sm:w-auto"
             >
               <div
@@ -55,7 +56,7 @@ export function Experiences() {
                 <div className="absolute inset-0 pattern-dots opacity-10" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
 
-                <span className="absolute top-5 right-5 text-3xl transition-transform group-hover:scale-110 group-hover:rotate-6 drop-shadow-lg">
+                <span className="absolute top-5 right-5 text-3xl transition-transform group-hover:scale-110 group-hover:rotate-6 drop-shadow-lg" aria-hidden="true">
                   {exp.emoji}
                 </span>
 

@@ -30,7 +30,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/store";
-import { useProfileLookup } from "@/lib/profile-lookup";
+import { useProfileLookup, useEmailVisible } from "@/lib/profile-lookup";
 import { useUserRoles } from "@/lib/use-roles-store";
 import {
   useMemberStatus,
@@ -40,19 +40,10 @@ import { getOrCreateDM } from "@/lib/use-conversations";
 import { useFriendships, useFriendIdSet } from "@/lib/use-friends";
 import { formatDisplayName } from "@/lib/name-format";
 import { AvatarStatusOverlay, statusLabel } from "./status-indicator";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, isValid } from "date-fns";
 import { isFirebaseConfigured } from "@/lib/firebase";
-import { cn } from "@/lib/utils";
+import { initials } from "@/lib/utils";
 import { useMemo } from "react";
-
-function initials(name: string) {
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-}
 
 interface FullProfileDialogProps {
   userId: string | null;
@@ -71,6 +62,7 @@ export function FullProfileDialog({
   const { status } = useMemberStatus(userId);
   const roles = useUserRoles(userId);
   const friendIds = useFriendIdSet();
+  const emailVisible = useEmailVisible(profile);
 
   const { friends } = useFriendships();
   const { members } = useCommunityMembers();
@@ -104,11 +96,8 @@ export function FullProfileDialog({
 
   let joinedLabel = "";
   if (profile?.joinedDate) {
-    try {
-      joinedLabel = format(parseISO(profile.joinedDate), "MMM d, yyyy");
-    } catch {
-      joinedLabel = profile.joinedDate;
-    }
+    const parsed = parseISO(profile.joinedDate);
+    if (isValid(parsed)) joinedLabel = format(parsed, "MMM d, yyyy");
   }
 
   async function handleSendMessage() {
@@ -232,7 +221,7 @@ export function FullProfileDialog({
                   <span className="text-foreground/85">{profile.location}</span>
                 </div>
               )}
-              {profile.email && (
+              {emailVisible && (
                 <div className="flex items-start gap-2">
                   <Mail className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
                   <span className="text-foreground/85 break-all">

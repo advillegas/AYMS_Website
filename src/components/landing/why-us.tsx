@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { Shield, Heart, MapPin, Sparkles, Users, Crown } from "lucide-react";
 import { FlipCard } from "@/components/ui/flip-card";
 
@@ -50,6 +50,7 @@ const PROPS = [
 ];
 
 export function WhyUs() {
+  const prefersReducedMotion = useReducedMotion();
   return (
     <section className="relative py-32 overflow-hidden bg-[#FFF7FB]">
       <div className="absolute inset-0 pattern-grid opacity-[0.25]" />
@@ -57,7 +58,7 @@ export function WhyUs() {
 
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <motion.div
-          initial={{ opacity: 0, y: 24 }}
+          initial={prefersReducedMotion ? false : { opacity: 0, y: 24 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
@@ -80,17 +81,17 @@ export function WhyUs() {
           {PROPS.map((p, i) => (
             <motion.div
               key={p.en.title}
-              initial={{ opacity: 0, y: 28 }}
+              initial={prefersReducedMotion ? false : { opacity: 0, y: 28 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ delay: i * 0.08, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+              transition={{ delay: prefersReducedMotion ? 0 : i * 0.08, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
             >
               <FlipCard
                 className="ring-gradient h-52 cursor-pointer rounded-3xl"
                 front={
                   <div className="glass lift flex h-full flex-col items-start justify-center gap-3 rounded-3xl p-7 elevate-2">
                     <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-[#FF0099]/15 to-[#FACDE8]/30">
-                      <p.icon className="h-6 w-6 text-[#FF0099]" />
+                      <p.icon className="h-6 w-6 text-[#FF0099]" aria-hidden="true" />
                     </div>
                     <h3 className="text-base font-bold font-[family-name:var(--font-heading)] text-[#6A1B4D]">{p.en.title}</h3>
                     <p className="text-sm text-[#6A1B4D]/60 leading-relaxed">{p.en.desc}</p>
@@ -98,7 +99,7 @@ export function WhyUs() {
                 }
                 back={
                   <div className={`flex h-full flex-col items-start justify-center gap-3 rounded-3xl bg-gradient-to-br ${p.gradientBack} p-7 text-white`}>
-                    <p.icon className="h-7 w-7 text-white/80" />
+                    <p.icon className="h-7 w-7 text-white/80" aria-hidden="true" />
                     <h3 className="text-base font-bold font-[family-name:var(--font-heading)]">{p.es.title}</h3>
                     <p className="text-sm text-white/80 leading-relaxed">{p.es.desc}</p>
                   </div>

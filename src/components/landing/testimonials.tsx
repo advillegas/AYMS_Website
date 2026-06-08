@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -84,6 +84,7 @@ const TESTIMONIALS = [
 
 export function Testimonials() {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const prefersReducedMotion = useReducedMotion();
 
   function scroll(dir: "left" | "right") {
     if (!scrollRef.current) return;
@@ -102,7 +103,7 @@ export function Testimonials() {
 
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <motion.div
-          initial={{ opacity: 0, y: 24 }}
+          initial={prefersReducedMotion ? false : { opacity: 0, y: 24 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
@@ -119,10 +120,10 @@ export function Testimonials() {
           </div>
           <div className="hidden sm:flex items-center gap-2">
             <Button aria-label="Scroll testimonials left" variant="outline" size="icon" onClick={() => scroll("left")} className="rounded-full border-white/15 bg-white/5 text-white hover:bg-white/10 hover:border-white/30">
-              <ChevronLeft className="h-4 w-4" />
+              <ChevronLeft className="h-4 w-4" aria-hidden="true" />
             </Button>
             <Button aria-label="Scroll testimonials right" variant="outline" size="icon" onClick={() => scroll("right")} className="rounded-full border-white/15 bg-white/5 text-white hover:bg-white/10 hover:border-white/30">
-              <ChevronRight className="h-4 w-4" />
+              <ChevronRight className="h-4 w-4" aria-hidden="true" />
             </Button>
           </div>
         </motion.div>
@@ -136,10 +137,10 @@ export function Testimonials() {
           {TESTIMONIALS.map((t, i) => (
             <motion.div
               key={t.name}
-              initial={{ opacity: 0, x: 30 }}
+              initial={prefersReducedMotion ? false : { opacity: 0, x: 30 }}
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
-              transition={{ delay: i * 0.08, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+              transition={{ delay: prefersReducedMotion ? 0 : i * 0.08, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
               className="shrink-0 w-80 snap-center"
             >
               <FlipCard

@@ -7,16 +7,8 @@ import { Camera, Loader2, AlertCircle, Trash2 } from "lucide-react";
 import { useAuth } from "@/lib/store";
 import { useAvatarUpload } from "@/lib/use-avatar-upload";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
-
-function initials(name: string) {
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-}
+import { cn, initials } from "@/lib/utils";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 
 interface AvatarUploaderProps {
   size?: "sm" | "md" | "lg";
@@ -43,6 +35,7 @@ export function AvatarUploader({
   const updateProfile = useAuth((s) => s.updateProfile);
   const { upload, uploading, progress, error, isStorageConfigured, reset } =
     useAvatarUpload();
+  const confirm = useConfirm();
   const fileRef = useRef<HTMLInputElement>(null);
   const [hover, setHover] = useState(false);
 
@@ -62,7 +55,14 @@ export function AvatarUploader({
     }
   }
 
-  function clearPhoto() {
+  async function clearPhoto() {
+    const ok = await confirm({
+      title: "Remove profile photo?",
+      description: "Your avatar will revert to your initials.",
+      confirmText: "Remove",
+      destructive: true,
+    });
+    if (!ok) return;
     updateProfile({ avatar: "" });
     toast.success("Profile photo removed.");
   }
@@ -110,6 +110,7 @@ export function AvatarUploader({
           accept="image/*"
           onChange={handlePick}
           className="hidden"
+          aria-label="Upload a new profile photo"
         />
       </div>
 

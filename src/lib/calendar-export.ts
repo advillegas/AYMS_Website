@@ -24,44 +24,102 @@ import type { CalendarEvent } from "./events-data";
  *       built-in "subscribe by URL" flow.
  */
 
+const pad = (n: number) => String(n).padStart(2, "0");
+
 /** Format a Date as YYYYMMDDTHHMMSSZ (no separators) for ICS / GCal. */
 function toIcsTimestamp(d: Date): string {
-  const pad = (n: number) => String(n).padStart(2, "0");
   return (
     `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}` +
     `T${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}${pad(d.getUTCSeconds())}Z`
   );
 }
 
-function dateOrAllDay(input: string, time?: string): Date {
-  if (/^\d{4}-\d{2}-\d{2}$/.test(input)) {
-    // If a time is provided (HH:mm), use it. Otherwise default to 09:00.
-    const t = time && /^\d{2}:\d{2}$/.test(time) ? time : "09:00";
-    return new Date(`${input}T${t}:00`);
-  }
-  return new Date(input);
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const TIME_RE = /^\d{2}:\d{2}$/;
+
+/** Format a Date as YYYYMMDD (UTC) for VALUE=DATE all-day fields. */
+function toIcsDate(d: Date): string {
+  return `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}`;
 }
 
-function defaultEnd(start: Date, endIso: string | undefined): Date {
-  if (endIso) {
-    if (/^\d{4}-\d{2}-\d{2}$/.test(endIso)) {
-      return new Date(`${endIso}T17:00:00`);
-    }
-    return new Date(endIso);
+/**
+ * Build a UTC Date from a YYYY-MM-DD string + optional HH:mm time.
+ *
+ * The wall-clock time the organizer typed (e.g. "19:00") is treated as
+ * UTC verbatim — we do NOT apply the runtime's local offset. This keeps
+ * the output identical whether the helper runs in the browser
+ * (per-event deeplinks) or on the server (the /api/calendar/feed route),
+ * so events never silently shift by a day or by the host's offset.
+ */
+function utcDate(ymd: string, time?: string): Date {
+  const [y, m, d] = ymd.split("-").map(Number);
+  let hh = 0;
+  let mm = 0;
+  if (time && TIME_RE.test(time)) {
+    [hh, mm] = time.split(":").map(Number);
   }
-  // No endDate -> 1 hour event
-  return new Date(start.getTime() + 60 * 60 * 1000);
+  return new Date(Date.UTC(y, m - 1, d, hh, mm, 0));
+}
+
+interface ResolvedTimes {
+  /** True when the event has no start time → iCal VALUE=DATE form. */
+  allDay: boolean;
+  start: Date;
+  /** Exclusive end (RFC 5545). For all-day, the day AFTER the last day. */
+  end: Date;
+}
+
+/**
+ * Normalize an event's date/time fields into concrete start/end Dates,
+ * collapsing the four cases (all-day single, all-day multi, timed
+ * single, timed multi-day) into one consistent shape.
+ */
+function resolveTimes(event: CalendarEvent): ResolvedTimes {
+  const startYmd = DATE_RE.test(event.date) ? event.date : event.date.slice(0, 10);
+  const endYmd =
+    event.endDate && DATE_RE.test(event.endDate) ? event.endDate : undefined;
+  const allDay = !event.startTime || !TIME_RE.test(event.startTime);
+
+  if (allDay) {
+    const start = utcDate(startYmd);
+    // DTEND is exclusive for all-day events, so it must be the day
+    // AFTER the final day the event covers (endDate ?? startDate).
+    const lastDay = utcDate(endYmd ?? startYmd);
+    const end = new Date(lastDay.getTime() + 24 * 60 * 60 * 1000);
+    return { allDay: true, start, end };
+  }
+
+  const start = utcDate(startYmd, event.startTime);
+  let end: Date;
+  if (event.endTime && TIME_RE.test(event.endTime)) {
+    // Timed event: end on endDate (if multi-day) else same day.
+    end = utcDate(endYmd ?? startYmd, event.endTime);
+    // Guard against an end that lands at/before start (bad data).
+    if (end.getTime() <= start.getTime()) {
+      end = new Date(start.getTime() + 60 * 60 * 1000);
+    }
+  } else if (endYmd && endYmd !== startYmd) {
+    // Multi-day event with a start time but no explicit end time:
+    // run it to 17:00 on the final day rather than a 1-hour stub.
+    end = utcDate(endYmd, "17:00");
+  } else {
+    // Single timed event, no end time → default 1-hour duration.
+    end = new Date(start.getTime() + 60 * 60 * 1000);
+  }
+  return { allDay: false, start, end };
 }
 
 export function googleCalendarUrl(event: CalendarEvent): string {
-  const start = dateOrAllDay(event.date, event.startTime);
-  const end = event.endTime
-    ? dateOrAllDay(event.endDate ?? event.date, event.endTime)
-    : defaultEnd(start, event.endDate);
+  const { allDay, start, end } = resolveTimes(event);
+  // Google uses YYYYMMDD/YYYYMMDD for all-day (end exclusive) and
+  // YYYYMMDDTHHMMSSZ/... for timed events.
+  const dates = allDay
+    ? `${toIcsDate(start)}/${toIcsDate(end)}`
+    : `${toIcsTimestamp(start)}/${toIcsTimestamp(end)}`;
   const params = new URLSearchParams({
     action: "TEMPLATE",
     text: event.title,
-    dates: `${toIcsTimestamp(start)}/${toIcsTimestamp(end)}`,
+    dates,
     details: event.description || "",
     location: event.location || "",
   });
@@ -69,20 +127,25 @@ export function googleCalendarUrl(event: CalendarEvent): string {
 }
 
 export function outlookCalendarUrl(event: CalendarEvent): string {
-  const start = dateOrAllDay(event.date, event.startTime);
-  const end = event.endTime
-    ? dateOrAllDay(event.endDate ?? event.date, event.endTime)
-    : defaultEnd(start, event.endDate);
+  const { allDay, start, end } = resolveTimes(event);
   const params = new URLSearchParams({
     rru: "addevent",
     path: "/calendar/action/compose",
     subject: event.title,
-    startdt: start.toISOString(),
-    enddt: end.toISOString(),
+    // Outlook's compose deeplink accepts ISO datetimes; for all-day it
+    // wants the flag plus date-only bounds (end exclusive).
+    startdt: allDay ? toIsoDateOnly(start) : start.toISOString(),
+    enddt: allDay ? toIsoDateOnly(end) : end.toISOString(),
     body: event.description || "",
     location: event.location || "",
   });
+  if (allDay) params.set("allday", "true");
   return `https://outlook.live.com/calendar/0/deeplink/compose?${params.toString()}`;
+}
+
+/** YYYY-MM-DD slice of a UTC date, for Outlook all-day bounds. */
+function toIsoDateOnly(d: Date): string {
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
 }
 
 function escapeIcs(text: string): string {
@@ -110,17 +173,23 @@ function foldIcsLine(line: string): string {
 }
 
 function buildVEvent(event: CalendarEvent, stamp: string): string[] {
-  const start = dateOrAllDay(event.date, event.startTime);
-  const end = event.endTime
-    ? dateOrAllDay(event.endDate ?? event.date, event.endTime)
-    : defaultEnd(start, event.endDate);
+  const { allDay, start, end } = resolveTimes(event);
   const uid = `${event.id}@ayms.com`;
+  // All-day → VALUE=DATE with an exclusive DTEND (day after the last
+  // day). Timed → UTC instants with a trailing Z. Never emit an empty
+  // or null time.
+  const dtStart = allDay
+    ? `DTSTART;VALUE=DATE:${toIcsDate(start)}`
+    : `DTSTART:${toIcsTimestamp(start)}`;
+  const dtEnd = allDay
+    ? `DTEND;VALUE=DATE:${toIcsDate(end)}`
+    : `DTEND:${toIcsTimestamp(end)}`;
   return [
     "BEGIN:VEVENT",
     `UID:${uid}`,
     `DTSTAMP:${stamp}`,
-    `DTSTART:${toIcsTimestamp(start)}`,
-    `DTEND:${toIcsTimestamp(end)}`,
+    dtStart,
+    dtEnd,
     foldIcsLine(`SUMMARY:${escapeIcs(event.title)}`),
     foldIcsLine(`DESCRIPTION:${escapeIcs(event.description || "")}`),
     foldIcsLine(`LOCATION:${escapeIcs(event.location || "")}`),

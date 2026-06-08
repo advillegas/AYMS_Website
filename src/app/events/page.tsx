@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { useEvents, type CalendarEvent } from "@/lib/use-events";
 import { Navbar } from "@/components/landing/navbar";
 import { Footer } from "@/components/landing/footer";
@@ -11,12 +11,13 @@ import { cn } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { Calendar, MapPin, Clock, Sparkles } from "lucide-react";
-import { format, parseISO, isPast } from "date-fns";
+import { format, parseISO, isPast, isValid } from "date-fns";
 import Link from "next/link";
 import { CmsPageWrapper } from "@/components/admin/cms-page-wrapper";
 
@@ -25,7 +26,20 @@ const TYPE_STYLE: Record<string, { cls: string; emoji: string }> = {
   meetup: { cls: "bg-coral/15 text-coral border-coral/20", emoji: "☕" },
   camp: { cls: "bg-plum/15 text-plum border-plum/20", emoji: "🏕️" },
   social: { cls: "bg-brand-pink/15 text-brand-pink border-brand-pink/20", emoji: "🎉" },
+  synced: { cls: "bg-brand-pink/15 text-brand-pink border-brand-pink/20", emoji: "📅" },
 };
+
+/** Safe lookup so an unknown/new event type never crashes on property access. */
+function typeStyle(type: string | undefined): { cls: string; emoji: string } {
+  return (type && TYPE_STYLE[type]) || TYPE_STYLE.social;
+}
+
+/** Parse an ISO date safely; returns null for empty/invalid strings. */
+function safeDate(iso: string | undefined): Date | null {
+  if (!iso) return null;
+  const d = parseISO(iso);
+  return isValid(d) ? d : null;
+}
 
 const GRADIENTS = [
   "from-[#FF0099] to-[#B51760]",
@@ -39,13 +53,17 @@ const GRADIENTS = [
 const FILTERS = ["All", "Social", "Meetup", "Trip", "Camp"] as const;
 
 export default function EventsPage() {
-  const { events } = useEvents();
+  const { events, loading } = useEvents();
   const [filter, setFilter] = useState<string>("All");
   const [detail, setDetail] = useState<CalendarEvent | null>(null);
+  const reduceMotion = useReducedMotion();
 
   const upcoming = events
-    .filter((e) => !isPast(parseISO(e.date)))
-    .filter((e) => filter === "All" || e.type.toLowerCase() === filter.toLowerCase())
+    .filter((e) => {
+      const d = safeDate(e.date);
+      return d !== null && !isPast(d);
+    })
+    .filter((e) => filter === "All" || (e.type ?? "").toLowerCase() === filter.toLowerCase())
     .sort((a, b) => a.date.localeCompare(b.date));
 
   return (
@@ -53,22 +71,23 @@ export default function EventsPage() {
       <Navbar />
       <main className="min-h-screen pt-[88px]">
         {/* Hero */}
-        <section className="grain aurora relative overflow-hidden bg-[#1a0a12] py-28">
+        <section className="grain relative overflow-hidden bg-[#1a0a12] py-28">
           <div className="absolute inset-0 bg-gradient-to-b from-[#3A0F2A] via-[#1a0a12] to-[#1A0814]" />
+          <div className="aurora opacity-50" />
           <div className="absolute inset-0 pattern-dots opacity-[0.07]" />
           <motion.div
-            initial={{ opacity: 0, y: 32 }}
+            initial={reduceMotion ? false : { opacity: 0, y: 32 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
             className="relative mx-auto max-w-4xl px-4 text-center sm:px-6 lg:px-8"
           >
             <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
+              initial={reduceMotion ? false : { scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ duration: 0.5, ease: [0.34, 1.56, 0.64, 1] }}
               className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/[0.08] backdrop-blur-md border border-white/15 shadow-[0_0_32px_rgb(255_0_153/0.25)]"
             >
-              <Sparkles className="h-8 w-8 text-[#FFB3D0]" />
+              <Sparkles className="h-8 w-8 text-[#FFB3D0]" aria-hidden="true" />
             </motion.div>
             <div className="mx-auto mb-6 flex w-fit items-center gap-2.5 rounded-full border border-white/15 bg-white/[0.06] px-4 py-1.5 backdrop-blur-md">
               <span className="relative flex h-2 w-2">
@@ -92,7 +111,7 @@ export default function EventsPage() {
 
         {/* Filters */}
         <section className="border-b border-rosa/15 bg-background/95 backdrop-blur-sm sticky top-[88px] z-10">
-          <div className="mx-auto flex max-w-4xl items-center gap-2 px-4 py-3 sm:px-6 lg:px-8">
+          <div className="mx-auto flex max-w-4xl items-center gap-2 overflow-x-auto px-4 py-3 sm:px-6 lg:px-8">
             {FILTERS.map((f) => (
               <button
                 key={f}
@@ -114,86 +133,138 @@ export default function EventsPage() {
         <section className="relative py-14">
           <div className="absolute inset-0 pattern-grid opacity-[0.07]" />
           <div className="relative mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
-            <AnimatePresence mode="popLayout">
-              {upcoming.length === 0 && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="py-24 text-center"
-                >
-                  <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl glass elevate-2">
-                    <Calendar className="h-7 w-7 text-muted-foreground/50" />
-                  </div>
-                  <p className="text-lg font-semibold font-[family-name:var(--font-heading)]">Nothing on the calendar yet</p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Check back soon, amiga — new adventures drop often ♡
-                  </p>
-                </motion.div>
-              )}
-              {upcoming.map((ev, i) => {
-                const ts = TYPE_STYLE[ev.type];
-                const grad = GRADIENTS[i % GRADIENTS.length];
-                const d = parseISO(ev.date);
-                return (
-                  <motion.div
-                    key={ev.id}
-                    layout
-                    initial={{ opacity: 0, x: -24 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 20 }}
-                    transition={{ delay: i * 0.06, ease: [0.16, 1, 0.3, 1] }}
-                    className="mb-4"
+            {/* Loading skeleton */}
+            {loading && (
+              <div className="space-y-4" aria-busy="true" aria-live="polite">
+                <span className="sr-only">Loading events…</span>
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="flex w-full items-stretch overflow-hidden rounded-2xl border border-rosa/20 glass elevate-2"
                   >
-                    <button
-                      onClick={() => setDetail(ev)}
-                      className="lift group flex w-full items-stretch gap-0 rounded-2xl border border-rosa/20 glass overflow-hidden text-left elevate-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]"
-                    >
-                      {/* Date block */}
-                      <div className={`flex w-24 shrink-0 flex-col items-center justify-center bg-gradient-to-br ${grad} text-white p-4`}>
-                        <span className="text-[10px] font-bold uppercase tracking-wider leading-none opacity-80">
-                          {format(d, "MMM")}
-                        </span>
-                        <span className="text-3xl font-extrabold leading-tight font-[family-name:var(--font-heading)]">
-                          {format(d, "d")}
-                        </span>
-                        <span className="text-[10px] opacity-70 mt-0.5">
-                          {format(d, "EEE")}
-                        </span>
-                      </div>
+                    <div className="h-[88px] w-24 shrink-0 animate-pulse bg-rosa/10" />
+                    <div className="flex-1 space-y-2.5 px-5 py-5">
+                      <div className="h-4 w-2/3 animate-pulse rounded bg-rosa/10" />
+                      <div className="h-3 w-1/3 animate-pulse rounded bg-rosa/10" />
+                      <div className="h-3 w-4/5 animate-pulse rounded bg-rosa/10" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
 
-                      {/* Info */}
-                      <div className="flex-1 py-4 px-5">
-                        <div className="flex items-start justify-between gap-2">
-                          <div>
-                            <h3 className="font-bold font-[family-name:var(--font-heading)] text-base group-hover:text-primary transition-colors">
-                              {ts.emoji} {ev.title}
-                            </h3>
-                            <div className="mt-1.5 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                              <span className="flex items-center gap-1">
-                                <MapPin className="h-3 w-3 text-primary/60" />
-                                {ev.location}
+            {/* Empty state — only once loading has settled */}
+            {!loading && upcoming.length === 0 && (
+              <motion.div
+                initial={reduceMotion ? false : { opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="py-24 text-center"
+              >
+                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl glass elevate-2">
+                  <Calendar className="h-7 w-7 text-muted-foreground/50" />
+                </div>
+                <p className="text-lg font-semibold font-[family-name:var(--font-heading)]">
+                  {filter === "All"
+                    ? "Nothing on the calendar yet"
+                    : `No ${filter.toLowerCase()} events coming up`}
+                </p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {filter === "All"
+                    ? "Check back soon, amiga — new adventures drop often ♡"
+                    : "Try a different filter, or check back soon ♡"}
+                </p>
+                {filter !== "All" && (
+                  <button
+                    onClick={() => setFilter("All")}
+                    className="mt-5 rounded-full border border-primary/25 px-5 py-1.5 text-sm font-medium text-primary transition-colors hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]"
+                  >
+                    Show all events
+                  </button>
+                )}
+              </motion.div>
+            )}
+
+            {!loading && upcoming.length > 0 && (
+              <AnimatePresence mode="popLayout">
+                {upcoming.map((ev, i) => {
+                  const ts = typeStyle(ev.type);
+                  const grad = GRADIENTS[i % GRADIENTS.length];
+                  const d = safeDate(ev.date);
+                  const endD = safeDate(ev.endDate);
+                  return (
+                    <motion.div
+                      key={ev.id}
+                      layout
+                      initial={reduceMotion ? false : { opacity: 0, x: -24 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={reduceMotion ? { opacity: 0 } : { opacity: 0, x: 20 }}
+                      transition={{ delay: reduceMotion ? 0 : i * 0.06, ease: [0.16, 1, 0.3, 1] }}
+                      className="mb-4"
+                    >
+                      <button
+                        onClick={() => setDetail(ev)}
+                        aria-label={`View details for ${ev.title}${d ? `, ${format(d, "MMMM d, yyyy")}` : ""}`}
+                        className="lift group flex w-full items-stretch gap-0 rounded-2xl border border-rosa/20 glass overflow-hidden text-left elevate-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]"
+                      >
+                        {/* Date block */}
+                        <div className={`flex w-24 shrink-0 flex-col items-center justify-center bg-gradient-to-br ${grad} text-white p-4`}>
+                          {d ? (
+                            <>
+                              <span className="text-[10px] font-bold uppercase tracking-wider leading-none opacity-80">
+                                {format(d, "MMM")}
                               </span>
-                              {ev.endDate && (
-                                <span className="flex items-center gap-1">
-                                  <Clock className="h-3 w-3 text-primary/60" />
-                                  {format(d, "MMM d")} — {format(parseISO(ev.endDate), "MMM d")}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                          <Badge className={`shrink-0 ${ts.cls} text-[10px] font-bold`}>
-                            {ev.type}
-                          </Badge>
+                              <span className="text-3xl font-extrabold leading-tight font-[family-name:var(--font-heading)]">
+                                {format(d, "d")}
+                              </span>
+                              <span className="text-[10px] opacity-70 mt-0.5">
+                                {format(d, "EEE")}
+                              </span>
+                            </>
+                          ) : (
+                            <Calendar className="h-6 w-6 opacity-80" aria-hidden="true" />
+                          )}
                         </div>
-                        <p className="mt-2 text-sm text-muted-foreground line-clamp-1">
-                          {ev.description}
-                        </p>
-                      </div>
-                    </button>
-                  </motion.div>
-                );
-              })}
-            </AnimatePresence>
+
+                        {/* Info */}
+                        <div className="flex-1 py-4 px-5">
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <h3 className="font-bold font-[family-name:var(--font-heading)] text-base group-hover:text-primary transition-colors">
+                                <span aria-hidden="true">{ts.emoji} </span>{ev.title}
+                              </h3>
+                              <div className="mt-1.5 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                                {ev.location && (
+                                  <span className="flex items-center gap-1">
+                                    <MapPin className="h-3 w-3 text-primary/60" aria-hidden="true" />
+                                    {ev.location}
+                                  </span>
+                                )}
+                                {d && endD && (
+                                  <span className="flex items-center gap-1">
+                                    <Clock className="h-3 w-3 text-primary/60" aria-hidden="true" />
+                                    {format(d, "MMM d")} — {format(endD, "MMM d")}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            {ev.type && ev.type !== "synced" && (
+                              <Badge className={`shrink-0 ${ts.cls} text-[10px] font-bold capitalize`}>
+                                {ev.type}
+                              </Badge>
+                            )}
+                          </div>
+                          {ev.description && (
+                            <p className="mt-2 text-sm text-muted-foreground line-clamp-1">
+                              {ev.description}
+                            </p>
+                          )}
+                        </div>
+                      </button>
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
+            )}
           </div>
         </section>
 
@@ -202,7 +273,7 @@ export default function EventsPage() {
           <div className="absolute inset-0 bg-gradient-to-b from-rosa/8 via-background to-background" />
           <div className="absolute inset-0 pattern-dots opacity-[0.05]" />
           <motion.div
-            initial={{ opacity: 0, y: 24 }}
+            initial={reduceMotion ? false : { opacity: 0, y: 24 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
@@ -237,22 +308,35 @@ export default function EventsPage() {
             <>
               <DialogHeader>
                 <DialogTitle className="text-xl font-[family-name:var(--font-heading)]">
-                  {TYPE_STYLE[detail.type].emoji} {detail.title}
+                  <span aria-hidden="true">{typeStyle(detail.type).emoji} </span>{detail.title}
                 </DialogTitle>
+                {detail.description && (
+                  <DialogDescription className="leading-relaxed">
+                    {detail.description}
+                  </DialogDescription>
+                )}
               </DialogHeader>
-              <Badge className={TYPE_STYLE[detail.type].cls}>{detail.type}</Badge>
-              <p className="text-muted-foreground leading-relaxed">{detail.description}</p>
+              {detail.type && detail.type !== "synced" && (
+                <Badge className={`w-fit capitalize ${typeStyle(detail.type).cls}`}>
+                  {detail.type}
+                </Badge>
+              )}
               <Separator className="border-rosa/20" />
               <div className="space-y-2 text-sm">
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-primary" />
-                  {format(parseISO(detail.date), "MMMM d, yyyy")}
-                  {detail.endDate && ` — ${format(parseISO(detail.endDate), "MMMM d, yyyy")}`}
-                </div>
-                <div className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-primary" />
-                  {detail.location}
-                </div>
+                {safeDate(detail.date) && (
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-primary" aria-hidden="true" />
+                    {format(safeDate(detail.date)!, "MMMM d, yyyy")}
+                    {safeDate(detail.endDate) &&
+                      ` — ${format(safeDate(detail.endDate)!, "MMMM d, yyyy")}`}
+                  </div>
+                )}
+                {detail.location && (
+                  <div className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-primary" aria-hidden="true" />
+                    {detail.location}
+                  </div>
+                )}
               </div>
             </>
           )}

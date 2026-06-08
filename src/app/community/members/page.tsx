@@ -9,20 +9,11 @@ import { useAuth } from "@/lib/store";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Users, MapPin, Calendar } from "lucide-react";
-import { format, parseISO, formatDistanceToNow } from "date-fns";
-import { cn } from "@/lib/utils";
+import { format, parseISO, isValid, formatDistanceToNow } from "date-fns";
+import { cn, initials } from "@/lib/utils";
 import { AvatarStatusOverlay, statusLabel } from "@/components/community/status-indicator";
 import { formatDisplayName } from "@/lib/name-format";
 import { ProfileMiniTrigger } from "@/components/community/profile-mini-card";
-
-function initials(name: string) {
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-}
 
 function MemberRoleChips({ memberId }: { memberId: string }) {
   const roles = useUserRoles(memberId);
@@ -81,6 +72,15 @@ function MemberCard({ member }: { member: MemberWithStatus }) {
     member.lastActiveAt && member.status === "offline"
       ? `Last seen ${formatDistanceToNow(member.lastActiveAt, { addSuffix: true })}`
       : statusLabel(member.status);
+
+  // joinedDate can be missing or unparseable for some records. Only
+  // format when it resolves to a valid date — otherwise omit the row
+  // rather than render "Invalid Date".
+  const joinedParsed = member.joinedDate ? parseISO(member.joinedDate) : null;
+  const joinedLabel =
+    joinedParsed && isValid(joinedParsed)
+      ? format(joinedParsed, "MMM yyyy")
+      : null;
 
   return (
     <ProfileMiniTrigger
@@ -152,10 +152,12 @@ function MemberCard({ member }: { member: MemberWithStatus }) {
                         {member.location}
                       </span>
                     )}
-                    <span className="flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      Joined {format(parseISO(member.joinedDate), "MMM yyyy")}
-                    </span>
+                    {joinedLabel && (
+                      <span className="flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        Joined {joinedLabel}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>

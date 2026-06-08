@@ -3,7 +3,7 @@ import Image from "next/image";
 
 function InstagramIcon({ className }: { className?: string }) {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
       <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
       <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
@@ -43,7 +43,8 @@ export function Footer() {
               href="https://www.instagram.com/amigasymassocial/"
               target="_blank"
               rel="noopener noreferrer"
-              className="lift flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-white/60 transition-colors hover:text-[#FF0099] hover:border-[#FF0099]/30"
+              aria-label="Follow Amigas Y Más Social on Instagram (opens in a new tab)"
+              className="lift flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-white/60 transition-colors hover:text-[#FF0099] hover:border-[#FF0099]/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#1a0a12]"
             >
               <InstagramIcon className="h-5 w-5" />
             </a>

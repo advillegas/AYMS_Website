@@ -39,7 +39,8 @@ import { useProfileLookup } from "@/lib/profile-lookup";
 import { useMemberStatus, useCommunityMembers } from "@/lib/use-community-members";
 import { useNameColor } from "@/lib/use-roles-store";
 import { formatDisplayName } from "@/lib/name-format";
-import { cn } from "@/lib/utils";
+import { initials } from "@/lib/utils";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { AvatarStatusOverlay } from "./status-indicator";
 import { ProfileMiniTrigger } from "./profile-mini-card";
 import {
@@ -57,15 +58,6 @@ import {
   getMentionItems,
 } from "./mention-autocomplete";
 import { useCommunity } from "@/lib/store";
-
-function initials(name: string) {
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-}
 
 function formatReplyTime(ts: string | null | undefined) {
   if (!ts) return "Just now";
@@ -89,6 +81,7 @@ interface ReplyRowProps {
 
 function DMReplyRow({ reply, onReact, onDelete, onReplyTo }: ReplyRowProps) {
   const currentUser = useAuth((s) => s.user);
+  const confirm = useConfirm();
   const isAuthor = currentUser?.id === reply.userId;
   const liveProfile = useProfileLookup(reply.userId, {
     name: reply.userName,
@@ -113,6 +106,7 @@ function DMReplyRow({ reply, onReact, onDelete, onReplyTo }: ReplyRowProps) {
             ref={triggerRef as React.RefObject<HTMLButtonElement>}
             onClick={onClick}
             className="relative shrink-0 self-start focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-full"
+            aria-label={`View ${displayName}`}
           >
             <Avatar className="h-6 w-6">
               {displayAvatar && (
@@ -203,6 +197,7 @@ function DMReplyRow({ reply, onReact, onDelete, onReplyTo }: ReplyRowProps) {
           onClick={() => onReplyTo(displayName)}
           className="rounded-full p-1 text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
           title={`Reply to ${displayName}`}
+          aria-label={`Reply to ${displayName}`}
         >
           <CornerDownRight className="h-3.5 w-3.5" />
         </button>
@@ -211,14 +206,22 @@ function DMReplyRow({ reply, onReact, onDelete, onReplyTo }: ReplyRowProps) {
           <button
             type="button"
             onClick={() => {
-              if (!window.confirm("Delete this reply?")) return;
-              void onDelete().then((ok) => {
-                if (ok) toast.success("Reply deleted.");
-                else toast.error("Couldn't delete reply.");
+              void confirm({
+                title: "Delete this reply?",
+                description: "This can't be undone.",
+                confirmText: "Delete",
+                destructive: true,
+              }).then((confirmed) => {
+                if (!confirmed) return;
+                void onDelete().then((ok) => {
+                  if (ok) toast.success("Reply deleted.");
+                  else toast.error("Couldn't delete reply.");
+                });
               });
             }}
             className="rounded-full p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
             title="Delete reply"
+            aria-label="Delete reply"
           >
             <Trash2 className="h-3.5 w-3.5" />
           </button>
@@ -416,6 +419,8 @@ export function DMInlineThread({
               type="button"
               onClick={() => setPendingGif(null)}
               className="mt-0.5 inline-flex items-center text-[10px] text-destructive hover:underline"
+              aria-label="Remove attached GIF"
+              title="Remove attached GIF"
             >
               <X className="h-3 w-3" />
             </button>

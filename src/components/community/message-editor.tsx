@@ -22,6 +22,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { toast } from "sonner";
 
 export interface MessageEditorProps {
@@ -151,10 +152,17 @@ export function MessageActionButtons({
   destructiveDeleteLabel?: string;
   confirmDeletePrompt?: string;
 }) {
+  const confirm = useConfirm();
   if (!canEdit && !canDelete) return null;
 
   async function handleDelete() {
-    if (!window.confirm(confirmDeletePrompt)) return;
+    const confirmed = await confirm({
+      title: destructiveDeleteLabel,
+      description: confirmDeletePrompt,
+      confirmText: destructiveDeleteLabel,
+      destructive: true,
+    });
+    if (!confirmed) return;
     const ok = await onDelete();
     if (ok) {
       toast.success("Message deleted.");

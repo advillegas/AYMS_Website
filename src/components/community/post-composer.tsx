@@ -44,6 +44,17 @@ interface PostComposerProps {
   channelName?: string;
   /** Hard cap on attached media. Default 6. */
   maxMedia?: number;
+  /**
+   * Pre-fill the composer for editing an existing post. When present
+   * the dialog switches to "Edit post" mode (different heading +
+   * submit label) and seeds the fields from these values instead of
+   * resetting to blank on open.
+   */
+  initialValues?: {
+    title: string;
+    body: string;
+    media: PostMedia[];
+  };
 }
 
 const MAX_TITLE = 120;
@@ -55,7 +66,9 @@ export function PostComposer({
   onSubmit,
   channelName,
   maxMedia = 6,
+  initialValues,
 }: PostComposerProps) {
+  const isEdit = !!initialValues;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const titleRef = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState("");
@@ -65,16 +78,20 @@ export function PostComposer({
   const [submitting, setSubmitting] = useState(false);
 
   // Reset every time the dialog re-opens so a stale draft from a
-  // previous channel doesn't leak in.
+  // previous channel doesn't leak in. When editing, seed the fields
+  // from the post being edited instead of clearing them.
   useEffect(() => {
     if (open) {
-      setTitle("");
-      setBody("");
-      setMedia([]);
+      setTitle(initialValues?.title ?? "");
+      setBody(initialValues?.body ?? "");
+      setMedia(initialValues?.media ?? []);
       setUploading(false);
       setSubmitting(false);
       requestAnimationFrame(() => titleRef.current?.focus());
     }
+    // initialValues is intentionally excluded: we only want to seed on
+    // open, not re-seed mid-edit if the parent re-renders a new object.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   async function handleFiles(files: FileList) {
@@ -145,10 +162,11 @@ export function PostComposer({
     <Dialog open={open} onOpenChange={(o) => !submitting && onOpenChange(o)}>
       <DialogContent className="sm:max-w-lg elevate-4">
         <DialogHeader>
-          <DialogTitle className="font-[family-name:var(--font-heading)] text-[#B51760]">New post{channelName && <span className="text-gradient-brand"> in #{channelName}</span>}</DialogTitle>
+          <DialogTitle className="font-[family-name:var(--font-heading)] text-[#B51760]">{isEdit ? "Edit post" : "New post"}{channelName && <span className="text-gradient-brand"> in #{channelName}</span>}</DialogTitle>
           <DialogDescription>
-            Share a longer announcement, recap, or question. Members can
-            comment and react just like a chat message.
+            {isEdit
+              ? "Update your post. Edits are visible to everyone and the post is marked as edited."
+              : "Share a longer announcement, recap, or question. Members can comment and react just like a chat message."}
           </DialogDescription>
         </DialogHeader>
 
@@ -278,8 +296,10 @@ export function PostComposer({
             {submitting ? (
               <>
                 <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
-                Posting…
+                {isEdit ? "Saving…" : "Posting…"}
               </>
+            ) : isEdit ? (
+              "Save changes"
             ) : (
               "Publish post"
             )}

@@ -23,17 +23,8 @@ import { MessageReactions } from "./message-reactions";
 import { MessageContent } from "./message-content";
 import { EmojiPickerButton } from "./emoji-picker";
 import { GifPickerButton } from "./gif-picker";
-import { cn } from "@/lib/utils";
+import { cn, initials } from "@/lib/utils";
 import { formatDisplayName } from "@/lib/name-format";
-
-function initials(name: string) {
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-}
 
 interface ThreadParentPreviewProps {
   parentUserId?: string;
@@ -238,6 +229,8 @@ export function ThreadPanel() {
               type="button"
               onClick={() => setPendingGif(null)}
               className="mt-0.5 text-[10px] text-destructive hover:underline"
+              aria-label="Remove GIF"
+              title="Remove GIF"
             >
               <X className="h-3 w-3" />
             </button>

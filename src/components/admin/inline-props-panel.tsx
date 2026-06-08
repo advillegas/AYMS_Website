@@ -77,17 +77,23 @@ function PanelContent({ element, onClose }: { element: BuilderElement; onClose: 
         <span className="text-[11px] font-bold uppercase tracking-wider text-white/50">
           {element.type}
         </span>
-        <button onClick={onClose} className="text-white/30 hover:text-white transition-colors">
-          <X className="h-3.5 w-3.5" />
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close properties panel"
+          title="Close"
+          className="rounded text-white/30 hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]"
+        >
+          <X className="h-3.5 w-3.5" aria-hidden="true" />
         </button>
       </div>
 
       <div className="flex gap-1.5 px-3 py-2 border-b border-white/10 shrink-0">
         <Button variant="outline" size="sm" onClick={handleDuplicate} className="flex-1 text-[10px] border-white/10 text-white/50 hover:text-white hover:bg-white/5 h-7">
-          <Copy className="h-3 w-3 mr-1" /> Duplicate
+          <Copy className="h-3 w-3 mr-1" aria-hidden="true" /> Duplicate
         </Button>
         <Button variant="outline" size="sm" onClick={handleDelete} className="flex-1 text-[10px] border-red-500/20 text-red-400/60 hover:text-red-300 hover:bg-red-500/10 h-7">
-          <Trash2 className="h-3 w-3 mr-1" /> Delete
+          <Trash2 className="h-3 w-3 mr-1" aria-hidden="true" /> Delete
         </Button>
       </div>
 
@@ -404,8 +410,10 @@ function PanelContent({ element, onClose }: { element: BuilderElement; onClose: 
               <Field label="Period"><Input value={p.period as string} onChange={(e) => update({ period: e.target.value })} placeholder="per person" className={inputCls} /></Field>
               <Field label="Highlighted">
                 <button
+                  type="button"
                   onClick={() => update({ highlight: !(p.highlight as boolean) })}
-                  className={`w-full rounded-md px-2 py-1.5 text-xs font-medium transition-colors ${(p.highlight as boolean) ? "bg-[#FF0099] text-white" : "bg-white/5 text-white/40 border border-white/10"}`}
+                  aria-pressed={!!(p.highlight as boolean)}
+                  className={`w-full rounded-md px-2 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099] ${(p.highlight as boolean) ? "bg-[#FF0099] text-white" : "bg-white/5 text-white/40 border border-white/10"}`}
                 >
                   {(p.highlight as boolean) ? "Yes — Most Popular" : "No"}
                 </button>
@@ -421,20 +429,25 @@ function PanelContent({ element, onClose }: { element: BuilderElement; onClose: 
                           feats[i] = e.target.value;
                           update({ features: feats });
                         }}
+                        aria-label={`Feature ${i + 1}`}
                         className={cn(inputCls, "flex-1")}
                       />
                       <button
+                        type="button"
                         onClick={() => {
                           const feats = (p.features as string[]).filter((_, j) => j !== i);
                           update({ features: feats });
                         }}
-                        className="text-red-400/50 hover:text-red-400 text-xs px-1"
-                      >×</button>
+                        aria-label={`Remove feature ${i + 1}`}
+                        title="Remove feature"
+                        className="rounded text-red-400/50 hover:text-red-400 text-xs px-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]"
+                      ><span aria-hidden="true">×</span></button>
                     </div>
                   ))}
                   <button
+                    type="button"
                     onClick={() => update({ features: [...(p.features as string[]), "New feature"] })}
-                    className="text-[10px] text-white/30 hover:text-white/50 transition-colors"
+                    className="rounded text-[10px] text-white/30 hover:text-white/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]"
                   >+ Add feature</button>
                 </div>
               </Field>
@@ -534,9 +547,9 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function AlignPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return (
-    <div className="flex gap-1">
+    <div className="flex gap-1" role="group" aria-label="Alignment">
       {(["left", "center", "right"] as const).map((a) => (
-        <button key={a} onClick={() => onChange(a)} className={`flex-1 rounded-md px-2 py-1 text-[10px] font-medium transition-colors ${value === a ? "bg-[#FF0099] text-white" : "bg-white/5 text-white/40 hover:text-white hover:bg-white/10"}`}>
+        <button key={a} type="button" onClick={() => onChange(a)} aria-pressed={value === a} className={`flex-1 rounded-md px-2 py-1 text-[10px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099] ${value === a ? "bg-[#FF0099] text-white" : "bg-white/5 text-white/40 hover:text-white hover:bg-white/10"}`}>
           {a.charAt(0).toUpperCase() + a.slice(1)}
         </button>
       ))}
@@ -547,8 +560,8 @@ function AlignPicker({ value, onChange }: { value: string; onChange: (v: string)
 function ColorPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return (
     <div className="flex items-center gap-2">
-      <input type="color" value={value} onChange={(e) => onChange(e.target.value)} className="h-7 w-7 rounded border border-white/10 bg-transparent cursor-pointer" />
-      <Input value={value} onChange={(e) => onChange(e.target.value)} className="flex-1 bg-white/5 border-white/10 text-white text-xs h-7" />
+      <input type="color" value={value} onChange={(e) => onChange(e.target.value)} aria-label="Pick color" className="h-7 w-7 rounded border border-white/10 bg-transparent cursor-pointer" />
+      <Input value={value} onChange={(e) => onChange(e.target.value)} aria-label="Color hex value" className="flex-1 bg-white/5 border-white/10 text-white text-xs h-7" />
     </div>
   );
 }
@@ -556,8 +569,10 @@ function ColorPicker({ value, onChange }: { value: string; onChange: (v: string)
 function ToggleBtn({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
   return (
     <button
+      type="button"
       onClick={() => onChange(!value)}
-      className={`w-full rounded-md px-2 py-1.5 text-xs font-medium transition-colors ${value ? "bg-[#FF0099] text-white" : "bg-white/5 text-white/40 border border-white/10"}`}
+      aria-pressed={value}
+      className={`w-full rounded-md px-2 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099] ${value ? "bg-[#FF0099] text-white" : "bg-white/5 text-white/40 border border-white/10"}`}
     >
       {value ? "Enabled" : "Disabled"}
     </button>

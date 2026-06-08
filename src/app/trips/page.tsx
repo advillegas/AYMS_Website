@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { TRIPS_DATA, type Trip } from "@/lib/trips-data";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -51,11 +52,17 @@ const STATUS_STYLE: Record<string, { label: string; cls: string }> = {
   "coming-soon": { label: "Coming Soon", cls: "bg-white/90 text-blue-600 border-white/50 backdrop-blur-sm shadow-sm" },
 };
 
+/** Safe lookup so an unknown trip status never crashes on `.label`/`.cls`. */
+function statusStyle(status: string | undefined): { label: string; cls: string } {
+  return (status && STATUS_STYLE[status]) || STATUS_STYLE["coming-soon"];
+}
+
 const FILTERS = ["All", "Available", "Americas", "Africa", "Asia", "Sold Out"] as const;
 
 export default function TripsPage() {
   const [filter, setFilter] = useState<string>("All");
   const [selected, setSelected] = useState<Trip | null>(null);
+  const reduceMotion = useReducedMotion();
 
   const REGION_MAP: Record<string, string> = {
     Mexico: "Americas", USA: "Americas", Colombia: "Americas",
@@ -79,22 +86,23 @@ export default function TripsPage() {
       <Navbar />
       <main className="min-h-screen pt-[88px]">
         {/* Hero banner — coral accent allowed on trips */}
-        <section className="grain aurora relative overflow-hidden bg-[#1a0a12] py-28">
+        <section className="grain relative overflow-hidden bg-[#1a0a12] py-28">
           <div className="absolute inset-0 bg-gradient-to-b from-[#3A0F2A] via-[#1a0a12] to-[#1A0814]" />
+          <div className="aurora opacity-50" />
           <div className="absolute inset-0 pattern-dots opacity-[0.07]" />
           <motion.div
-            initial={{ opacity: 0, y: 32 }}
+            initial={reduceMotion ? false : { opacity: 0, y: 32 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
             className="relative mx-auto max-w-4xl px-4 text-center sm:px-6 lg:px-8"
           >
             <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
+              initial={reduceMotion ? false : { scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ duration: 0.5, ease: [0.34, 1.56, 0.64, 1] }}
               className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/[0.08] backdrop-blur-md border border-white/15 shadow-[0_0_32px_rgb(255_127_80/0.30)]"
             >
-              <Plane className="h-8 w-8 text-[#FF7F50]" />
+              <Plane className="h-8 w-8 text-[#FF7F50]" aria-hidden="true" />
             </motion.div>
             <div className="mx-auto mb-6 flex w-fit items-center gap-2.5 rounded-full border border-white/15 bg-white/[0.06] px-4 py-1.5 backdrop-blur-md">
               <span className="text-xs font-semibold uppercase tracking-[0.32em] text-[#FFB3D0]">
@@ -154,9 +162,10 @@ export default function TripsPage() {
                   <button
                     key={trip.id}
                     onClick={() => setSelected(trip)}
+                    aria-label={`View ${trip.title} — only ${trip.spotsLeft} spot${trip.spotsLeft !== 1 ? "s" : ""} left`}
                     className="lift group shrink-0 w-64 snap-center flex items-center gap-4 rounded-xl border border-[#FF7F50]/20 glass p-4 elevate-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]"
                   >
-                    <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${trip.gradient} text-2xl`}>
+                    <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${trip.gradient} text-2xl`} aria-hidden="true">
                       {trip.emoji}
                     </div>
                     <div className="min-w-0">
@@ -180,23 +189,24 @@ export default function TripsPage() {
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               <AnimatePresence mode="popLayout">
                 {filtered.map((trip, i) => {
-                  const st = STATUS_STYLE[trip.status];
+                  const st = statusStyle(trip.status);
                   return (
                     <motion.div
                       key={trip.id}
                       layout
-                      initial={{ opacity: 0, y: 24 }}
+                      initial={reduceMotion ? false : { opacity: 0, y: 24 }}
                       animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.95 }}
-                      transition={{ delay: i * 0.05, ease: [0.16, 1, 0.3, 1] }}
+                      exit={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.95 }}
+                      transition={{ delay: reduceMotion ? 0 : i * 0.05, ease: [0.16, 1, 0.3, 1] }}
                     >
                       <button
                         onClick={() => setSelected(trip)}
+                        aria-label={`View ${trip.title} trip details — ${trip.dates}, $${trip.price.toLocaleString()} per person`}
                         className="lift group w-full text-left rounded-2xl glass border border-rosa/20 overflow-hidden elevate-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]"
                       >
                         <div className={`relative h-44 bg-gradient-to-br ${trip.gradient} flex items-center justify-center`}>
                           <div className="absolute inset-0 pattern-dots opacity-[0.12]" />
-                          <span className="relative text-5xl drop-shadow-lg transition-transform group-hover:scale-110">
+                          <span className="relative text-5xl drop-shadow-lg transition-transform group-hover:scale-110" aria-hidden="true">
                             {trip.emoji}
                           </span>
                           <Badge className={`absolute top-3 right-3 text-[10px] font-bold ${st.cls}`}>
@@ -242,6 +252,30 @@ export default function TripsPage() {
                 })}
               </AnimatePresence>
             </div>
+
+            {filtered.length === 0 && (
+              <motion.div
+                initial={reduceMotion ? false : { opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="py-20 text-center"
+              >
+                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl glass elevate-2">
+                  <Plane className="h-7 w-7 text-muted-foreground/50" aria-hidden="true" />
+                </div>
+                <p className="text-lg font-semibold font-[family-name:var(--font-heading)]">
+                  No trips match &ldquo;{filter}&rdquo; right now
+                </p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  New destinations drop all the time — try another filter ♡
+                </p>
+                <button
+                  onClick={() => setFilter("All")}
+                  className="mt-5 rounded-full border border-primary/25 px-5 py-1.5 text-sm font-medium text-primary transition-colors hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]"
+                >
+                  Show all trips
+                </button>
+              </motion.div>
+            )}
           </div>
         </section>
 
@@ -251,7 +285,7 @@ export default function TripsPage() {
           <div className="absolute inset-0 pattern-dots opacity-[0.05]" />
           <div className="relative mx-auto max-w-4xl px-4 text-center sm:px-6 lg:px-8">
             <motion.div
-              initial={{ opacity: 0, y: 24 }}
+              initial={reduceMotion ? false : { opacity: 0, y: 24 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
@@ -273,14 +307,14 @@ export default function TripsPage() {
               ].map((s, i) => (
                 <motion.div
                   key={s.step}
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={reduceMotion ? false : { opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
-                  transition={{ delay: i * 0.1, ease: [0.16, 1, 0.3, 1] }}
+                  transition={{ delay: reduceMotion ? 0 : i * 0.1, ease: [0.16, 1, 0.3, 1] }}
                   className="lift flex flex-col items-center text-center glass rounded-2xl p-6 elevate-2"
                 >
                   <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-[#FF7F50]/20 to-[#FF0099]/10 text-[#FF7F50] mb-4 ring-gradient">
-                    <s.icon className="h-7 w-7" />
+                    <s.icon className="h-7 w-7" aria-hidden="true" />
                   </div>
                   <div className="text-xs font-bold text-[#FF7F50]/70 uppercase tracking-wider mb-1.5">
                     Step {s.step}
@@ -300,20 +334,20 @@ export default function TripsPage() {
       {/* Trip detail dialog */}
       <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto glass-strong border-rosa/30 elevate-4">
-          {selected && <TripDetail trip={selected} onClose={() => setSelected(null)} />}
+          {selected && <TripDetail trip={selected} />}
         </DialogContent>
       </Dialog>
     </CmsPageWrapper>
   );
 }
 
-function TripDetail({ trip, onClose }: { trip: Trip; onClose: () => void }) {
-  const st = STATUS_STYLE[trip.status];
+function TripDetail({ trip }: { trip: Trip }) {
+  const st = statusStyle(trip.status);
   return (
     <>
       <div className={`-mx-6 -mt-6 h-52 bg-gradient-to-br ${trip.gradient} flex items-center justify-center relative rounded-t-lg`}>
         <div className="absolute inset-0 pattern-dots opacity-10 rounded-t-lg" />
-        <span className="relative text-7xl drop-shadow-lg">{trip.emoji}</span>
+        <span className="relative text-7xl drop-shadow-lg" aria-hidden="true">{trip.emoji}</span>
       </div>
       <DialogHeader className="mt-4">
         <div className="flex items-center gap-3">
@@ -322,6 +356,9 @@ function TripDetail({ trip, onClose }: { trip: Trip; onClose: () => void }) {
           </DialogTitle>
           <Badge className={st.cls}>{st.label}</Badge>
         </div>
+        <DialogDescription className="sr-only">
+          {trip.destination}, {trip.country} — {trip.dates}. {trip.description}
+        </DialogDescription>
       </DialogHeader>
 
       <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -332,7 +369,7 @@ function TripDetail({ trip, onClose }: { trip: Trip; onClose: () => void }) {
           { icon: Users, label: `${trip.spots} amigas max` },
         ].map((d) => (
           <div key={d.label} className="flex items-center gap-2 rounded-xl glass p-2.5 text-xs">
-            <d.icon className="h-3.5 w-3.5 text-primary shrink-0" />
+            <d.icon className="h-3.5 w-3.5 text-primary shrink-0" aria-hidden="true" />
             {d.label}
           </div>
         ))}

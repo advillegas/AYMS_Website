@@ -2,8 +2,6 @@
 
 import { useState } from "react";
 import { useEditMode } from "@/lib/edit-mode";
-import { useCms } from "@/lib/cms-store";
-import { useAuth } from "@/lib/store";
 import type { ElementType } from "@/lib/builder-store";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -98,7 +96,7 @@ export function AdminToolbar({ onAddElement, onSave, onPublish }: Props) {
     <div className="fixed top-0 left-0 right-0 z-[100] h-10 bg-[#2A0A1E] border-b border-[#FF0099]/30 flex items-center px-4 gap-3 shadow-lg shadow-black/30">
       {/* Left: status */}
       <div className="flex items-center gap-2">
-        <span className="relative flex h-2 w-2">
+        <span className="relative flex h-2 w-2" aria-hidden="true">
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
           <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
         </span>
@@ -116,18 +114,25 @@ export function AdminToolbar({ onAddElement, onSave, onPublish }: Props) {
       <div className="flex-1 flex justify-center">
         <div className="relative">
           <button
+            type="button"
             onClick={() => setPaletteOpen(!paletteOpen)}
-            className="flex items-center gap-1.5 rounded-lg bg-white/5 border border-white/10 px-3 py-1 text-[11px] font-medium text-white/60 hover:text-white hover:bg-white/10 transition-colors"
+            aria-expanded={paletteOpen}
+            aria-haspopup="menu"
+            className="flex items-center gap-1.5 rounded-lg bg-white/5 border border-white/10 px-3 py-1 text-[11px] font-medium text-white/60 hover:text-white hover:bg-white/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]"
           >
-            <Plus className="h-3 w-3" />
+            <Plus className="h-3 w-3" aria-hidden="true" />
             Add Element
-            <ChevronDown className={`h-3 w-3 transition-transform ${paletteOpen ? "rotate-180" : ""}`} />
+            <ChevronDown className={`h-3 w-3 transition-transform ${paletteOpen ? "rotate-180" : ""}`} aria-hidden="true" />
           </button>
 
           {paletteOpen && (
             <>
-              <div className="fixed inset-0 z-10" onClick={() => setPaletteOpen(false)} />
-              <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-20 rounded-xl bg-[#1a0f18] border border-white/10 p-3 shadow-xl shadow-black/40 min-w-[340px] max-h-[70vh] overflow-y-auto space-y-3">
+              <div className="fixed inset-0 z-10" aria-hidden="true" onClick={() => setPaletteOpen(false)} />
+              <div
+                role="menu"
+                aria-label="Add element"
+                className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-20 rounded-xl bg-[#1a0f18] border border-white/10 p-3 shadow-xl shadow-black/40 min-w-[340px] max-h-[70vh] overflow-y-auto space-y-3"
+              >
                 {PALETTE.map((cat) => (
                   <div key={cat.name}>
                     <p className="text-[9px] font-bold uppercase tracking-wider text-white/30 mb-1.5 px-1">{cat.name}</p>
@@ -135,13 +140,16 @@ export function AdminToolbar({ onAddElement, onSave, onPublish }: Props) {
                       {cat.items.map((item) => (
                         <button
                           key={item.type}
+                          type="button"
+                          role="menuitem"
+                          aria-label={`Add ${item.label}`}
                           onClick={() => {
                             onAddElement(item.type);
                             setPaletteOpen(false);
                           }}
-                          className="flex flex-col items-center gap-1 rounded-lg p-2.5 text-white/50 hover:bg-[#FF0099]/10 hover:text-white transition-colors"
+                          className="flex flex-col items-center gap-1 rounded-lg p-2.5 text-white/50 hover:bg-[#FF0099]/10 hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]"
                         >
-                          <item.icon className="h-4 w-4" />
+                          <item.icon className="h-4 w-4" aria-hidden="true" />
                           <span className="text-[9px] font-medium">{item.label}</span>
                         </button>
                       ))}
@@ -161,23 +169,23 @@ export function AdminToolbar({ onAddElement, onSave, onPublish }: Props) {
           variant="ghost"
           className="h-7 px-2.5 text-[11px] text-white/60 hover:text-white hover:bg-white/10 gap-1"
         >
-          <Save className="h-3 w-3" />
+          <Save className="h-3 w-3" aria-hidden="true" />
           Save
         </Button>
         <Button
           onClick={() => { onPublish(); toast.success("Published!"); }}
           className="h-7 px-2.5 text-[11px] bg-gradient-to-r from-[#FF0099] to-[#B51760] text-white border-0 hover:brightness-110 gap-1"
         >
-          <Upload className="h-3 w-3" />
+          <Upload className="h-3 w-3" aria-hidden="true" />
           Publish
         </Button>
-        <div className="w-px h-4 bg-white/10 mx-1" />
+        <div className="w-px h-4 bg-white/10 mx-1" aria-hidden="true" />
         <Button
           onClick={exitEditMode}
           variant="ghost"
           className="h-7 px-2 text-[11px] text-white/40 hover:text-white hover:bg-white/10"
         >
-          <X className="h-3 w-3" />
+          <X className="h-3 w-3" aria-hidden="true" />
           Exit
         </Button>
       </div>

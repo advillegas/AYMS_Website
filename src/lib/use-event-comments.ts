@@ -93,10 +93,15 @@ export function useEventComments(
   useEffect(() => {
     if (!eventId || !isFirebaseConfigured) {
       setComments([]);
+      setLoading(false);
+      setError(null);
       return;
     }
     const db = getDb();
-    if (!db) return;
+    if (!db) {
+      setLoading(false);
+      return;
+    }
 
     setLoading(true);
     setError(null);

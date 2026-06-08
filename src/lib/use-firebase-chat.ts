@@ -9,6 +9,8 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDoc,
+  increment,
   limit,
   onSnapshot,
   orderBy,
@@ -127,11 +129,26 @@ export interface CreatePollInput {
   closesAt?: string;
 }
 
+/**
+ * Patch payload for editMessage. A bare string edits the message
+ * `content` (regular chat message). The object form additionally
+ * supports bulletin posts, whose visible text lives in
+ * `postTitle` / `postBody` rather than `content`.
+ */
+export type EditMessagePatch =
+  | string
+  | {
+      content?: string;
+      postTitle?: string;
+      postBody?: string;
+      postMedia?: PostMedia[];
+    };
+
 interface UseChannelChatResult {
   messages: RichMessage[];
   sendMessage: (content: string, opts?: SendOptions) => Promise<string | null>;
   toggleReaction: (messageId: string, emoji: string) => Promise<void>;
-  editMessage: (messageId: string, newContent: string) => Promise<boolean>;
+  editMessage: (messageId: string, patch: EditMessagePatch) => Promise<boolean>;
   deleteMessage: (messageId: string) => Promise<boolean>;
   createPoll: (input: CreatePollInput) => Promise<string | null>;
   voteOnPoll: (messageId: string, optionId: string) => Promise<void>;
@@ -155,7 +172,9 @@ function docToMessage(
     attachments: data.attachments,
     reactions: data.reactions ?? {},
     threadParentId: data.threadParentId ?? null,
-    threadCount: data.threadCount ?? 0,
+    // Clamp at 0: an unmatched decrement (legacy reply, double-delete)
+    // must never surface a negative "−1 replies" in the UI.
+    threadCount: Math.max(0, data.threadCount ?? 0),
     poll: data.poll ?? null,
     editedAt: data.editedAt ? data.editedAt.toDate().toISOString() : null,
     msgLat: data.msgLat,
@@ -417,10 +436,12 @@ export function useChannelChat(channelId: string): UseChannelChatResult {
 
         if (opts.threadParentId) {
           try {
+            // Atomic server-side increment — avoids the read-modify-
+            // write race that double-counted (or lost) bumps when two
+            // replies landed close together, and avoids relying on a
+            // possibly-stale local snapshot of the parent's count.
             const parentRef = doc(db, "messages", opts.threadParentId);
-            const parentSnap = fbMessages.find((m) => m.id === opts.threadParentId);
-            const nextCount = (parentSnap?.threadCount ?? 0) + 1;
-            await updateDoc(parentRef, { threadCount: nextCount });
+            await updateDoc(parentRef, { threadCount: increment(1) });
           } catch (innerErr) {
             console.warn("[firebase-chat] thread count bump failed", innerErr);
           }
@@ -472,17 +493,50 @@ export function useChannelChat(channelId: string): UseChannelChatResult {
    * Returns true on success, false on validation / write failure.
    */
   const editMessage = useCallback(
-    async (messageId: string, newContent: string): Promise<boolean> => {
+    async (messageId: string, patch: EditMessagePatch): Promise<boolean> => {
       if (!isFirebaseConfigured || !user) return false;
-      const trimmed = newContent.trim();
-      if (!trimmed) return false;
       const db = getDb();
       if (!db) return false;
+
+      // Normalize the bare-string form (regular message content edit)
+      // into the object form so a single write path handles both.
+      const fields =
+        typeof patch === "string" ? { content: patch } : patch;
+
+      // Build the Firestore update, trimming each provided field and
+      // only writing keys that were actually supplied so we never
+      // clobber a post's body when only the title changed (or vice
+      // versa).
+      const update: Record<string, unknown> = {};
+      if (fields.content !== undefined) {
+        update.content = fields.content.trim();
+      }
+      if (fields.postTitle !== undefined) {
+        const title = fields.postTitle.trim();
+        // A post must keep a title — refuse an empty one rather than
+        // silently saving a blank headline.
+        if (!title) return false;
+        update.postTitle = title;
+      }
+      if (fields.postBody !== undefined) {
+        update.postBody = fields.postBody.trim();
+      }
+      if (fields.postMedia !== undefined) {
+        update.postMedia = fields.postMedia;
+      }
+
+      // Nothing to write, or a plain message reduced to empty content.
+      const isPlainContentEdit =
+        fields.postTitle === undefined &&
+        fields.postBody === undefined &&
+        fields.postMedia === undefined;
+      if (Object.keys(update).length === 0) return false;
+      if (isPlainContentEdit && !update.content) return false;
+
+      update.editedAt = serverTimestamp();
+
       try {
-        await updateDoc(doc(db, "messages", messageId), {
-          content: trimmed,
-          editedAt: serverTimestamp(),
-        });
+        await updateDoc(doc(db, "messages", messageId), update);
         return true;
       } catch (err) {
         console.error("[firebase-chat] edit failed", err);
@@ -507,7 +561,46 @@ export function useChannelChat(channelId: string): UseChannelChatResult {
       const db = getDb();
       if (!db) return false;
       try {
-        await deleteDoc(doc(db, "messages", messageId));
+        // Determine whether this message is a thread reply *before*
+        // deleting it, so we can keep the parent's threadCount in
+        // sync. Top-level messages live in `fbMessages`; replies do
+        // not (they're filtered out of the channel snapshot), so fall
+        // back to a direct read for those.
+        const ref = doc(db, "messages", messageId);
+        let parentId: string | null =
+          fbMessages.find((m) => m.id === messageId)?.threadParentId ?? null;
+        if (!parentId) {
+          try {
+            const snap = await getDoc(ref);
+            parentId =
+              (snap.exists()
+                ? (snap.data() as FirestoreMessageDoc).threadParentId
+                : null) ?? null;
+          } catch {
+            // Best-effort: if the lookup fails we still delete the
+            // message; the count just won't decrement.
+          }
+        }
+
+        await deleteDoc(ref);
+
+        if (parentId) {
+          try {
+            // Atomic decrement. Increments (on reply create) and
+            // decrements (here) are matched pairs, so the stored count
+            // stays accurate; docToMessage additionally clamps the
+            // read value at 0 to guard against any legacy/unmatched
+            // decrement surfacing a negative count in the UI.
+            await updateDoc(doc(db, "messages", parentId), {
+              threadCount: increment(-1),
+            });
+          } catch (innerErr) {
+            console.warn(
+              "[firebase-chat] thread count decrement failed",
+              innerErr,
+            );
+          }
+        }
         return true;
       } catch (err) {
         console.error("[firebase-chat] delete failed", err);
@@ -516,7 +609,7 @@ export function useChannelChat(channelId: string): UseChannelChatResult {
         return false;
       }
     },
-    [user],
+    [user, fbMessages],
   );
 
   const createPoll = useCallback(

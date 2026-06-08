@@ -5,21 +5,11 @@ import { useRouter } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
   MessageCircle,
   UserPlus,
   UserCheck,
-  MoreHorizontal,
-  Copy,
   ExternalLink,
   MapPin,
-  Mail,
   Check,
   Clock,
   X as XIcon,
@@ -34,7 +24,6 @@ import {
   useHasPermission,
 } from "@/lib/use-roles-store";
 import { useMemberStatus } from "@/lib/use-community-members";
-import { useCommunityUI } from "@/lib/community-ui-store";
 import { getOrCreateDM } from "@/lib/use-conversations";
 import {
   useRelationship,
@@ -48,17 +37,9 @@ import { formatDisplayName } from "@/lib/name-format";
 import { FloatingPopover } from "./floating-popover";
 import { FullProfileDialog } from "./full-profile-dialog";
 import { AvatarStatusOverlay, statusLabel } from "./status-indicator";
-import { cn } from "@/lib/utils";
+import { cn, initials } from "@/lib/utils";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { isFirebaseConfigured } from "@/lib/firebase";
-
-function initials(name: string) {
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-}
 
 interface FriendButtonProps {
   relationship: RelationshipStatus;
@@ -244,9 +225,9 @@ export function ProfileMiniCard({
   const allRoles = useRoles((s) => s.roles);
   const toggleUserRole = useRoles((s) => s.toggleUserRole);
   const canManageRoles = useHasPermission("manageRoles");
-  const selectProfile = useCommunityUI((s) => s.selectProfile);
   const { status: relationship, friendship } = useRelationship(userId);
   const friendIds = useFriendIdSet();
+  const confirm = useConfirm();
   const [opening, setOpening] = useState(false);
   const [friendBusy, setFriendBusy] = useState(false);
 
@@ -270,7 +251,6 @@ export function ProfileMiniCard({
 
   const profileId = profile.id;
   const profileName = profile.name;
-  const profileAvatar = profile.avatar;
   const profileEmail = profile.email;
   const isSelf = currentUser?.id === profileId;
   const displayName = formatDisplayName(profileName, profile.nameDisplay);
@@ -306,12 +286,6 @@ export function ProfileMiniCard({
     router.push(`/community/profile/${profileId}`);
   }
 
-  function handleCopyEmail() {
-    if (!profileEmail) return;
-    void navigator.clipboard.writeText(profileEmail);
-    toast.success("Email copied to clipboard");
-  }
-
   async function handleFriendAction() {
     if (!currentUser || isSelf) return;
     setFriendBusy(true);
@@ -332,14 +306,27 @@ export function ProfileMiniCard({
         if (ok) toast.success(`${profileName} is now your friend!`);
         else toast.error("Couldn't accept request.");
       } else if (relationship === "pending_outgoing" && friendship) {
-        if (!window.confirm("Cancel friend request?")) return;
-        const ok = await removeFriendship(friendship.id);
-        if (ok) toast.success("Friend request cancelled.");
+        const ok = await confirm({
+          title: "Cancel friend request?",
+          description: `Your pending request to ${profileName} will be withdrawn.`,
+          confirmText: "Cancel request",
+          cancelText: "Keep",
+          destructive: true,
+        });
+        if (!ok) return;
+        const removed = await removeFriendship(friendship.id);
+        if (removed) toast.success("Friend request cancelled.");
         else toast.error("Couldn't cancel request.");
       } else if (relationship === "friends" && friendship) {
-        if (!window.confirm(`Remove ${profileName} as a friend?`)) return;
-        const ok = await removeFriendship(friendship.id);
-        if (ok) toast.success(`Removed ${profileName}.`);
+        const ok = await confirm({
+          title: `Remove ${profileName}?`,
+          description: `${profileName} will no longer be in your friends list.`,
+          confirmText: "Remove",
+          destructive: true,
+        });
+        if (!ok) return;
+        const removed = await removeFriendship(friendship.id);
+        if (removed) toast.success(`Removed ${profileName}.`);
         else toast.error("Couldn't remove friend.");
       }
     } finally {
@@ -436,17 +423,19 @@ export function ProfileMiniCard({
                   {removable && (
                     <button
                       type="button"
-                      onClick={() => {
-                        if (
-                          !window.confirm(`Remove ${r.name} from ${profileName}?`)
-                        ) {
-                          return;
-                        }
+                      onClick={async () => {
+                        const ok = await confirm({
+                          title: `Remove ${r.name}?`,
+                          description: `Remove the ${r.name} role from ${profileName}?`,
+                          confirmText: "Remove",
+                          destructive: true,
+                        });
+                        if (!ok) return;
                         toggleUserRole(profileId, r.id);
                         toast.success(`Removed ${r.name}`);
                       }}
                       className="ml-0.5 inline-flex h-3.5 w-3.5 items-center justify-center rounded-full hover:bg-current/20 transition-colors"
-                      aria-label={`Remove ${r.name}`}
+                      aria-label={`Remove ${r.name} role`}
                       title={`Remove ${r.name}`}
                     >
                       <XIcon className="h-2.5 w-2.5" />
@@ -523,11 +512,14 @@ export function ProfileMiniCard({
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleViewFullProfile();
+                  if (onViewFullProfile) onViewFullProfile();
+                  else handleViewFullProfile();
                 }}
-                className="inline-flex h-9 items-center justify-center gap-1.5 rounded-md border border-rosa/30 bg-background px-3 text-xs font-medium hover:bg-primary/5 transition-colors focus:outline-none"
+                aria-label={`View ${profileName}'s full profile`}
+                title="View full profile"
+                className="inline-flex h-9 items-center justify-center gap-1.5 rounded-md border border-rosa/30 bg-background px-3 text-xs font-medium hover:bg-primary/5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
               >
-                <ExternalLink className="h-3.5 w-3.5" />
+                <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
                 Profile
               </button>
             </div>
@@ -608,7 +600,10 @@ export function ProfileMiniTrigger({
           userId={userId}
           snapshot={snapshot}
           onClose={() => setOpen(false)}
-          onViewFullProfile={() => setFullProfileOpen(true)}
+          onViewFullProfile={() => {
+            setOpen(false);
+            setFullProfileOpen(true);
+          }}
         />
       </FloatingPopover>
       <FullProfileDialog

@@ -29,6 +29,7 @@ import {
   type ChannelType,
 } from "@/lib/use-channels-store";
 import { useRoles, useHasPermission } from "@/lib/use-roles-store";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -63,6 +64,7 @@ export default function ChannelsAdminPage() {
   const roles = useRoles((s) => s.roles);
   const canReorder = useHasPermission("reorderChannels");
   const canManage = useHasPermission("manageChannels");
+  const confirm = useConfirm();
 
   // Sort by category (in our preferred order) then position. Archived
   // channels sink to the bottom regardless.
@@ -126,21 +128,29 @@ export default function ChannelsAdminPage() {
     toast.success("Channel created");
   }
 
-  function handleArchive() {
+  async function handleArchive() {
     if (!channel || !canManage) return;
+    const ok = await confirm({
+      title: `Archive #${channel.name}?`,
+      description:
+        "The channel is hidden from members but its messages are kept. You can restore it here at any time.",
+      confirmText: "Archive",
+    });
+    if (!ok) return;
     deleteChannel(channel.id, false);
     toast.success(`Archived #${channel.name}. You can restore it from here.`);
   }
 
-  function handleHardDelete() {
+  async function handleHardDelete() {
     if (!channel || !canManage) return;
-    if (
-      !window.confirm(
-        `Permanently delete #${channel.name}? Existing messages in this channel will be orphaned.`,
-      )
-    ) {
-      return;
-    }
+    const ok = await confirm({
+      title: `Permanently delete #${channel.name}?`,
+      description:
+        "This cannot be undone. Existing messages in this channel will be orphaned. Consider archiving instead.",
+      confirmText: "Delete channel",
+      destructive: true,
+    });
+    if (!ok) return;
     deleteChannel(channel.id, true);
     setSelectedId(sortedChannels.find((c) => c.id !== channel.id)?.id ?? null);
     toast.success("Channel deleted");
@@ -373,11 +383,11 @@ function ChannelEditor({
                 onClick={onRestore}
                 className="text-primary"
               >
-                <RotateCcw className="h-3.5 w-3.5 mr-1" /> Restore
+                <RotateCcw className="h-3.5 w-3.5 mr-1" aria-hidden="true" /> Restore
               </Button>
             ) : (
               <Button variant="ghost" size="sm" onClick={onArchive}>
-                <Archive className="h-3.5 w-3.5 mr-1" /> Archive
+                <Archive className="h-3.5 w-3.5 mr-1" aria-hidden="true" /> Archive
               </Button>
             )}
             <Button
@@ -386,7 +396,7 @@ function ChannelEditor({
               onClick={onHardDelete}
               className="text-destructive hover:text-destructive hover:bg-destructive/10"
             >
-              <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete
+              <Trash2 className="h-3.5 w-3.5 mr-1" aria-hidden="true" /> Delete
             </Button>
           </div>
         )}

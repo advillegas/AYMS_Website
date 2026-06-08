@@ -15,11 +15,19 @@ import { CmsPageWrapper } from "@/components/admin/cms-page-wrapper";
 import { Loader2 } from "lucide-react";
 import { GoogleButton } from "@/components/auth/google-button";
 
+type RegisterErrors = {
+  name?: string;
+  email?: string;
+  password?: string;
+  confirm?: string;
+};
+
 export default function RegisterPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [errors, setErrors] = useState<RegisterErrors>({});
   const register = useAuth((s) => s.register);
   const loginWithGoogle = useAuth((s) => s.loginWithGoogle);
   const router = useRouter();
@@ -27,24 +35,53 @@ export default function RegisterPage() {
   const [submitting, setSubmitting] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
 
+  function clearError(field: keyof RegisterErrors) {
+    setErrors((p) => (p[field] ? { ...p, [field]: undefined } : p));
+  }
+
+  function validate() {
+    const next: RegisterErrors = {};
+    if (!name.trim()) {
+      next.name = "Tell us your name.";
+    }
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) {
+      next.email = "Enter your email address.";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      next.email = "That doesn't look like a valid email address.";
+    }
+    if (!password) {
+      next.password = "Create a password.";
+    } else if (password.length < 6) {
+      // Matches the Firebase / legacy-registry minimum so users see the
+      // requirement before the request is sent.
+      next.password = "Password must be at least 6 characters.";
+    }
+    if (!confirm) {
+      next.confirm = "Re-enter your password.";
+    } else if (password !== confirm) {
+      next.confirm = "Passwords don't match.";
+    }
+    setErrors(next);
+    return Object.keys(next).length === 0;
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!name || !email || !password) {
-      toast.error("Please fill in all fields");
-      return;
-    }
-    if (password !== confirm) {
-      toast.error("Passwords do not match");
-      return;
-    }
+    if (submitting || googleLoading) return;
+    if (!validate()) return;
     setSubmitting(true);
     try {
-      const result = await register(name, email, password);
+      const result = await register(name.trim(), email.trim(), password);
       if (result.ok) {
         toast.success("Welcome to the family, amiga! ♡");
         router.push("/community");
       } else {
-        toast.error(result.error ?? "Could not create account");
+        const message = result.error ?? "Could not create account";
+        // Most server-side register failures relate to the email
+        // (already in use, reserved); surface there plus a toast.
+        setErrors((p) => ({ ...p, email: message }));
+        toast.error(message);
       }
     } finally {
       setSubmitting(false);
@@ -52,6 +89,7 @@ export default function RegisterPage() {
   }
 
   async function handleGoogle() {
+    if (submitting || googleLoading) return;
     setGoogleLoading(true);
     try {
       // Same call as login - Firebase Auth treats first-time popup
@@ -127,48 +165,94 @@ export default function RegisterPage() {
                   <Label htmlFor="name" className="text-sm font-semibold">Full Name</Label>
                   <Input
                     id="name"
+                    autoComplete="name"
                     placeholder="Your name"
                     value={name}
-                    onChange={(e) => setName(e.target.value)}
+                    onChange={(e) => {
+                      setName(e.target.value);
+                      clearError("name");
+                    }}
                     disabled={submitting || googleLoading}
+                    aria-invalid={errors.name ? true : undefined}
+                    aria-describedby={errors.name ? "name-error" : undefined}
                     className="h-11 rounded-xl border-rosa/30 bg-white/60 focus-visible:ring-primary/30 focus-visible:border-primary/40 backdrop-blur-sm"
                   />
+                  {errors.name && (
+                    <p id="name-error" role="alert" className="text-xs font-medium text-destructive">
+                      {errors.name}
+                    </p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="email" className="text-sm font-semibold">Email</Label>
                   <Input
                     id="email"
                     type="email"
+                    autoComplete="email"
                     placeholder="you@example.com"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      clearError("email");
+                    }}
                     disabled={submitting || googleLoading}
+                    aria-invalid={errors.email ? true : undefined}
+                    aria-describedby={errors.email ? "email-error" : undefined}
                     className="h-11 rounded-xl border-rosa/30 bg-white/60 focus-visible:ring-primary/30 focus-visible:border-primary/40 backdrop-blur-sm"
                   />
+                  {errors.email && (
+                    <p id="email-error" role="alert" className="text-xs font-medium text-destructive">
+                      {errors.email}
+                    </p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="password" className="text-sm font-semibold">Password</Label>
                   <Input
                     id="password"
                     type="password"
-                    placeholder="••••••••"
+                    autoComplete="new-password"
+                    placeholder="At least 6 characters"
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      clearError("password");
+                      // Re-validate the confirm match live once both are set.
+                      if (errors.confirm && e.target.value === confirm) clearError("confirm");
+                    }}
                     disabled={submitting || googleLoading}
+                    aria-invalid={errors.password ? true : undefined}
+                    aria-describedby={errors.password ? "register-password-error" : undefined}
                     className="h-11 rounded-xl border-rosa/30 bg-white/60 focus-visible:ring-primary/30 focus-visible:border-primary/40 backdrop-blur-sm"
                   />
+                  {errors.password && (
+                    <p id="register-password-error" role="alert" className="text-xs font-medium text-destructive">
+                      {errors.password}
+                    </p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="confirm" className="text-sm font-semibold">Confirm Password</Label>
                   <Input
                     id="confirm"
                     type="password"
+                    autoComplete="new-password"
                     placeholder="••••••••"
                     value={confirm}
-                    onChange={(e) => setConfirm(e.target.value)}
+                    onChange={(e) => {
+                      setConfirm(e.target.value);
+                      clearError("confirm");
+                    }}
                     disabled={submitting || googleLoading}
+                    aria-invalid={errors.confirm ? true : undefined}
+                    aria-describedby={errors.confirm ? "confirm-error" : undefined}
                     className="h-11 rounded-xl border-rosa/30 bg-white/60 focus-visible:ring-primary/30 focus-visible:border-primary/40 backdrop-blur-sm"
                   />
+                  {errors.confirm && (
+                    <p id="confirm-error" role="alert" className="text-xs font-medium text-destructive">
+                      {errors.confirm}
+                    </p>
+                  )}
                 </div>
                 <Button
                   type="submit"

@@ -2,6 +2,7 @@
 
 import { useAuth, useCommunity, type User } from "./store";
 import { useCommunityMembers } from "./use-community-members";
+import { useFriendIdSet } from "./use-friends";
 
 /**
  * Snapshot used when we know about a user from a chat message but can't
@@ -63,4 +64,31 @@ export function useProfileLookup(
   }
 
   return null;
+}
+
+/**
+ * Decide whether the current viewer is allowed to see a member's email,
+ * honoring the owner's `emailVisibility` preference:
+ *
+ *  - "public" (or unset → defaults to public): everyone can see it.
+ *  - "friends": only accepted friends (and the owner) can see it.
+ *  - "hidden": nobody but the owner can see it.
+ *
+ * Always returns false when there's no email to show. Centralizes the
+ * rule so every surface (mini-card, detail rail, full dialog, profile
+ * page) leaks consistently — and doesn't leak at all when it shouldn't.
+ */
+export function useEmailVisible(
+  profile: Pick<User, "id" | "email" | "emailVisibility"> | null | undefined,
+): boolean {
+  const currentUserId = useAuth((s) => s.user?.id);
+  const friendIds = useFriendIdSet();
+
+  if (!profile?.email) return false;
+  if (profile.id === currentUserId) return true; // owner always sees own email
+
+  const visibility = profile.emailVisibility ?? "public";
+  if (visibility === "hidden") return false;
+  if (visibility === "friends") return friendIds.has(profile.id);
+  return true; // "public"
 }

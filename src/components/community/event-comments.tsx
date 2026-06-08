@@ -15,24 +15,16 @@ import { format, formatDistanceToNow, isToday, isYesterday } from "date-fns";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/store";
 import { useHasPermission } from "@/lib/use-roles-store";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import {
   useEventComments,
   type EventComment,
 } from "@/lib/use-event-comments";
-import { cn } from "@/lib/utils";
+import { cn, initials } from "@/lib/utils";
 
 interface EventCommentsProps {
   eventId: string;
   className?: string;
-}
-
-function initials(name: string) {
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
 }
 
 function formatCommentTime(ts: string): string {
@@ -100,6 +92,7 @@ function CommentRow({ comment, canDelete, onDelete }: CommentRowProps) {
 export function EventComments({ eventId, className }: EventCommentsProps) {
   const user = useAuth((s) => s.user);
   const canModerate = useHasPermission("manageMessages");
+  const confirm = useConfirm();
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [draft, setDraft] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -152,7 +145,12 @@ export function EventComments({ eventId, className }: EventCommentsProps) {
         </div>
       )}
 
-      <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1">
+      <div
+        className="space-y-2.5 max-h-72 overflow-y-auto pr-1"
+        role="log"
+        aria-label="Event comments"
+        aria-live="polite"
+      >
         {loading && comments.length === 0 && (
           <div className="flex items-center justify-center py-4 text-xs text-muted-foreground gap-1.5">
             <Loader2 className="h-3 w-3 animate-spin" />
@@ -172,12 +170,13 @@ export function EventComments({ eventId, className }: EventCommentsProps) {
               comment={c}
               canDelete={canDeleteThis}
               onDelete={async () => {
-                if (
-                  !window.confirm(
-                    "Delete this comment? This can't be undone.",
-                  )
-                )
-                  return;
+                const confirmed = await confirm({
+                  title: "Delete comment?",
+                  description: "This can't be undone.",
+                  confirmText: "Delete",
+                  destructive: true,
+                });
+                if (!confirmed) return;
                 const ok = await deleteComment(c.id);
                 if (ok) toast.success("Comment deleted.");
                 else toast.error("Couldn't delete that comment.");
@@ -201,6 +200,7 @@ export function EventComments({ eventId, className }: EventCommentsProps) {
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Add a comment… (Enter to send, Shift+Enter for new line)"
+            aria-label="Add a comment"
             rows={1}
             className="flex-1 resize-none rounded-2xl border border-rosa/30 [background-color:#fff] px-3 py-1.5 text-sm leading-snug focus:outline-none focus:border-primary/40 placeholder:text-muted-foreground/70 max-h-[120px] overflow-hidden"
           />

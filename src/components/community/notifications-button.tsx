@@ -24,17 +24,7 @@ import {
 import { useNotificationReadState } from "@/lib/use-notifications";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { FloatingPopover } from "./floating-popover";
-import { cn } from "@/lib/utils";
-
-function initials(name?: string) {
-  if (!name) return "?";
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-}
+import { cn, initials } from "@/lib/utils";
 
 const TYPE_ICON: Record<NotificationType, React.ComponentType<{ className?: string }>> = {
   dm: MessageCircle,

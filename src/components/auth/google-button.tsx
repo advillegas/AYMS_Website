@@ -30,6 +30,8 @@ export function GoogleButton({
       type="button"
       onClick={onClick}
       disabled={loading || disabled}
+      aria-busy={loading}
+      aria-label={loading ? "Connecting to Google" : label}
       variant="outline"
       className={cn(
         "w-full bg-white text-slate-700 border-slate-300 hover:bg-slate-50 hover:text-slate-900 hover:border-slate-400 dark:bg-white dark:text-slate-700 dark:hover:bg-slate-50",
@@ -38,7 +40,7 @@ export function GoogleButton({
     >
       {loading ? (
         <>
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
           Connecting to Google...
         </>
       ) : (

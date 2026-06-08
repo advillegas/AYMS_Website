@@ -238,6 +238,8 @@
   }
   html {
     @apply font-sans scroll-smooth;
+    /* Offset in-page anchors below the fixed 88px navbar */
+    scroll-padding-top: 5.5rem;
   }
 
   /* Brand kit typography hierarchy
@@ -253,6 +255,14 @@
   .font-detail {
     font-family: var(--font-detail);
     font-style: italic;
+  }
+  /* Hide scrollbars on horizontal filter/carousel strips while keeping scroll */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
   }
   .glow-pink {
     box-shadow:

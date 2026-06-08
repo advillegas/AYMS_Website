@@ -23,6 +23,7 @@ import {
 import { toast } from "sonner";
 import { type User } from "@/lib/store";
 import { useUserRoles } from "@/lib/use-roles-store";
+import { useOnboarding } from "@/lib/use-onboarding";
 import { useMemberStatus } from "@/lib/use-community-members";
 import { useEmailVisible } from "@/lib/profile-lookup";
 import { formatDisplayName } from "@/lib/name-format";
@@ -50,6 +51,7 @@ interface ProfileViewProps {
 
 export function ProfileView({ profile, isSelf, onSave }: ProfileViewProps) {
   const roles = useUserRoles(profile.id);
+  const reopenJourney = useOnboarding((s) => s.reopen);
   const { status } = useMemberStatus(profile.id);
   const emailVisible = useEmailVisible(profile);
   const primaryColor = roles[0]?.color;
@@ -239,7 +241,11 @@ export function ProfileView({ profile, isSelf, onSave }: ProfileViewProps) {
       {isSelf && !editing && (
         <div className="px-4 sm:px-6 mt-5 space-y-4">
           {!completeness.complete && (
-            <JourneyRing profile={profile} onEdit={startEdit} />
+            <JourneyRing
+              profile={profile}
+              onEdit={startEdit}
+              onRestartJourney={reopenJourney}
+            />
           )}
           <PassportWrapped
             stamps={stamps}

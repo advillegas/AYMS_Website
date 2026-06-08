@@ -17,6 +17,7 @@
  */
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Heart, ArrowRight, ArrowLeft, Check, Sparkles, X } from "lucide-react";
 import { useAuth } from "@/lib/store";
@@ -42,6 +43,14 @@ export function WelcomeJourney() {
   const updateProfile = useAuth((s) => s.updateProfile);
   const { step, next, back, complete, dismiss, setStep } = useOnboarding();
   const { addStamp } = usePassport(user?.id);
+  const router = useRouter();
+
+  // Onboarding always lands the new member in the live community home so the
+  // finish moment leads somewhere warm instead of a dead-end toast.
+  function finishAndLand() {
+    complete();
+    router.push("/community/home");
+  }
 
   // Draft answers seeded from any existing profile data so re-runs don't
   // wipe a member who already filled things in.
@@ -75,7 +84,7 @@ export function WelcomeJourney() {
   async function finish() {
     if (saving || !user) {
       // No user → just close gracefully.
-      complete();
+      finishAndLand();
       return;
     }
     setSaving(true);
@@ -111,12 +120,12 @@ export function WelcomeJourney() {
         href: "/community",
       });
 
-      complete();
+      finishAndLand();
       toast.success("You're all set — welcome, amiga! 💕");
     } catch (err) {
       console.error("[welcome-journey]", err);
       toast.error("Couldn't save everything, but you're in! You can finish your profile anytime.");
-      complete();
+      finishAndLand();
     } finally {
       setSaving(false);
     }

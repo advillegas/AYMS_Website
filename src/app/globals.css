@@ -453,6 +453,17 @@
     color: transparent;
   }
 
+  /* Forced-colors (Windows High Contrast): clipped transparent text renders
+     invisible. Drop the clip and fall back to a system color so headings
+     stay readable. */
+  @media (forced-colors: active) {
+    .text-gradient-brand {
+      background-image: none;
+      -webkit-text-fill-color: CanvasText;
+      color: CanvasText;
+    }
+  }
+
   /* Elevation helpers */
   .elevate-2 { box-shadow: var(--elevation-2); }
   .elevate-3 { box-shadow: var(--elevation-3); }

@@ -1,4 +1,17 @@
 import type { Metadata } from "next";
+import { EventsJsonLd } from "@/components/seo/json-ld";
+import { COMMUNITY_EVENTS } from "@/lib/events-data";
+
+/**
+ * Per-route metadata + structured data for /events.
+ *
+ * The events page is a Client Component, so metadata + JSON-LD live in this
+ * co-located Server layout (App Router only reads `metadata` and renders
+ * server-only structured data from Server Components). /events is the
+ * canonical events surface, so the ItemList of upcoming events belongs here.
+ */
+
+const SITE_URL = "https://amigasymassocial.com";
 
 export const metadata: Metadata = {
   title: "Events & Meetups for Latinas",
@@ -9,6 +22,7 @@ export const metadata: Metadata = {
     title: "Latina Community Events & Meetups | Amigas Y Más Social",
     description:
       "Coffee & Cuties, Summer Camp, city tours — find your next Latina community event.",
+    url: `${SITE_URL}/events`,
   },
   alternates: {
     canonical: "/events",
@@ -20,5 +34,26 @@ export default function EventsLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return children;
+  // Emit upcoming events as structured data so /events is eligible for rich
+  // event results (mirrors the /featured spotlight's ItemList of events).
+  const today = new Date().toISOString().slice(0, 10);
+  const upcoming = COMMUNITY_EVENTS.filter((e) => e.date >= today)
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(0, 10);
+
+  return (
+    <>
+      <EventsJsonLd
+        events={upcoming.map((e) => ({
+          name: e.title,
+          description: e.description,
+          startDate: e.date,
+          ...(e.endDate ? { endDate: e.endDate } : {}),
+          location: e.location,
+          url: `${SITE_URL}/events`,
+        }))}
+      />
+      {children}
+    </>
+  );
 }

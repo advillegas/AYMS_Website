@@ -237,12 +237,20 @@ function icalDateToTime(raw: string): string {
 /* ------------------------------------------------------------------ */
 
 export async function POST(request: NextRequest) {
+  // Default-deny: this endpoint triggers writes (event upserts/deletes), so it
+  // must never be callable anonymously. If no CRON_SECRET is configured we
+  // refuse rather than fall through to an unauthenticated sync — the operator
+  // must set CRON_SECRET to enable scheduled syncing.
   const secret = process.env.CRON_SECRET;
-  if (secret) {
-    const authHeader = request.headers.get("authorization");
-    if (authHeader !== `Bearer ${secret}`) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  if (!secret) {
+    return NextResponse.json(
+      { error: "Calendar sync is not configured (CRON_SECRET unset)" },
+      { status: 503 },
+    );
+  }
+  const authHeader = request.headers.get("authorization");
+  if (authHeader !== `Bearer ${secret}`) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   if (!PROJECT_ID) {

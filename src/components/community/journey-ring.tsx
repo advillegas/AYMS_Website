@@ -22,10 +22,21 @@ interface JourneyRingProps {
   profile: User;
   /** Called when the member taps "Finish your intro" (opens edit mode). */
   onEdit?: () => void;
+  /**
+   * Called when the member taps "Take the welcome tour again" — re-opens the
+   * guided WelcomeJourney stepper (useOnboarding.reopen). Without this, a
+   * member who dismissed onboarding had no way back to the guided flow.
+   */
+  onRestartJourney?: () => void;
   className?: string;
 }
 
-export function JourneyRing({ profile, onEdit, className }: JourneyRingProps) {
+export function JourneyRing({
+  profile,
+  onEdit,
+  onRestartJourney,
+  className,
+}: JourneyRingProps) {
   const result = useMemo(() => getProfileCompleteness(profile), [profile]);
   const { percent, steps, remaining, complete } = result;
 
@@ -120,6 +131,15 @@ export function JourneyRing({ profile, onEdit, className }: JourneyRingProps) {
             <p className="pl-1 pt-1 text-[10px] text-muted-foreground">
               and {remaining.length - 4} more…
             </p>
+          )}
+          {onRestartJourney && (
+            <button
+              type="button"
+              onClick={onRestartJourney}
+              className="mt-1 pl-1 text-[11px] font-medium text-primary underline-offset-2 transition-colors hover:underline"
+            >
+              Prefer a guided walk-through? Take the welcome tour again →
+            </button>
           )}
         </div>
       )}

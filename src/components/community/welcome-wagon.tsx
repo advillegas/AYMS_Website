@@ -198,8 +198,8 @@ function WelcomeRow({ member }: { member: MemberWithStatus }) {
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
         ) : (
           <>
-            <HeartHandshake className="h-3.5 w-3.5 sm:mr-1" />
-            <span className="hidden sm:inline">Say hi</span>
+            <HeartHandshake className="h-3.5 w-3.5 mr-1" />
+            <span>Say hi</span>
           </>
         )}
       </Button>

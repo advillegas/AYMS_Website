@@ -267,7 +267,7 @@ function ChannelRow({
               e.stopPropagation();
               onEdit(ch);
             }}
-            className="absolute right-1 top-1/2 -translate-y-1/2 hidden group-hover/ch:flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:text-primary hover:bg-primary/10"
+            className="absolute right-1 top-1/2 -translate-y-1/2 hidden group-hover/ch:flex group-focus-within/ch:flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:text-primary hover:bg-primary/10"
             aria-label="Edit channel"
             title="Edit channel"
           >
@@ -395,7 +395,7 @@ function ChannelSidebar({ onChannelClick }: ChannelSidebarProps) {
                     <button
                       type="button"
                       onClick={() => setCreateCategory(category)}
-                      className="hidden group-hover/cat:flex h-4 w-4 items-center justify-center rounded text-muted-foreground hover:text-primary hover:bg-primary/10"
+                      className="hidden group-hover/cat:flex group-focus-within/cat:flex h-4 w-4 items-center justify-center rounded text-muted-foreground hover:text-primary hover:bg-primary/10"
                       aria-label={`Create channel in ${label}`}
                       title={`Create channel in ${label}`}
                     >
@@ -460,7 +460,7 @@ function TopBarTabs({ onNavigate }: { onNavigate?: () => void }) {
   const tabs = hasPermission("viewAdminPanel") ? [...BASE_TABS, ADMIN_TAB] : BASE_TABS;
   const unreadDms = useUnreadConversations();
   return (
-    <nav className="flex items-center gap-1 shrink-0">
+    <nav aria-label="Community sections" className="flex items-center gap-1 shrink-0">
       {tabs.map((tab) => {
         const active =
           pathname === tab.href ||
@@ -471,6 +471,7 @@ function TopBarTabs({ onNavigate }: { onNavigate?: () => void }) {
             key={tab.href}
             href={tab.href}
             onClick={onNavigate}
+            aria-current={active ? "page" : undefined}
             className={cn(
               "relative flex items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition-all whitespace-nowrap",
               active
@@ -594,7 +595,10 @@ export function CommunityShell({ children }: { children: React.ReactNode }) {
         <NotificationsButton />
 
         <DropdownMenu>
-          <DropdownMenuTrigger className="flex items-center gap-2 rounded-full px-2 py-1 hover:bg-primary/10 transition-colors">
+          <DropdownMenuTrigger
+            aria-label="Account menu"
+            className="flex items-center gap-2 rounded-full px-2 py-1 hover:bg-primary/10 transition-colors"
+          >
             <span className="relative inline-flex">
               <Avatar className="h-8 w-8">
                 {user?.avatar && <AvatarImage src={user.avatar} alt={user.name} />}

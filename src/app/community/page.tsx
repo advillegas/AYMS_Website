@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo, memo } from "react";
 import Image from "next/image";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -133,7 +133,7 @@ interface ChatMessageProps {
   canModerate: boolean;
 }
 
-function ChatMessage({
+const ChatMessage = memo(function ChatMessage({
   msg,
   channelId,
   onReact,
@@ -568,7 +568,22 @@ function ChatMessage({
     )}
     </div>
   );
-}
+},
+// Custom equality: skip re-render unless the message object, channel, or the
+// caller's permission flags actually change. The handler props are inline
+// arrows recreated on every parent render (e.g. each composer keystroke), but
+// they only close over msg.id + stable store actions, so their identity is
+// irrelevant to output — ignoring it here stops the whole list from
+// re-rendering on every keystroke. Messages are immutable (a react/edit/
+// delete produces a NEW msg object), so `prev.msg === next.msg` is a correct
+// change signal.
+(prev, next) =>
+  prev.msg === next.msg &&
+  prev.channelId === next.channelId &&
+  prev.canManagePolls === next.canManagePolls &&
+  prev.canVotePolls === next.canVotePolls &&
+  prev.canModerate === next.canModerate,
+);
 
 const NOTIFY_LABELS: Record<NotifyLevel, string> = {
   all: "All messages",
@@ -963,7 +978,13 @@ export default function ChatPage() {
           ScrollArea viewport actually scrolls. */}
       {view === "stream" ? (
         <ScrollArea className="flex-1 min-h-0 px-4 py-4 [background-color:#fff]">
-          <div className="space-y-2">
+          <div
+            className="space-y-2"
+            role="log"
+            aria-live="polite"
+            aria-relevant="additions"
+            aria-label={`Messages in ${channel?.name ?? "this channel"}`}
+          >
             {loading && messages.length === 0 && (
               <div className="flex justify-center py-12 text-xs text-muted-foreground">
                 Loading messages…
@@ -980,8 +1001,10 @@ export default function ChatPage() {
                 <p className="text-sm text-muted-foreground mt-2 max-w-xs">
                   {channel?.description}
                 </p>
-                <p className="text-xs text-muted-foreground/70 mt-3">
-                  Be the first to send a message!
+                <p className="text-sm text-muted-foreground mt-3 max-w-xs">
+                  It&apos;s quiet in here… for now. Say{" "}
+                  <span className="font-semibold text-[#B51760]">¡hola!</span>{" "}
+                  and start the conversation, amiga. 💕
                 </p>
               </div>
             )}

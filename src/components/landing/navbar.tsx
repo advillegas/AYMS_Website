@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useState } from "react";
 import {
   Menu,
@@ -46,6 +46,7 @@ export function Navbar() {
   const user = useAuth((s) => s.user);
   const logout = useAuth((s) => s.logout);
   const isAdmin = user?.role === "admin";
+  const pathname = usePathname();
 
   const navLinks = useCms((s) => s.navLinks);
   const loadFromStorage = useCms((s) => s.loadFromStorage);
@@ -95,16 +96,24 @@ export function Navbar() {
             </span>
           </Link>
 
-          <nav className="hidden items-center gap-5 lg:flex">
-            {links.map((l) => (
-              <Link
-                key={l.href}
-                href={l.href}
-                className="text-sm font-medium text-[#6A1B4D]/65 transition-colors hover:text-[#FF0099]"
-              >
-                {l.label}
-              </Link>
-            ))}
+          <nav aria-label="Primary" className="hidden items-center gap-5 lg:flex">
+            {links.map((l) => {
+              const active =
+                l.href === "/" ? pathname === "/" : pathname.startsWith(l.href);
+              return (
+                <Link
+                  key={l.href}
+                  href={l.href}
+                  aria-current={active ? "page" : undefined}
+                  className={cn(
+                    "text-sm font-medium transition-colors hover:text-[#FF0099]",
+                    active ? "text-[#FF0099]" : "text-[#6A1B4D]/80",
+                  )}
+                >
+                  {l.label}
+                </Link>
+              );
+            })}
           </nav>
 
           <div className="hidden items-center gap-2 lg:flex">

@@ -15,7 +15,7 @@ import Link from "next/link";
 import { motion, useReducedMotion } from "framer-motion";
 import { Sparkles, Users, Globe2, CalendarHeart, ArrowRight } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { TRIPS_DATA } from "@/lib/trips-data";
+import { useTrips } from "@/lib/use-trips";
 import { useEvents } from "@/lib/use-events";
 import { useTestimonials } from "@/lib/use-testimonials";
 import { useCommunityMembers } from "@/lib/use-community-members";
@@ -41,18 +41,27 @@ function formatEventDate(iso: string): string {
 
 export function CommunityPreview() {
   const prefersReducedMotion = useReducedMotion();
+  const { trips } = useTrips();
   const { events } = useEvents();
   const { testimonials } = useTestimonials();
   const { members } = useCommunityMembers();
 
+  // Public aggregate counts derive from the live, published trip list only.
+  const publicTrips = useMemo(
+    () => trips.filter((t) => t.published !== false),
+    [trips],
+  );
+
   const destinationCount = useMemo(
-    () => new Set(TRIPS_DATA.map((t) => t.country)).size,
-    [],
+    () => new Set(publicTrips.map((t) => t.country)).size,
+    [publicTrips],
   );
 
   const upcomingEvents = useMemo(() => {
     const today = new Date().toISOString().slice(0, 10);
     return events
+      // Drafts (published === false) are admin-only.
+      .filter((e) => e.published !== false)
       .filter((e) => e.date && e.date >= today)
       .sort((a, b) => a.date.localeCompare(b.date))
       .slice(0, 6);
@@ -81,7 +90,7 @@ export function CommunityPreview() {
     },
     {
       icon: CalendarHeart,
-      value: `${TRIPS_DATA.length}`,
+      value: `${publicTrips.length}`,
       label: "Upcoming group trips",
     },
   ];

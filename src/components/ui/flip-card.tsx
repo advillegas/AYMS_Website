@@ -22,11 +22,26 @@ export function FlipCard({ front, back, className, innerClassName }: FlipCardPro
     setFlipped((f) => !f);
   };
 
+  // Keyboard users (and SRs) need the same flip the click gives touch users.
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if ((e.target as HTMLElement).closest("a, button, [role=button], input, textarea, select")) {
+      return;
+    }
+    if (e.key === "Enter" || e.key === " ") {
+      if (e.key === " ") e.preventDefault(); // stop the page from scrolling
+      setFlipped((f) => !f);
+    }
+  };
+
   return (
     <div
       className={cn("group [perspective:1200px]", className)}
       data-flipped={flipped}
       onClick={handleClick}
+      onKeyDown={handleKeyDown}
+      role="button"
+      tabIndex={0}
+      aria-pressed={flipped}
     >
       <div
         className={cn(

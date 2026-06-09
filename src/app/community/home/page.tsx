@@ -119,6 +119,8 @@ function UpcomingEvents() {
     // (even earlier today) still counts as upcoming.
     const todayKey = format(new Date(), "yyyy-MM-dd");
     return events
+      // Members aren't admins — admin drafts (published === false) are hidden.
+      .filter((e) => e.published !== false)
       .filter((e) => {
         const key = e.endDate && e.endDate >= e.date ? e.endDate : e.date;
         return key >= todayKey;

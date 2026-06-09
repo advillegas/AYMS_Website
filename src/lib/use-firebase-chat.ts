@@ -311,9 +311,15 @@ function useChannelChatFirebase(channelId: string): UseChannelChatResult {
     setLoading(true);
     setError(null);
     setPendingMessages([]);
+    // orderBy("createdAt","desc") so the limit keeps the NEWEST 200 for
+    // this channel (without it, Firestore returns an arbitrary 200 and
+    // recent messages silently vanish as the collection grows). A single
+    // where + single orderBy is auto-indexed by Firestore — no composite
+    // index needed. The snapshot mapper re-sorts ascending for display.
     const q = query(
       collection(db, "messages"),
       where("channelId", "==", channelId),
+      orderBy("createdAt", "desc"),
       limit(200),
     );
 
@@ -323,6 +329,8 @@ function useChannelChatFirebase(channelId: string): UseChannelChatResult {
         // Geo filtering happens downstream in `mergedMessages` so
         // edits to the channel's geoLocations / radius take effect
         // without re-subscribing the snapshot listener.
+        // Query returns newest-first; re-sort ascending (oldest\u2192newest)
+        // so the stream renders in chronological order.
         const next: RichMessage[] = snap.docs
           .map((d) => docToMessage(d))
           .filter((m) => !m.threadParentId)

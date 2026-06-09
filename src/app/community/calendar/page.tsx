@@ -54,8 +54,6 @@ import {
 } from "@/lib/calendar-export";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { useAuth } from "@/lib/store";
-import { getUserCoords, haversineDistance } from "@/lib/geo";
 import { EventComments } from "@/components/community/event-comments";
 import { EventRsvp } from "@/components/community/event-rsvp";
 import { useMeetups } from "@/lib/use-meetups";
@@ -97,7 +95,6 @@ type ViewMode = "calendar" | "list";
 export default function CalendarPage() {
   const { events: rawEvents, loading: eventsLoading } = useEvents();
   const { meetups, loading: meetupsLoading } = useMeetups();
-  const user = useAuth((s) => s.user);
 
   // Sweep due reminders while the member browses the calendar.
   useReminderScheduler();
@@ -122,7 +119,10 @@ export default function CalendarPage() {
       location: m.location,
       capacity: m.capacity,
     }));
-    return [...rawEvents, ...mapped];
+    // Members aren't admins — admin drafts (published === false) must not
+    // leak onto the shared calendar. Member meetups have no publish gate.
+    const publishedEvents = rawEvents.filter((e) => e.published !== false);
+    return [...publishedEvents, ...mapped];
   }, [rawEvents, meetups]);
 
   const loading = eventsLoading || meetupsLoading;
@@ -130,29 +130,14 @@ export default function CalendarPage() {
   const [selected, setSelected] = useState<Date>(new Date());
   const [detail, setDetail] = useState<CalendarEvent | null>(null);
   const [view, setView] = useState<ViewMode>("calendar");
-  const [showNearbyOnly, setShowNearbyOnly] = useState(false);
   const [origin, setOrigin] = useState("");
   useEffect(() => {
     if (typeof window !== "undefined") setOrigin(window.location.origin);
   }, []);
 
-  const userCoords = getUserCoords(user);
-  const eventRadius = user?.eventRadiusMiles ?? 100;
-
-  // Geo-cached event coordinates (lazy, in-memory only)
-  const [eventGeoCache] = useState(() => new Map<string, { lat: number; lng: number } | null>());
-
-  const filteredEvents = useMemo(() => {
-    if (!showNearbyOnly || !userCoords || eventRadius <= 0) return events;
-    return events.filter((ev) => {
-      // Events without location always pass
-      if (!ev.location) return true;
-      // For now, we can't geocode synchronously. Events from the
-      // sync route will have coordinates once we add geocoding to
-      // the import. Until then, all events pass through.
-      return true;
-    });
-  }, [events, showNearbyOnly, userCoords, eventRadius, eventGeoCache]);
+  // The calendar shows every event. (A "Nearby" radius filter was removed:
+  // events aren't geocoded yet, so it couldn't actually filter anything.)
+  const filteredEvents = events;
 
   const days = useMemo(() => getCalendarDays(month), [month]);
 
@@ -206,27 +191,6 @@ export default function CalendarPage() {
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            {/* Nearby filter */}
-            {userCoords && (
-              <button
-                type="button"
-                onClick={() => setShowNearbyOnly((v) => !v)}
-                className={cn(
-                  "flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors",
-                  showNearbyOnly
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-rosa/30 bg-background text-foreground/70 hover:bg-primary/10",
-                )}
-                title={`Show events within ${eventRadius} miles`}
-                aria-pressed={showNearbyOnly}
-                aria-label={`Show only events within ${eventRadius} miles`}
-              >
-                <MapPin className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">
-                  {showNearbyOnly ? `Within ${eventRadius} mi` : "Nearby"}
-                </span>
-              </button>
-            )}
             {/* View toggle */}
             <div
               className="flex rounded-lg border border-rosa/30 overflow-hidden"

@@ -9,9 +9,23 @@ import {
   Calendar,
   ShieldAlert,
   BarChart3,
+  Plane,
+  Inbox,
 } from "lucide-react";
 
 const TILES = [
+  {
+    href: "/community/admin/trips",
+    icon: Plane,
+    title: "Trips",
+    desc: "Create, edit, publish, feature, and reorder the trips shown on the marketing site.",
+  },
+  {
+    href: "/community/admin/leads",
+    icon: Inbox,
+    title: "Leads & inquiries",
+    desc: "Trip reservations, waitlists, and newsletter signups — your pipeline in one place.",
+  },
   {
     href: "/community/admin/roles",
     icon: Shield,
@@ -45,8 +59,8 @@ const TILES = [
   {
     href: "/community/admin/calendar",
     icon: Calendar,
-    title: "Calendar",
-    desc: "Sync Google Calendar feeds, create manual events, and manage the community calendar.",
+    title: "Events & calendar",
+    desc: "Sync feeds, create/edit events, toggle publish, and manage the community calendar.",
   },
 ];
 
@@ -63,7 +77,6 @@ export default function AdminLandingPage() {
             Configure the AYMS community.
           </p>
         </div>
-
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {TILES.map((t) => (

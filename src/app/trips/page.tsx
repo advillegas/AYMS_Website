@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
-import { TRIPS_DATA, type Trip } from "@/lib/trips-data";
+import { type Trip } from "@/lib/trips-data";
+import { useTrips } from "@/lib/use-trips";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { ReserveButton } from "@/components/trips/reserve-button";
@@ -48,6 +49,7 @@ export default function TripsPage() {
   const [filter, setFilter] = useState<string>("All");
   const [selected, setSelected] = useState<Trip | null>(null);
   const reduceMotion = useReducedMotion();
+  const { trips, loading } = useTrips();
 
   const REGION_MAP: Record<string, string> = {
     Mexico: "Americas", USA: "Americas", Colombia: "Americas",
@@ -55,11 +57,17 @@ export default function TripsPage() {
     Kenya: "Africa", Morocco: "Africa",
   };
 
-  const limitedSpots = TRIPS_DATA.filter(
-    (t) => t.status === "available" && t.spotsLeft <= 8,
-  ).sort((a, b) => a.spotsLeft - b.spotsLeft);
+  // Live, admin-published list — drafts (published === false) are admin-only.
+  const publicTrips = useMemo(
+    () => trips.filter((t) => t.published !== false),
+    [trips],
+  );
 
-  const filtered = TRIPS_DATA.filter((t) => {
+  const limitedSpots = publicTrips
+    .filter((t) => t.status === "available" && t.spotsLeft <= 8)
+    .sort((a, b) => a.spotsLeft - b.spotsLeft);
+
+  const filtered = publicTrips.filter((t) => {
     if (filter === "All") return true;
     if (filter === "Available") return t.status === "available";
     if (filter === "Sold Out") return t.status === "sold-out" || t.status === "waitlist";
@@ -166,6 +174,30 @@ export default function TripsPage() {
         {/* Trip grid — Airbnb photo-card anatomy on cream */}
         <section className="canvas-editorial relative py-14">
           <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            {/* Loading skeleton — only while the live list is still resolving */}
+            {loading && trips.length === 0 && (
+              <div
+                className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+                aria-busy="true"
+                aria-live="polite"
+              >
+                <span className="sr-only">Loading trips…</span>
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="overflow-hidden rounded-[1.4rem] border border-[#221019]/8 bg-white elevate-2"
+                  >
+                    <div className="m-2.5 h-44 animate-pulse rounded-[1.1rem] bg-rosa/10" />
+                    <div className="space-y-2.5 px-4 pb-5 pt-2">
+                      <div className="h-5 w-3/4 animate-pulse rounded bg-rosa/10" />
+                      <div className="h-3 w-1/2 animate-pulse rounded bg-rosa/10" />
+                      <div className="h-3 w-2/3 animate-pulse rounded bg-rosa/10" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               <AnimatePresence mode="popLayout">
                 {filtered.map((trip, i) => {
@@ -251,7 +283,7 @@ export default function TripsPage() {
               </AnimatePresence>
             </div>
 
-            {filtered.length === 0 && (
+            {!loading && filtered.length === 0 && (
               <motion.div
                 initial={reduceMotion ? false : { opacity: 0 }}
                 animate={{ opacity: 1 }}

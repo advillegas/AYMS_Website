@@ -71,6 +71,7 @@ interface FirestoreEventDoc {
   location?: string;
   capacity?: number | null;
   image?: string;
+  published?: boolean;
   sourceCalendarId?: string;
   sourceUid?: string;
   syncedAt?: Timestamp;
@@ -104,6 +105,7 @@ function docToEvent(
     location: data.location ?? "",
     capacity: data.capacity ?? undefined,
     image: data.image,
+    published: data.published ?? undefined,
     sourceCalendarId: data.sourceCalendarId,
     sourceUid: data.sourceUid,
     syncedAt: tsToIso(data.syncedAt),
@@ -138,6 +140,7 @@ async function seedIfEmpty(): Promise<void> {
         type: ev.type,
         location: ev.location,
         image: ev.image ?? null,
+        published: ev.published ?? true,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
@@ -232,6 +235,7 @@ function useEventsFirebase(): UseEventsResult {
           location: ev.location,
           capacity: ev.capacity ?? null,
           image: ev.image ?? null,
+          published: ev.published ?? true,
           sourceCalendarId: ev.sourceCalendarId ?? null,
           sourceUid: ev.sourceUid ?? null,
           createdBy: ev.createdBy ?? null,

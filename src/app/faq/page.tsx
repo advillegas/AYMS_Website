@@ -20,7 +20,7 @@ const FAQ_DATA = [
   {
     category: "Trips & Booking",
     items: [
-      { q: "Do you offer payment plans?", a: "Sí! All of our tours are available with a payment plan option. You can secure your spot with a deposit and pay the remaining balance in installments before the trip. Details are provided on each trip's detail page and at checkout." },
+      { q: "Do you offer payment plans?", a: "Sí! All of our tours are available with a payment plan option. Reserving a trip simply holds your spot — no payment is taken online. Our team then follows up with you directly to walk through the deposit and the payment options for the balance before the trip." },
       { q: "Are flights included?", a: "International flights are not included in the trip price. You will book your own flight from your home airport and we will meet up at the destination airport. Domestic flights within the trip itinerary are included when specified." },
       { q: "What if I need to cancel?", a: "We understand plans change. Deposits are non-refundable but may be transferable to a future trip depending on timing. Full cancellation details are provided in our travel agreement when you book." },
       { q: "How many Amigas come on a tour?", a: "On average our groups have 12–20 amigas plus the group tour leader. We keep groups intimate to ensure everyone bonds and has an amazing experience. Popular trips may add additional spots." },

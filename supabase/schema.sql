@@ -179,6 +179,9 @@ create table if not exists public.events (
   end_time            text,
   type                text not null default 'social',
   location            text not null default '',
+  capacity            integer,
+  image               text,
+  published           boolean not null default true,
   source_calendar_id  text,
   source_uid          text,
   synced_at           timestamptz,
@@ -187,6 +190,43 @@ create table if not exists public.events (
   updated_at          timestamptz not null default now()
 );
 create index if not exists events_date_idx on public.events (date);
+-- Idempotent column adds for databases provisioned before these fields
+-- existed (create table if not exists won't add columns to an extant table).
+alter table public.events add column if not exists capacity integer;
+alter table public.events add column if not exists image text;
+alter table public.events add column if not exists published boolean not null default true;
+
+-- ---------- trips ----------
+-- Live, admin-published travel offers. Mirrors the Firestore `trips`
+-- collection seeded from src/lib/trips-data.ts. Only published trips render
+-- on the public marketing site; drafts stay admin-only in the CRM.
+create table if not exists public.trips (
+  id            text primary key,
+  title         text not null default '',
+  destination   text not null default '',
+  country       text not null default '',
+  dates         text not null default '',
+  duration      text not null default '',
+  price         integer not null default 0,
+  deposit       integer not null default 0,
+  status        text not null default 'available',
+  spots         integer not null default 0,
+  spots_left    integer not null default 0,
+  description   text not null default '',
+  highlights    jsonb not null default '[]'::jsonb,
+  includes      jsonb not null default '[]'::jsonb,
+  not_included  jsonb not null default '[]'::jsonb,
+  emoji         text not null default '',
+  gradient      text not null default '',
+  image         text not null default '',
+  published     boolean not null default true,
+  featured      boolean not null default false,
+  sort_order    integer not null default 0,
+  created_by    text,
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now()
+);
+create index if not exists trips_order_idx on public.trips (sort_order);
 
 -- ---------- event_comments (events/{id}/comments subcollection) ----------
 create table if not exists public.event_comments (
@@ -223,7 +263,8 @@ declare t text;
 begin
   foreach t in array array[
     'users','messages','conversations','conversation_messages','friendships',
-    'roles','user_roles','channels','events','event_comments','calendar_sync_configs'
+    'roles','user_roles','channels','events','event_comments','calendar_sync_configs',
+    'trips'
   ]
   loop
     execute format('alter table public.%I enable row level security;', t);

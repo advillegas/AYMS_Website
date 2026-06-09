@@ -63,6 +63,8 @@ export default function EventsPage() {
   const reduceMotion = useReducedMotion();
 
   const upcoming = events
+    // Drafts (published === false) are admin-only; never show on the public page.
+    .filter((e) => e.published !== false)
     .filter((e) => {
       const d = safeDate(e.date);
       return d !== null && !isPast(d);

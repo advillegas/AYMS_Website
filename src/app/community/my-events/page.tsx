@@ -37,6 +37,7 @@ import { useMeetups } from "@/lib/use-meetups";
 import { useMyRsvpRefs } from "@/lib/use-rsvps";
 import { useMyTripReservations } from "@/lib/use-trip-reservations";
 import { useReminderScheduler } from "@/lib/use-event-reminders";
+import { useTrips } from "@/lib/use-trips";
 import { getTripById } from "@/lib/trips-data";
 
 /* ------------------------------------------------------------------ */
@@ -97,6 +98,14 @@ export default function MyEventsPage() {
   const { events, loading: eventsLoading } = useEvents();
   const { meetups, loading: meetupsLoading } = useMeetups();
   const { reservations, loading: tripsLoading } = useMyTripReservations();
+  const { trips } = useTrips();
+
+  // Resolve reserved trips against the LIVE list first (so admin-created
+  // trips resolve), falling back to the static seed by id when missing.
+  const tripById = useMemo(
+    () => new Map(trips.map((t) => [t.id, t])),
+    [trips],
+  );
 
   // RSVP lookups across all events + meetups the member could attend.
   const rsvpTargets = useMemo(
@@ -118,7 +127,7 @@ export default function MyEventsPage() {
 
     // Trips (reserved / waitlist)
     for (const r of reservations) {
-      const trip = getTripById(r.tripId);
+      const trip = tripById.get(r.tripId) ?? getTripById(r.tripId);
       out.push({
         key: `trip:${r.id}`,
         kind: "trip",
@@ -192,7 +201,7 @@ export default function MyEventsPage() {
     }
 
     return out;
-  }, [reservations, myRsvps, eventById, meetups, user?.id]);
+  }, [reservations, myRsvps, eventById, meetups, user?.id, tripById]);
 
   // Split upcoming vs past (items with a real date earlier than today).
   // Dateless items (trips) always count as upcoming.

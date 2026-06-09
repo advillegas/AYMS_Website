@@ -31,6 +31,13 @@ export interface CalendarEvent {
    * shows. Lets us add imagery where an event maps to a real place/activity.
    */
   image?: string;
+  /**
+   * Admin publish gate. Only published events render on the public marketing
+   * site; drafts are visible to admins in the CRM only. `undefined` counts as
+   * published so the legacy static seeds (and any event created before this
+   * field existed) keep showing.
+   */
+  published?: boolean;
 }
 
 export const COMMUNITY_EVENTS: CalendarEvent[] = [

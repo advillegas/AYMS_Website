@@ -149,6 +149,18 @@ service cloud.firestore {
       }
     }
 
+    /* ------------------------------ trips ------------------------------ */
+    // Live, admin-published travel offers (src/lib/use-trips.ts). Public
+    // read so the marketing /trips page + homepage spotlight render them
+    // while signed out; only an admin creates / edits / publishes / deletes.
+    // The `published` flag gates public visibility in the client query, not
+    // here — drafts stay readable so the admin CRM can list them, matching
+    // how `events` and `cmsPages` expose admin-authored content world-wide.
+    match /trips/{tripId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
     /* ----------------------------- meetups ----------------------------- */
     // Member-organized meetups. Anyone signed in reads; the host creates
     // and edits their own meetup; admins moderate. Attendance lives in the

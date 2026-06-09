@@ -24,6 +24,7 @@ import {
   collection,
   limit,
   onSnapshot,
+  orderBy,
   query,
   type DocumentData,
   type FirestoreError,
@@ -113,10 +114,15 @@ export function useActivityFeed(max = 12): UseActivityFeedResult {
     // when configured. Bail without a synchronous setState (the snapshot
     // callbacks below own every loading transition).
     if (!db) return;
-    // No orderBy: single-collection query without a where clause only
-    // needs the auto-created index. We sort newest-first client-side,
-    // matching useRecentMessages in use-notifications.ts.
-    const q = query(collection(db, "messages"), limit(FEED_LIMIT));
+    // orderBy("createdAt","desc") fetches the NEWEST FEED_LIMIT docs.
+    // A single-collection query with no where clause needs only the
+    // auto-created single-field index (no composite). We still sort
+    // newest-first client-side as a defensive normalization.
+    const q = query(
+      collection(db, "messages"),
+      orderBy("createdAt", "desc"),
+      limit(FEED_LIMIT),
+    );
     const unsub = onSnapshot(
       q,
       (snap) => {

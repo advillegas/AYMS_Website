@@ -30,6 +30,9 @@ interface EventRow {
   end_time: string | null;
   type: string;
   location: string;
+  capacity: number | null;
+  image: string | null;
+  published: boolean | null;
   source_calendar_id: string | null;
   source_uid: string | null;
   synced_at: string | null;
@@ -49,6 +52,9 @@ function rowToEvent(r: EventRow): FirestoreEvent {
     endTime: r.end_time ?? undefined,
     type: (r.type as EventType) ?? "social",
     location: r.location ?? "",
+    capacity: r.capacity ?? undefined,
+    image: r.image ?? undefined,
+    published: r.published ?? undefined,
     sourceCalendarId: r.source_calendar_id ?? undefined,
     sourceUid: r.source_uid ?? undefined,
     syncedAt: tsToIso(r.synced_at),
@@ -77,6 +83,9 @@ async function seedIfEmpty(): Promise<void> {
       end_date: e.endDate ?? null,
       type: e.type,
       location: e.location,
+      capacity: e.capacity ?? null,
+      image: e.image ?? null,
+      published: e.published ?? true,
     }));
     await sb.from("events").upsert(rows);
   } catch (err) {
@@ -131,6 +140,9 @@ export function useEventsSupabase(): UseEventsResult {
         end_time: ev.endTime ?? null,
         type: ev.type,
         location: ev.location,
+        capacity: ev.capacity ?? null,
+        image: ev.image ?? null,
+        published: ev.published ?? true,
         source_calendar_id: ev.sourceCalendarId ?? null,
         source_uid: ev.sourceUid ?? null,
         created_by: ev.createdBy ?? null,
@@ -157,6 +169,9 @@ export function useEventsSupabase(): UseEventsResult {
         endTime: "end_time",
         type: "type",
         location: "location",
+        capacity: "capacity",
+        image: "image",
+        published: "published",
         sourceCalendarId: "source_calendar_id",
         sourceUid: "source_uid",
         createdBy: "created_by",

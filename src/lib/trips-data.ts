@@ -18,6 +18,22 @@ export interface Trip {
   gradient: string;
   /** Representative location photo (self-hosted under /public/trips). */
   image: string;
+  /**
+   * Admin publish gate. Only published trips render on the public
+   * marketing site; drafts are visible to admins in the CRM only.
+   * `undefined` counts as published so the legacy static seeds (and any
+   * trip created before this field existed) keep showing.
+   */
+  published?: boolean;
+  /** Featured trips surface in the homepage spotlight. */
+  featured?: boolean;
+  /** Manual sort order in listings (ascending; falls back to seed order). */
+  order?: number;
+  /** Firebase uid of the admin who created the trip in the live store. */
+  createdBy?: string;
+  /** ISO timestamps populated by the live store. */
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export const TRIPS_DATA: Trip[] = [

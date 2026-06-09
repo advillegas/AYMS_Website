@@ -349,9 +349,32 @@ export default function AdminCalendarPage() {
                     <span className="text-sm truncate flex-1">
                       {ev.title}
                     </span>
+                    {ev.published === false && (
+                      <Badge variant="outline" className="text-[9px] h-4">
+                        Draft
+                      </Badge>
+                    )}
                     <Badge variant="secondary" className="text-[9px] h-4">
                       {ev.type}
                     </Badge>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-6 px-2 text-xs"
+                      onClick={async () => {
+                        const next = ev.published === false;
+                        const ok = await updateEvent(ev.id, {
+                          published: next,
+                        });
+                        if (ok)
+                          toast.success(
+                            next ? "Event published." : "Moved to draft.",
+                          );
+                        else toast.error("Couldn't update visibility.");
+                      }}
+                    >
+                      {ev.published === false ? "Publish" : "Unpublish"}
+                    </Button>
                     <Button
                       size="sm"
                       variant="ghost"
@@ -399,6 +422,11 @@ export default function AdminCalendarPage() {
                     {ev.date}
                   </span>
                   <span className="truncate flex-1">{ev.title}</span>
+                  {ev.published === false && (
+                    <Badge variant="outline" className="text-[8px] h-4">
+                      Draft
+                    </Badge>
+                  )}
                   <Badge
                     variant={ev.sourceCalendarId ? "outline" : "secondary"}
                     className="text-[8px] h-4"
@@ -465,6 +493,7 @@ export default function AdminCalendarPage() {
               type: data.type ?? "social",
               location: data.location ?? "",
               capacity: data.capacity,
+              published: data.published ?? true,
               createdBy: user?.id,
             });
             if (id) {
@@ -605,6 +634,7 @@ function EventDialog({
   const [type, setType] = useState<string>("social");
   const [location, setLocation] = useState("");
   const [capacity, setCapacity] = useState("");
+  const [published, setPublished] = useState(true);
   const [busy, setBusy] = useState(false);
 
   const isEdit = !!event;
@@ -628,6 +658,7 @@ function EventDialog({
         ? String(event.capacity)
         : "",
     );
+    setPublished(event?.published !== false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, event?.id]);
 
@@ -641,6 +672,7 @@ function EventDialog({
     setType("social");
     setLocation("");
     setCapacity("");
+    setPublished(true);
   }
 
   return (
@@ -739,6 +771,30 @@ function EventDialog({
             </div>
           </div>
           <div className="grid gap-1.5">
+            <Label htmlFor="event-published">Visibility</Label>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant={published ? "default" : "outline"}
+                onClick={() => setPublished((p) => !p)}
+                className={
+                  published ? "bg-primary hover:bg-magenta" : undefined
+                }
+              >
+                {published ? (
+                  <Globe className="h-3.5 w-3.5 mr-1" />
+                ) : (
+                  <Pencil className="h-3.5 w-3.5 mr-1" />
+                )}
+                {published ? "Published" : "Draft"}
+              </Button>
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Drafts are hidden from the public site.
+            </p>
+          </div>
+          <div className="grid gap-1.5">
             <Label>Capacity (optional)</Label>
             <Input
               type="number"
@@ -786,6 +842,7 @@ function EventDialog({
                   type: type as FirestoreEvent["type"],
                   location: location.trim(),
                   capacity: capNum,
+                  published,
                 });
               } finally {
                 setBusy(false);

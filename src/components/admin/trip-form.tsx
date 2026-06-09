@@ -1,0 +1,466 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import type { Trip } from "@/lib/trips-data";
+
+/** Sensible brand gradient seeded into the form for brand-new trips. */
+const DEFAULT_GRADIENT = "from-[#FF0099] via-[#B51760] to-[#9B2C8A]";
+
+const STATUS_OPTIONS = [
+  { value: "available", label: "Available" },
+  { value: "sold-out", label: "Sold out" },
+  { value: "waitlist", label: "Waitlist" },
+  { value: "coming-soon", label: "Coming soon" },
+] as const;
+
+/** The shape we hand back to the page on save (no id/timestamps). */
+export type TripFormData = Omit<Trip, "id" | "createdAt" | "updatedAt">;
+
+/** Shared styling so the multi-line fields match the Input primitive. */
+const textareaClass =
+  "w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1.5 text-sm transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
+
+/** One item per line <-> string[] helpers. */
+function linesToArray(value: string): string[] {
+  return value
+    .split("\n")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+function arrayToLines(value: string[] | undefined): string {
+  return (value ?? []).join("\n");
+}
+
+/**
+ * Create / edit dialog for a marketing Trip. Controlled fields are
+ * (re)initialized whenever the dialog opens or the target trip changes
+ * (keyed on `[open, trip?.id]`) so typing is never clobbered mid-edit,
+ * and a `reset()` runs on close. Mirrors the calendar page's EventDialog.
+ */
+export function TripFormDialog({
+  open,
+  onOpenChange,
+  trip,
+  onSave,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  trip: Trip | null;
+  onSave: (data: TripFormData) => Promise<void>;
+}) {
+  const isEdit = !!trip;
+
+  const [title, setTitle] = useState("");
+  const [destination, setDestination] = useState("");
+  const [country, setCountry] = useState("");
+  const [dates, setDates] = useState("");
+  const [duration, setDuration] = useState("");
+  const [price, setPrice] = useState("");
+  const [deposit, setDeposit] = useState("");
+  const [spots, setSpots] = useState("");
+  const [spotsLeft, setSpotsLeft] = useState("");
+  const [status, setStatus] = useState<Trip["status"]>("available");
+  const [description, setDescription] = useState("");
+  const [highlights, setHighlights] = useState("");
+  const [includes, setIncludes] = useState("");
+  const [notIncluded, setNotIncluded] = useState("");
+  const [emoji, setEmoji] = useState("");
+  const [gradient, setGradient] = useState(DEFAULT_GRADIENT);
+  const [image, setImage] = useState("");
+  const [published, setPublished] = useState(true);
+  const [featured, setFeatured] = useState(false);
+  const [order, setOrder] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    setTitle(trip?.title ?? "");
+    setDestination(trip?.destination ?? "");
+    setCountry(trip?.country ?? "");
+    setDates(trip?.dates ?? "");
+    setDuration(trip?.duration ?? "");
+    setPrice(trip ? String(trip.price) : "");
+    setDeposit(trip ? String(trip.deposit) : "");
+    setSpots(trip ? String(trip.spots) : "");
+    setSpotsLeft(trip ? String(trip.spotsLeft) : "");
+    setStatus(trip?.status ?? "available");
+    setDescription(trip?.description ?? "");
+    setHighlights(arrayToLines(trip?.highlights));
+    setIncludes(arrayToLines(trip?.includes));
+    setNotIncluded(arrayToLines(trip?.notIncluded));
+    setEmoji(trip?.emoji ?? "");
+    setGradient(trip?.gradient || DEFAULT_GRADIENT);
+    setImage(trip?.image ?? "");
+    // `undefined` published counts as published (legacy seeds).
+    setPublished(trip ? trip.published !== false : true);
+    setFeatured(trip ? !!trip.featured : false);
+    setOrder(
+      trip && typeof trip.order === "number" ? String(trip.order) : "",
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, trip?.id]);
+
+  function reset() {
+    setTitle("");
+    setDestination("");
+    setCountry("");
+    setDates("");
+    setDuration("");
+    setPrice("");
+    setDeposit("");
+    setSpots("");
+    setSpotsLeft("");
+    setStatus("available");
+    setDescription("");
+    setHighlights("");
+    setIncludes("");
+    setNotIncluded("");
+    setEmoji("");
+    setGradient(DEFAULT_GRADIENT);
+    setImage("");
+    setPublished(true);
+    setFeatured(false);
+    setOrder("");
+  }
+
+  async function handleSave() {
+    if (!title.trim()) {
+      toast.error("Title is required.");
+      return;
+    }
+    const numFields: Array<[string, string]> = [
+      ["Price", price],
+      ["Deposit", deposit],
+      ["Spots", spots],
+      ["Spots left", spotsLeft],
+    ];
+    for (const [label, raw] of numFields) {
+      const n = Number(raw);
+      if (raw.trim() === "" || Number.isNaN(n) || n < 0) {
+        toast.error(`${label} must be a non-negative number.`);
+        return;
+      }
+    }
+    let orderNum: number | undefined;
+    if (order.trim() !== "") {
+      orderNum = Number(order);
+      if (Number.isNaN(orderNum)) {
+        toast.error("Order must be a number.");
+        return;
+      }
+    }
+
+    setBusy(true);
+    try {
+      const payload: TripFormData = {
+        title: title.trim(),
+        destination: destination.trim(),
+        country: country.trim(),
+        dates: dates.trim(),
+        duration: duration.trim(),
+        price: Number(price),
+        deposit: Number(deposit),
+        status,
+        spots: Number(spots),
+        spotsLeft: Number(spotsLeft),
+        description: description.trim(),
+        highlights: linesToArray(highlights),
+        includes: linesToArray(includes),
+        notIncluded: linesToArray(notIncluded),
+        emoji: emoji.trim(),
+        gradient: gradient.trim() || DEFAULT_GRADIENT,
+        image: image.trim(),
+        published,
+        featured,
+      };
+      // Only send `order` when explicitly set, so editing a trip and
+      // leaving Order blank doesn't reset its position to the end.
+      if (orderNum !== undefined) payload.order = orderNum;
+      await onSave(payload);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        if (!v) reset();
+        onOpenChange(v);
+      }}
+    >
+      <DialogContent className="sm:max-w-lg max-h-[88vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{isEdit ? "Edit Trip" : "Create Trip"}</DialogTitle>
+          <DialogDescription>
+            {isEdit
+              ? "Update the trip details shown on the marketing site."
+              : "Add a new trip to the marketing site."}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 py-2">
+          <div className="grid gap-1.5">
+            <Label>Title</Label>
+            <Input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g. Cancún, Mexico"
+              autoFocus
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-1.5">
+              <Label>Destination</Label>
+              <Input
+                value={destination}
+                onChange={(e) => setDestination(e.target.value)}
+                placeholder="e.g. Cancún"
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <Label>Country</Label>
+              <Input
+                value={country}
+                onChange={(e) => setCountry(e.target.value)}
+                placeholder="e.g. Mexico"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-1.5">
+              <Label>Dates</Label>
+              <Input
+                value={dates}
+                onChange={(e) => setDates(e.target.value)}
+                placeholder="e.g. August 20–25, 2026"
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <Label>Duration</Label>
+              <Input
+                value={duration}
+                onChange={(e) => setDuration(e.target.value)}
+                placeholder="e.g. 6 days / 5 nights"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-1.5">
+              <Label>Price ($)</Label>
+              <Input
+                type="number"
+                inputMode="numeric"
+                min={0}
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+                placeholder="1850"
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <Label>Deposit ($)</Label>
+              <Input
+                type="number"
+                inputMode="numeric"
+                min={0}
+                value={deposit}
+                onChange={(e) => setDeposit(e.target.value)}
+                placeholder="500"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-1.5">
+              <Label>Spots</Label>
+              <Input
+                type="number"
+                inputMode="numeric"
+                min={0}
+                value={spots}
+                onChange={(e) => setSpots(e.target.value)}
+                placeholder="20"
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <Label>Spots left</Label>
+              <Input
+                type="number"
+                inputMode="numeric"
+                min={0}
+                value={spotsLeft}
+                onChange={(e) => setSpotsLeft(e.target.value)}
+                placeholder="8"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-1.5">
+              <Label>Status</Label>
+              <select
+                value={status}
+                onChange={(e) =>
+                  setStatus(e.target.value as Trip["status"])
+                }
+                className="h-8 rounded-lg border border-input bg-background px-2.5 text-sm"
+              >
+                {STATUS_OPTIONS.map((s) => (
+                  <option key={s.value} value={s.value}>
+                    {s.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="grid gap-1.5">
+              <Label>Order (optional)</Label>
+              <Input
+                type="number"
+                inputMode="numeric"
+                value={order}
+                onChange={(e) => setOrder(e.target.value)}
+                placeholder="0"
+              />
+            </div>
+          </div>
+
+          <div className="grid gap-1.5">
+            <Label>Description</Label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Short marketing blurb for the trip."
+              rows={3}
+              className={textareaClass}
+            />
+          </div>
+
+          <div className="grid gap-1.5">
+            <Label>Highlights</Label>
+            <textarea
+              value={highlights}
+              onChange={(e) => setHighlights(e.target.value)}
+              placeholder={"One per line\nChichén Itzá day trip\nCenote swimming"}
+              rows={4}
+              className={textareaClass}
+            />
+            <p className="text-[11px] text-muted-foreground">
+              One item per line.
+            </p>
+          </div>
+
+          <div className="grid gap-1.5">
+            <Label>Includes</Label>
+            <textarea
+              value={includes}
+              onChange={(e) => setIncludes(e.target.value)}
+              placeholder={"One per line\n5 nights all-inclusive resort\nAirport transfers"}
+              rows={4}
+              className={textareaClass}
+            />
+            <p className="text-[11px] text-muted-foreground">
+              One item per line.
+            </p>
+          </div>
+
+          <div className="grid gap-1.5">
+            <Label>Not included</Label>
+            <textarea
+              value={notIncluded}
+              onChange={(e) => setNotIncluded(e.target.value)}
+              placeholder={"One per line\nInternational flights\nTravel insurance"}
+              rows={3}
+              className={textareaClass}
+            />
+            <p className="text-[11px] text-muted-foreground">
+              One item per line.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-1.5">
+              <Label>Emoji</Label>
+              <Input
+                value={emoji}
+                onChange={(e) => setEmoji(e.target.value)}
+                placeholder="🇲🇽"
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <Label>Image path</Label>
+              <Input
+                value={image}
+                onChange={(e) => setImage(e.target.value)}
+                placeholder="/trips/your-trip.jpg"
+              />
+            </div>
+          </div>
+
+          <div className="grid gap-1.5">
+            <Label>Gradient</Label>
+            <Input
+              value={gradient}
+              onChange={(e) => setGradient(e.target.value)}
+              placeholder={DEFAULT_GRADIENT}
+            />
+            <p className="text-[11px] text-muted-foreground">
+              Tailwind gradient stops used on the trip card.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-2 pt-1">
+            <Button
+              type="button"
+              size="sm"
+              variant={published ? "default" : "outline"}
+              onClick={() => setPublished((p) => !p)}
+              className={published ? "bg-primary hover:bg-magenta" : ""}
+            >
+              {published ? "Published" : "Draft"}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={featured ? "default" : "outline"}
+              onClick={() => setFeatured((f) => !f)}
+              className={featured ? "bg-primary hover:bg-magenta" : ""}
+            >
+              {featured ? "Featured" : "Not featured"}
+            </Button>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSave}
+            disabled={busy}
+            className="bg-primary hover:bg-magenta"
+          >
+            {busy ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+            {isEdit ? "Save Changes" : "Create Trip"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

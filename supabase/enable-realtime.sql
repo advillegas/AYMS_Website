@@ -8,7 +8,7 @@ declare t text;
 begin
   foreach t in array array[
     'users','messages','conversations','conversation_messages','friendships',
-    'roles','user_roles','channels','events','event_comments','calendar_sync_configs'
+    'roles','user_roles','channels','trips','events','event_comments','calendar_sync_configs'
   ]
   loop
     execute format('alter table public.%I replica identity full;', t);

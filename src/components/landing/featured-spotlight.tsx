@@ -31,7 +31,8 @@ import {
   Loader2,
   Plane,
 } from "lucide-react";
-import { TRIPS_DATA, type Trip } from "@/lib/trips-data";
+import { type Trip } from "@/lib/trips-data";
+import { useTrips } from "@/lib/use-trips";
 import { useEvents } from "@/lib/use-events";
 import { useNewsletter } from "@/lib/use-newsletter";
 
@@ -49,12 +50,32 @@ function tripStart(t: Trip): number {
   return Number.isNaN(parsed) ? Number.MAX_SAFE_INTEGER : parsed;
 }
 
-function pickSpotlightTrip(): Trip {
+/**
+ * Pick the spotlight trip from the LIVE published list.
+ *
+ * Priority:
+ *   1. published trips only (`published !== false`)
+ *   2. prefer `featured === true`; if none featured, consider all published
+ *   3. within that set, the soonest upcoming trip wins, preferring an
+ *      `available` (bookable) one, then the soonest of any status
+ *
+ * Returns null when there are no published trips yet (e.g. before the live
+ * list resolves) so the caller can gracefully hide the trip card.
+ */
+function pickSpotlightTrip(trips: Trip[]): Trip | null {
+  const published = trips.filter((t) => t.published !== false);
+  if (published.length === 0) return null;
+
+  const featured = published.filter((t) => t.featured === true);
+  const candidates = featured.length > 0 ? featured : published;
+
   const now = Date.now();
-  const upcoming = TRIPS_DATA.filter((t) => tripStart(t) >= now).sort(
+  const upcoming = candidates
+    .filter((t) => tripStart(t) >= now)
+    .sort((a, b) => tripStart(a) - tripStart(b));
+  const pool = upcoming.length > 0 ? upcoming : [...candidates].sort(
     (a, b) => tripStart(a) - tripStart(b),
   );
-  const pool = upcoming.length > 0 ? upcoming : [...TRIPS_DATA];
   // Prefer a bookable (available) trip; otherwise the soonest of any status.
   return pool.find((t) => t.status === "available") ?? pool[0];
 }
@@ -148,20 +169,25 @@ function SpotlightSignup({ tripId }: { tripId: string }) {
 
 export function FeaturedSpotlight() {
   const reduceMotion = useReducedMotion();
+  const { trips } = useTrips();
   const { events } = useEvents();
 
-  const trip = useMemo(() => pickSpotlightTrip(), []);
+  // Spotlight is chosen from the live, admin-published trip list.
+  const trip = useMemo(() => pickSpotlightTrip(trips), [trips]);
 
   const upcomingEvents = useMemo(() => {
     const today = new Date().toISOString().slice(0, 10);
     return events
+      // Drafts (published === false) are admin-only.
+      .filter((e) => e.published !== false)
       .filter((e) => e.date && e.date >= today)
       .sort((a, b) => a.date.localeCompare(b.date))
       .slice(0, 4);
   }, [events]);
 
-  const statusLabel =
-    trip.status === "available"
+  const statusLabel = !trip
+    ? ""
+    : trip.status === "available"
       ? `${trip.spotsLeft} spots left`
       : trip.status === "waitlist"
         ? "Waitlist open"
@@ -199,7 +225,8 @@ export function FeaturedSpotlight() {
         </motion.div>
 
         <div className="mt-14 grid items-start gap-6 lg:grid-cols-5">
-          {/* Spotlight trip card */}
+          {/* Spotlight trip card — only when a published trip is available */}
+          {trip && (
           <motion.div
             initial={reduceMotion ? false : { opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
@@ -285,13 +312,14 @@ export function FeaturedSpotlight() {
               </div>
             </div>
           </motion.div>
+          )}
 
           {/* Side column: upcoming events + newsletter capture */}
           <motion.div
             initial={reduceMotion ? false : { opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-            className="space-y-6 lg:col-span-2"
+            className={`space-y-6 lg:col-span-2 ${trip ? "" : "lg:col-start-2 lg:col-span-3"}`}
           >
             {/* Upcoming events */}
             <div className="overflow-hidden rounded-3xl border border-white/12 bg-white/[0.05] backdrop-blur-md">
@@ -345,7 +373,7 @@ export function FeaturedSpotlight() {
                 Get new trips &amp; events in your inbox. No spam, ever.
               </p>
               <div className="mt-4">
-                <SpotlightSignup tripId={trip.id} />
+                <SpotlightSignup tripId={trip?.id ?? ""} />
               </div>
             </div>
           </motion.div>

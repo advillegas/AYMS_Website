@@ -330,7 +330,7 @@ export default function TripsPage() {
 
       {/* Trip detail dialog */}
       <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto glass-strong border-rosa/30 elevate-4">
+        <DialogContent className="max-w-2xl max-h-[90vh] gap-0 overflow-y-auto glass-strong border-rosa/30 elevate-4">
           {selected && <TripDetail trip={selected} />}
         </DialogContent>
       </Dialog>
@@ -342,7 +342,7 @@ function TripDetail({ trip }: { trip: Trip }) {
   const st = statusStyle(trip.status);
   return (
     <>
-      <div className={`-mx-6 -mt-6 h-52 relative overflow-hidden rounded-t-lg bg-gradient-to-br ${trip.gradient}`}>
+      <div className={`-mx-4 -mt-4 h-52 relative overflow-hidden rounded-t-xl bg-gradient-to-br ${trip.gradient}`}>
         <Image
           src={trip.image}
           alt={`${trip.destination}, ${trip.country}`}

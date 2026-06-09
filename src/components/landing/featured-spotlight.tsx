@@ -18,6 +18,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { motion, useReducedMotion } from "framer-motion";
 import { toast } from "sonner";
 import {
@@ -207,10 +208,19 @@ export function FeaturedSpotlight() {
           >
             <div className="elevate-float overflow-hidden rounded-3xl border border-white/12 bg-white/[0.05] backdrop-blur-md">
               <div
-                className={`relative flex h-44 items-center justify-center bg-gradient-to-br ${trip.gradient}`}
+                className={`relative h-44 overflow-hidden bg-gradient-to-br ${trip.gradient}`}
               >
-                <div className="absolute inset-0 pattern-dots opacity-20" />
-                <span className="relative text-7xl" aria-hidden="true">
+                {/* unoptimized: ExFAT volume breaks Next's image optimizer in dev */}
+                <Image
+                  src={trip.image}
+                  alt={`${trip.destination}, ${trip.country}`}
+                  fill
+                  unoptimized
+                  sizes="(max-width: 1024px) 100vw, 60vw"
+                  className="object-cover"
+                />
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-black/10" aria-hidden="true" />
+                <span className="absolute bottom-3 left-4 text-3xl drop-shadow-lg" aria-hidden="true">
                   {trip.emoji}
                 </span>
                 <span className="absolute right-4 top-4 rounded-full bg-black/30 px-3 py-1 text-xs font-semibold text-white backdrop-blur-sm">

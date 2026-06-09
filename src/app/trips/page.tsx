@@ -29,6 +29,7 @@ import {
   Plane,
 } from "lucide-react";
 import { CmsPageWrapper } from "@/components/admin/cms-page-wrapper";
+import Image from "next/image";
 
 const STATUS_STYLE: Record<string, { label: string; cls: string }> = {
   available: { label: "Book Now", cls: "bg-white/90 text-green-700 border-white/50 backdrop-blur-sm shadow-sm" },
@@ -146,8 +147,8 @@ export default function TripsPage() {
                     aria-label={`View ${trip.title} — only ${trip.spotsLeft} spot${trip.spotsLeft !== 1 ? "s" : ""} left`}
                     className="lift group shrink-0 w-64 snap-center flex items-center gap-4 rounded-2xl border border-[#FF7F50]/20 bg-white p-4 elevate-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]"
                   >
-                    <div className={`grain relative flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${trip.gradient} text-2xl`} aria-hidden="true">
-                      {trip.emoji}
+                    <div className={`relative h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-gradient-to-br ${trip.gradient}`} aria-hidden="true">
+                      <Image src={trip.image} alt="" fill unoptimized sizes="56px" className="object-cover" />
                     </div>
                     <div className="min-w-0">
                       <p className="text-sm font-semibold truncate font-display text-ink group-hover:text-[#B51760] transition-colors">{trip.title}</p>
@@ -185,10 +186,18 @@ export default function TripsPage() {
                         className="photo-card group block w-full text-left elevate-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]"
                       >
                         <div className="photo-card-media p-2.5">
-                          <div className={`photo-card-zoom grain relative flex h-44 items-center justify-center rounded-[1.1rem] bg-gradient-to-br ${trip.gradient}`}>
-                            <span className="relative text-5xl drop-shadow-lg" aria-hidden="true">
-                              {trip.emoji}
-                            </span>
+                          <div className={`photo-card-zoom grain relative h-44 overflow-hidden rounded-[1.1rem] bg-gradient-to-br ${trip.gradient}`}>
+                            {/* unoptimized: ExFAT volume breaks Next's image optimizer in dev */}
+                            <Image
+                              src={trip.image}
+                              alt={`${trip.destination}, ${trip.country}`}
+                              fill
+                              unoptimized
+                              sizes="(max-width: 640px) 100vw, (max-width: 1280px) 33vw, 25vw"
+                              className="object-cover"
+                            />
+                            {/* scrim so white status badge + heart stay legible over any photo */}
+                            <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/25 via-transparent to-black/15" aria-hidden="true" />
                             <span className="glass-control absolute top-3 right-3 h-9 w-9" aria-hidden="true">
                               <span className="text-base leading-none text-white">♡</span>
                             </span>
@@ -334,8 +343,18 @@ function TripDetail({ trip }: { trip: Trip }) {
   const st = statusStyle(trip.status);
   return (
     <>
-      <div className={`grain -mx-6 -mt-6 h-52 bg-gradient-to-br ${trip.gradient} flex items-center justify-center relative rounded-t-lg`}>
-        <span className="relative text-7xl drop-shadow-lg" aria-hidden="true">{trip.emoji}</span>
+      <div className={`-mx-6 -mt-6 h-52 relative overflow-hidden rounded-t-lg bg-gradient-to-br ${trip.gradient}`}>
+        <Image
+          src={trip.image}
+          alt={`${trip.destination}, ${trip.country}`}
+          fill
+          unoptimized
+          priority
+          sizes="(max-width: 768px) 100vw, 672px"
+          className="object-cover"
+        />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-transparent" aria-hidden="true" />
+        <span className="absolute bottom-3 left-4 text-4xl drop-shadow-lg" aria-hidden="true">{trip.emoji}</span>
       </div>
       <DialogHeader className="mt-4">
         <div className="flex items-center gap-3">

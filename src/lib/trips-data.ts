@@ -16,6 +16,8 @@ export interface Trip {
   notIncluded: string[];
   emoji: string;
   gradient: string;
+  /** Representative location photo (self-hosted under /public/trips). */
+  image: string;
 }
 
 export const TRIPS_DATA: Trip[] = [
@@ -37,6 +39,7 @@ export const TRIPS_DATA: Trip[] = [
     notIncluded: ["International flights", "Travel insurance", "Personal spending"],
     emoji: "🇲🇽",
     gradient: "from-[#FF0099] via-[#B51760] to-[#C44B3F]",
+    image: "/trips/cancun-aug-26.jpg",
   },
   {
     id: "napa-oct-26",
@@ -56,6 +59,7 @@ export const TRIPS_DATA: Trip[] = [
     notIncluded: ["Flights/driving to Napa", "Travel insurance", "Personal wine purchases"],
     emoji: "🍷",
     gradient: "from-[#DAA520] via-[#C44B3F] to-[#FF0099]",
+    image: "/trips/napa-oct-26.jpg",
   },
   {
     id: "nyc-nov-26",
@@ -75,6 +79,7 @@ export const TRIPS_DATA: Trip[] = [
     notIncluded: ["Flights to NYC", "Travel insurance", "Personal shopping"],
     emoji: "🗽",
     gradient: "from-[#9B2C8A] via-[#B51760] to-[#FF0099]",
+    image: "/trips/nyc-nov-26.jpg",
   },
   {
     id: "colombia-dec-26",
@@ -94,6 +99,7 @@ export const TRIPS_DATA: Trip[] = [
     notIncluded: ["International flights", "Travel insurance", "Meals not listed"],
     emoji: "🇨🇴",
     gradient: "from-[#DAA520] via-[#FF0099] to-[#9B2C8A]",
+    image: "/trips/colombia-dec-26.jpg",
   },
   {
     id: "bali-jun-26",
@@ -113,6 +119,7 @@ export const TRIPS_DATA: Trip[] = [
     notIncluded: ["International flights", "Travel insurance", "Visa fees"],
     emoji: "🏝️",
     gradient: "from-[#2D8B6F] via-[#DAA520] to-[#FF0099]",
+    image: "/trips/bali-jun-26.jpg",
   },
   {
     id: "morocco-may-26",
@@ -132,6 +139,7 @@ export const TRIPS_DATA: Trip[] = [
     notIncluded: ["International flights", "Travel insurance", "Souvenirs"],
     emoji: "🇲🇦",
     gradient: "from-[#C44B3F] via-[#DAA520] to-[#FF0099]",
+    image: "/trips/morocco-may-26.jpg",
   },
   {
     id: "japan-nov-26",
@@ -151,6 +159,7 @@ export const TRIPS_DATA: Trip[] = [
     notIncluded: ["International flights", "Travel insurance", "Personal shopping"],
     emoji: "🇯🇵",
     gradient: "from-[#FF0099] via-[#FF6BA8] to-[#FFB3D0]",
+    image: "/trips/japan-nov-26.jpg",
   },
   {
     id: "safari-jul-26",
@@ -170,6 +179,7 @@ export const TRIPS_DATA: Trip[] = [
     notIncluded: ["International flights", "Travel insurance", "Visa fees", "Tips"],
     emoji: "🦁",
     gradient: "from-[#DAA520] via-[#C44B3F] to-[#8B4513]",
+    image: "/trips/safari-jul-26.jpg",
   },
 ];
 

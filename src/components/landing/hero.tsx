@@ -1,8 +1,9 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { motion, useReducedMotion } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Heart, Users, Sparkles, ArrowDown } from "lucide-react";
@@ -34,6 +35,60 @@ const STATS = [
   { value: "30+", label: "trips" },
   { value: "12", label: "countries" },
 ];
+
+/**
+ * Inspiring on-brand headline variants. Index 0 is the canonical brand line;
+ * the rest crossfade in every few seconds. Each keeps one accent word so the
+ * italic marker-swipe treatment stays consistent across rotations.
+ */
+const HEADLINES: { before: string; accent: string }[] = [
+  { before: "The world is better with ", accent: "amigas" },
+  { before: "Come as strangers, leave as ", accent: "amigas" },
+  { before: "Adventure is always better ", accent: "together" },
+  { before: "Sisterhood knows no ", accent: "borders" },
+  { before: "Your next trip, your new ", accent: "family" },
+  { before: "We don't just travel — we ", accent: "belong" },
+  { before: "Find your people, find the ", accent: "world" },
+  { before: "Every journey starts with an ", accent: "amiga" },
+  { before: "Wander far, grow ", accent: "closer" },
+  { before: "Explore boldly, never ", accent: "alone" },
+  { before: "Bigger adventures, deeper ", accent: "friendships" },
+  { before: "Make memories that last a ", accent: "lifetime" },
+];
+
+/** Auto-rotating hero headline. Pauses entirely when reduced-motion is set. */
+function RotatingHeadline() {
+  const prefersReducedMotion = useReducedMotion();
+  const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    if (prefersReducedMotion) return;
+    const id = setInterval(
+      () => setIndex((n) => (n + 1) % HEADLINES.length),
+      4200,
+    );
+    return () => clearInterval(id);
+  }, [prefersReducedMotion]);
+
+  const headline = HEADLINES[index];
+  return (
+    <h1 className="text-editorial font-display text-ink text-balance text-pretty min-h-[2em]">
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.span
+          key={index}
+          className="inline-block"
+          initial={prefersReducedMotion ? false : { opacity: 0, y: "0.35em" }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: "-0.35em" }}
+          transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
+        >
+          {headline.before}
+          <span className="font-display-italic marker-swipe">{headline.accent}</span>
+        </motion.span>
+      </AnimatePresence>
+    </h1>
+  );
+}
 
 export function Hero() {
   const prefersReducedMotion = useReducedMotion();
@@ -102,11 +157,7 @@ export function Hero() {
               </span>
             </motion.div>
 
-            <h1 className="text-editorial font-display text-ink text-balance">
-              The world is better
-              <br className="hidden sm:block" /> with{" "}
-              <span className="font-display-italic marker-swipe">amigas</span>
-            </h1>
+            <RotatingHeadline />
 
             <p className="text-lead text-ink-soft mx-auto mt-7 max-w-2xl">
               The Latina travel community where sisterhood meets adventure.

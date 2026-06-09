@@ -65,6 +65,7 @@ interface FirestoreEventDoc {
   type?: string;
   location?: string;
   capacity?: number | null;
+  image?: string;
   sourceCalendarId?: string;
   sourceUid?: string;
   syncedAt?: Timestamp;
@@ -97,6 +98,7 @@ function docToEvent(
     type: (data.type as EventType) ?? "social",
     location: data.location ?? "",
     capacity: data.capacity ?? undefined,
+    image: data.image,
     sourceCalendarId: data.sourceCalendarId,
     sourceUid: data.sourceUid,
     syncedAt: tsToIso(data.syncedAt),
@@ -130,6 +132,7 @@ async function seedIfEmpty(): Promise<void> {
         endDate: ev.endDate ?? null,
         type: ev.type,
         location: ev.location,
+        image: ev.image ?? null,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
@@ -219,6 +222,7 @@ export function useEvents(): UseEventsResult {
           type: ev.type,
           location: ev.location,
           capacity: ev.capacity ?? null,
+          image: ev.image ?? null,
           sourceCalendarId: ev.sourceCalendarId ?? null,
           sourceUid: ev.sourceUid ?? null,
           createdBy: ev.createdBy ?? null,

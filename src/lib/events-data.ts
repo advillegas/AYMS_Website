@@ -25,6 +25,12 @@ export interface CalendarEvent {
    * Omit (or 0) for unlimited.
    */
   capacity?: number;
+  /**
+   * Optional representative photo (self-hosted under /public). When set, the
+   * events list renders it behind the date stamp; otherwise the brand gradient
+   * shows. Lets us add imagery where an event maps to a real place/activity.
+   */
+  image?: string;
 }
 
 export const COMMUNITY_EVENTS: CalendarEvent[] = [
@@ -36,6 +42,7 @@ export const COMMUNITY_EVENTS: CalendarEvent[] = [
     date: "2026-05-19",
     type: "social",
     location: "Local Café, LA",
+    image: "/events/coffee.jpg",
   },
   {
     id: "e2",
@@ -46,6 +53,7 @@ export const COMMUNITY_EVENTS: CalendarEvent[] = [
     endDate: "2026-07-18",
     type: "camp",
     location: "Camp Wilderness, CA",
+    image: "/events/summer-camp.jpg",
   },
   {
     id: "e3",
@@ -63,6 +71,7 @@ export const COMMUNITY_EVENTS: CalendarEvent[] = [
     endDate: "2026-08-25",
     type: "trip",
     location: "Cancún, Mexico",
+    image: "/trips/cancun-aug-26.jpg",
   },
   {
     id: "e5",
@@ -104,5 +113,6 @@ export const COMMUNITY_EVENTS: CalendarEvent[] = [
     date: "2026-04-26",
     type: "meetup",
     location: "Griffith Observatory, LA",
+    image: "/events/hiking.jpg",
   },
 ];

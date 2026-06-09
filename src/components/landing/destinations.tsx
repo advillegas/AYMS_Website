@@ -1,19 +1,20 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { motion, useReducedMotion } from "framer-motion";
 import { MapPin, Plane } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const DESTINATIONS = [
-  { name: "Mexico", emoji: "🇲🇽", gradient: "from-[#FF0099] to-[#C44B3F]", trips: 3 },
-  { name: "Colombia", emoji: "🇨🇴", gradient: "from-[#DAA520] to-[#C44B3F]", trips: 1 },
-  { name: "Bali", emoji: "🏝️", gradient: "from-[#2D8B6F] to-[#DAA520]", trips: 2 },
-  { name: "Japan", emoji: "🇯🇵", gradient: "from-[#FF0099] to-[#FF6BA8]", trips: 1 },
-  { name: "Kenya", emoji: "🦁", gradient: "from-[#DAA520] to-[#8B4513]", trips: 1 },
-  { name: "Morocco", emoji: "🇲🇦", gradient: "from-[#C44B3F] to-[#DAA520]", trips: 1 },
-  { name: "Peru", emoji: "🇵🇪", gradient: "from-[#9B2C8A] to-[#FF0099]", trips: 1 },
-  { name: "Greece", emoji: "🇬🇷", gradient: "from-[#2D6BB8] to-[#2D8B6F]", trips: 1 },
+  { name: "Mexico", emoji: "🇲🇽", gradient: "from-[#FF0099] to-[#C44B3F]", image: "/trips/cancun-aug-26.jpg", trips: 3 },
+  { name: "Colombia", emoji: "🇨🇴", gradient: "from-[#DAA520] to-[#C44B3F]", image: "/trips/colombia-dec-26.jpg", trips: 1 },
+  { name: "Bali", emoji: "🏝️", gradient: "from-[#2D8B6F] to-[#DAA520]", image: "/trips/bali-jun-26.jpg", trips: 2 },
+  { name: "Japan", emoji: "🇯🇵", gradient: "from-[#FF0099] to-[#FF6BA8]", image: "/trips/japan-nov-26.jpg", trips: 1 },
+  { name: "Kenya", emoji: "🦁", gradient: "from-[#DAA520] to-[#8B4513]", image: "/trips/safari-jul-26.jpg", trips: 1 },
+  { name: "Morocco", emoji: "🇲🇦", gradient: "from-[#C44B3F] to-[#DAA520]", image: "/trips/morocco-may-26.jpg", trips: 1 },
+  { name: "Peru", emoji: "🇵🇪", gradient: "from-[#9B2C8A] to-[#FF0099]", image: "/destinations/peru.jpg", trips: 1 },
+  { name: "Greece", emoji: "🇬🇷", gradient: "from-[#2D6BB8] to-[#2D8B6F]", image: "/destinations/greece.jpg", trips: 1 },
 ];
 
 export function Destinations() {
@@ -47,17 +48,16 @@ export function Destinations() {
               transition={{ delay: prefersReducedMotion ? 0 : i * 0.06, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
             >
               <Link href="/trips" className="photo-card group block elevate-2" aria-label={`${dest.name} — ${dest.trips} trip${dest.trips !== 1 ? "s" : ""}`}>
-                <div
-                  className={cn(
-                    "photo-card-media photo-card-zoom aspect-[20/19] grain flex items-center justify-center bg-gradient-to-br",
-                    dest.gradient,
-                  )}
-                >
-                  <div className="absolute inset-0 pattern-dots opacity-10" />
-                  <span className="relative text-5xl drop-shadow-lg transition-transform duration-500 group-hover:scale-110" aria-hidden="true">
+                <div className="photo-card-media aspect-[20/19]">
+                  <div className={cn("photo-card-zoom grain absolute inset-0 bg-gradient-to-br", dest.gradient)}>
+                    <Image src={dest.image} alt={`${dest.name} — travel destination`} fill unoptimized sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw" className="object-cover" />
+                    <div className="absolute inset-0 pattern-dots opacity-10" aria-hidden="true" />
+                    <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-black/5" aria-hidden="true" />
+                  </div>
+                  <span className="absolute bottom-2.5 left-3 z-10 text-3xl drop-shadow-lg" aria-hidden="true">
                     {dest.emoji}
                   </span>
-                  <span className="pill-glass absolute left-3 top-3 inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-white">
+                  <span className="pill-glass absolute left-3 top-3 z-10 inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-white">
                     <Plane className="h-3 w-3" aria-hidden="true" />
                     {dest.trips} trip{dest.trips !== 1 ? "s" : ""}
                   </span>

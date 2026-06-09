@@ -6,6 +6,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Calendar, Heart, Star } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { FlipCard } from "@/components/ui/flip-card";
 
 const TRIPS = [
@@ -16,6 +17,7 @@ const TRIPS = [
     tag: "International",
     gradient: "from-primary/25 via-magenta/20 to-rosa/15",
     gradientBack: "from-primary via-magenta to-coral",
+    image: "/trips/cancun-aug-26.jpg",
     emoji: "🇲🇽",
   },
   {
@@ -25,6 +27,7 @@ const TRIPS = [
     tag: "Domestic",
     gradient: "from-coral/25 via-coral/20 to-rosa/15",
     gradientBack: "from-coral via-coral to-primary",
+    image: "/trips/napa-oct-26.jpg",
     emoji: "🍷",
   },
   {
@@ -34,6 +37,7 @@ const TRIPS = [
     tag: "Domestic",
     gradient: "from-brand-pink/25 via-primary/20 to-rosa/15",
     gradientBack: "from-brand-pink via-magenta to-primary",
+    image: "/trips/nyc-nov-26.jpg",
     emoji: "🗽",
   },
 ];
@@ -77,13 +81,17 @@ export function Trips() {
                 className="h-[440px] cursor-pointer rounded-2xl"
                 front={
                   <article className="photo-card flex h-full flex-col elevate-2">
-                    <div className={`photo-card-media photo-card-zoom h-48 grain flex items-center justify-center bg-gradient-to-br ${trip.gradient}`}>
-                      <div className="absolute inset-0 pattern-dots opacity-15" />
-                      <span className="text-6xl relative z-10 drop-shadow-lg" aria-hidden="true">{trip.emoji}</span>
-                      <span className="glass-control absolute right-3 top-3 h-9 w-9" aria-hidden="true">
+                    <div className="photo-card-media h-48">
+                      <div className={`photo-card-zoom grain absolute inset-0 bg-gradient-to-br ${trip.gradient}`}>
+                        <Image src={trip.image} alt={`${trip.en.title} — group trip`} fill unoptimized sizes="(max-width: 768px) 100vw, 33vw" className="object-cover" />
+                        <div className="absolute inset-0 pattern-dots opacity-10" aria-hidden="true" />
+                        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/25 via-transparent to-black/20" aria-hidden="true" />
+                      </div>
+                      <span className="absolute bottom-3 left-3 z-10 text-4xl drop-shadow-lg" aria-hidden="true">{trip.emoji}</span>
+                      <span className="glass-control absolute right-3 top-3 z-10 h-9 w-9" aria-hidden="true">
                         <Heart className="h-4 w-4 text-[#FF0099]" />
                       </span>
-                      <Badge className="absolute left-3 top-3 border-[#FF7F50]/25 bg-[#FF7F50]/15 text-[10px] font-bold text-[#B5481E] backdrop-blur-sm">{trip.tag}</Badge>
+                      <Badge className="absolute left-3 top-3 z-10 border-white/25 bg-black/30 text-[10px] font-bold text-white backdrop-blur-sm">{trip.tag}</Badge>
                     </div>
                     <div className="flex flex-1 flex-col p-4">
                       <h3 className="font-display text-lg text-ink">{trip.en.title}</h3>

@@ -19,6 +19,7 @@ import { Separator } from "@/components/ui/separator";
 import { Calendar, MapPin, Clock, Sparkles } from "lucide-react";
 import { format, parseISO, isPast, isValid } from "date-fns";
 import Link from "next/link";
+import Image from "next/image";
 import { CmsPageWrapper } from "@/components/admin/cms-page-wrapper";
 import { EventRsvp } from "@/components/community/event-rsvp";
 
@@ -204,23 +205,31 @@ export default function EventsPage() {
                         aria-label={`View details for ${ev.title}${d ? `, ${format(d, "MMMM d, yyyy")}` : ""}`}
                         className="lift group flex w-full items-stretch gap-0 rounded-2xl border border-[#221019]/8 bg-white overflow-hidden text-left elevate-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]"
                       >
-                        {/* Date block — gradient media stamp */}
-                        <div className={`grain relative flex w-24 shrink-0 flex-col items-center justify-center bg-gradient-to-br ${grad} text-white p-4`}>
-                          {d ? (
+                        {/* Date block — photo (when available) behind the date stamp, else gradient */}
+                        <div className={`grain relative flex w-24 shrink-0 flex-col items-center justify-center overflow-hidden bg-gradient-to-br ${grad} text-white p-4`}>
+                          {ev.image && (
                             <>
-                              <span className="text-[10px] font-bold uppercase tracking-wider leading-none opacity-80">
-                                {format(d, "MMM")}
-                              </span>
-                              <span className="text-3xl font-extrabold leading-tight font-[family-name:var(--font-heading)]">
-                                {format(d, "d")}
-                              </span>
-                              <span className="text-[10px] opacity-70 mt-0.5">
-                                {format(d, "EEE")}
-                              </span>
+                              <Image src={ev.image} alt="" fill unoptimized sizes="96px" className="object-cover" />
+                              <div className="absolute inset-0 bg-gradient-to-br from-black/55 via-black/35 to-black/50" aria-hidden="true" />
                             </>
-                          ) : (
-                            <Calendar className="h-6 w-6 opacity-80" aria-hidden="true" />
                           )}
+                          <div className="relative z-10 flex flex-col items-center">
+                            {d ? (
+                              <>
+                                <span className="text-[10px] font-bold uppercase tracking-wider leading-none opacity-80">
+                                  {format(d, "MMM")}
+                                </span>
+                                <span className="text-3xl font-extrabold leading-tight font-[family-name:var(--font-heading)]">
+                                  {format(d, "d")}
+                                </span>
+                                <span className="text-[10px] opacity-70 mt-0.5">
+                                  {format(d, "EEE")}
+                                </span>
+                              </>
+                            ) : (
+                              <Calendar className="h-6 w-6 opacity-80" aria-hidden="true" />
+                            )}
+                          </div>
                         </div>
 
                         {/* Info */}

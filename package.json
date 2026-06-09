@@ -19,6 +19,7 @@
     "@emoji-mart/react": "^1.1.1",
     "@stream-io/node-sdk": "^0.7.56",
     "@stream-io/video-react-sdk": "^1.36.0",
+    "@supabase/supabase-js": "^2.108.0",
     "ai": "^6.0.168",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

@@ -11,6 +11,7 @@ import {
   BarChart3,
   Plane,
   Inbox,
+  FileSignature,
 } from "lucide-react";
 
 const TILES = [
@@ -25,6 +26,12 @@ const TILES = [
     icon: Inbox,
     title: "Leads & inquiries",
     desc: "Trip reservations, waitlists, and newsletter signups — your pipeline in one place.",
+  },
+  {
+    href: "/community/admin/agreements",
+    icon: FileSignature,
+    title: "Agreements",
+    desc: "Send & sign trip agreements; convert prospects to clients.",
   },
   {
     href: "/community/admin/roles",

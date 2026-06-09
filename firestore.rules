@@ -290,6 +290,24 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    /* --------------------------- agreements ---------------------------- */
+    // E-signature documents (PandaDoc-style). The admin authors, sends and
+    // counter-signs; the prospect (the member the doc is addressed to) may
+    // read and sign their OWN agreement. No public read — these carry PII
+    // and legal commitments. A non-admin LIST must be constrained to
+    // prospectId == uid (the query in use-agreements.ts does this); the
+    // catch-all denies anything broader.
+    // HARDEN BEFORE LAUNCH: the prospect update allow is intentionally
+    // broad to let the signing flow write signature fields under the
+    // current test-mode posture. Before launch, restrict it to only the
+    // signature/disclosure/status fields (request.resource.data.diff).
+    match /agreements/{agreementId} {
+      allow read:   if isAdmin() || (signedIn() && request.auth.uid == resource.data.prospectId);
+      allow create: if isAdmin();
+      allow update: if isAdmin() || (signedIn() && request.auth.uid == resource.data.prospectId);
+      allow delete: if isAdmin();
+    }
+
     /* ---------------------------- catch-all ---------------------------- */
     // Anything not matched above is denied. Specific allows above are NOT
     // overridden by this — it is only a safety net for unmodeled paths.

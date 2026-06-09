@@ -254,6 +254,33 @@ create table if not exists public.calendar_sync_configs (
   created_at             timestamptz not null default now()
 );
 
+-- ---------- agreements (PandaDoc-style e-signature documents) ----------
+create table if not exists public.agreements (
+  id                       text primary key,
+  reservation_id           text,
+  trip_id                  text,
+  trip_title               text not null default '',
+  prospect_id              text not null default '',
+  prospect_name            text not null default '',
+  prospect_email           text,
+  template_id              text not null default '',
+  title                    text not null default '',
+  body_markdown            text not null default '',
+  disclosures              jsonb not null default '[]'::jsonb,
+  status                   text not null default 'draft',
+  admin_signer_name        text,
+  admin_signature_text     text,
+  admin_signed_at          timestamptz,
+  prospect_signer_name     text,
+  prospect_signature_text  text,
+  prospect_signed_at       timestamptz,
+  created_by               text,
+  created_at               timestamptz not null default now(),
+  updated_at               timestamptz not null default now()
+);
+create index if not exists agreements_prospect_idx on public.agreements (prospect_id);
+create index if not exists agreements_status_idx on public.agreements (status);
+
 -- ============================================================
 -- Row Level Security — enable everywhere, permissive for now
 -- (mirrors current Firestore test-mode). HARDEN BEFORE LAUNCH.
@@ -264,7 +291,7 @@ begin
   foreach t in array array[
     'users','messages','conversations','conversation_messages','friendships',
     'roles','user_roles','channels','events','event_comments','calendar_sync_configs',
-    'trips'
+    'trips','agreements'
   ]
   loop
     execute format('alter table public.%I enable row level security;', t);

@@ -731,3 +731,41 @@
     animation: none !important;
   }
 }
+
+/* ------------------------------------------------------------------ *
+ * Print — clean agreement document.
+ *
+ * The community shell wraps every page in a fixed header + sidebar that
+ * a single page can't reach with Tailwind `print:` variants. This rule
+ * is scoped with `:has(.agreement-doc)` so it ONLY engages when a signed
+ * agreement is on screen: it unwraps the shell's flex/overflow chrome so
+ * the document isn't clipped, hides everything outside the document, and
+ * forces black-on-white. Nothing here affects printing any other page.
+ * ------------------------------------------------------------------ */
+@media print {
+  body:has(.agreement-doc) {
+    background: #fff !important;
+  }
+  /* Unclip the shell: it uses h-screen + overflow-hidden which would
+     otherwise crop the document to a single viewport on paper. */
+  body:has(.agreement-doc) * {
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+  }
+  /* Hide the community chrome (top header + channel sidebar) and any
+     element explicitly opted out with `print:hidden`. */
+  body:has(.agreement-doc) header,
+  body:has(.agreement-doc) nav,
+  body:has(.agreement-doc) aside,
+  body:has(.agreement-doc) .print\:hidden {
+    display: none !important;
+  }
+  .agreement-doc {
+    color: #000 !important;
+    box-shadow: none !important;
+  }
+  @page {
+    margin: 1.5cm;
+  }
+}

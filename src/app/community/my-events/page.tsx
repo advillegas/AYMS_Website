@@ -28,6 +28,8 @@ import {
   Check,
   Hourglass,
   Loader2,
+  FileSignature,
+  ArrowRight,
 } from "lucide-react";
 import { format, parseISO, isValid } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -39,6 +41,11 @@ import { useMyTripReservations } from "@/lib/use-trip-reservations";
 import { useReminderScheduler } from "@/lib/use-event-reminders";
 import { useTrips } from "@/lib/use-trips";
 import { getTripById } from "@/lib/trips-data";
+import { useAgreements } from "@/lib/use-agreements";
+import {
+  AGREEMENT_STATUS_LABEL,
+  type AgreementStatus,
+} from "@/lib/agreements-data";
 
 /* ------------------------------------------------------------------ */
 /* Unified item model                                                  */
@@ -255,6 +262,8 @@ export default function MyEventsPage() {
           </p>
         </header>
 
+        <YourAgreements userId={user?.id} />
+
         {loading && items.length === 0 ? (
           <div className="flex flex-col items-center gap-2 py-16 text-muted-foreground">
             <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -369,5 +378,94 @@ function EmptyState() {
         </Button>
       </div>
     </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Your agreements                                                     */
+/* ------------------------------------------------------------------ */
+
+const AGREEMENT_TONE: Record<AgreementStatus, UpcomingItem["statusTone"]> = {
+  draft: "muted",
+  sent: "amber",
+  prospect_signed: "primary",
+  completed: "emerald",
+  void: "muted",
+};
+
+/**
+ * Lists the agreements addressed to this member. Subscribes scoped to
+ * their uid so Firestore rules allow the read; anything still in "sent"
+ * is surfaced as action-needed. Hidden entirely when there are none, so
+ * the section never adds noise for members without agreements.
+ */
+function YourAgreements({ userId }: { userId?: string }) {
+  const { agreements, loading } = useAgreements(
+    userId ? { prospectId: userId } : { prospectId: "__none__" },
+  );
+
+  // Drafts aren't visible to the member yet — only show sent-or-later.
+  const visible = useMemo(
+    () => agreements.filter((a) => a.status !== "draft"),
+    [agreements],
+  );
+
+  if (!userId) return null;
+  if (loading && agreements.length === 0) return null;
+  if (visible.length === 0) return null;
+
+  const actionNeeded = visible.some((a) => a.status === "sent");
+
+  return (
+    <section className="space-y-2">
+      <h2 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        <FileSignature className="h-3.5 w-3.5" />
+        Your agreements
+        {actionNeeded && (
+          <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-300">
+            Action needed
+          </span>
+        )}
+      </h2>
+      <div className="space-y-2">
+        {visible.map((a) => {
+          const needsSign = a.status === "sent";
+          return (
+            <Link
+              key={a.id}
+              href={`/community/agreements/${a.id}`}
+              className={cn(
+                "flex items-center gap-3 rounded-xl border bg-card p-3 transition-colors",
+                needsSign
+                  ? "border-amber-400/40 bg-amber-500/5 hover:bg-amber-500/10"
+                  : "border-rosa/20 hover:bg-primary/5",
+              )}
+            >
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary/15 to-rosa/25 text-primary">
+                <FileSignature className="h-5 w-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold">{a.title}</p>
+                <p className="mt-0.5 text-[11px] text-muted-foreground">
+                  {needsSign
+                    ? "Action needed: sign your agreement"
+                    : a.tripTitle || AGREEMENT_STATUS_LABEL[a.status]}
+                </p>
+              </div>
+              <Badge
+                variant="secondary"
+                className={cn(
+                  "h-6 shrink-0 text-[10px]",
+                  toneClasses(AGREEMENT_TONE[a.status]),
+                )}
+              >
+                {AGREEMENT_STATUS_LABEL[a.status]}
+              </Badge>
+              <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+            </Link>
+          );
+        })}
+      </div>
+    </section>
   );
 }

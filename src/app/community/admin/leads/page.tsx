@@ -17,16 +17,8 @@
  * + members admin pages).
  */
 
-import { useEffect, useMemo, useState } from "react";
-import {
-  collection,
-  onSnapshot,
-  query,
-  limit,
-  type DocumentData,
-  type FirestoreError,
-  type QueryDocumentSnapshot,
-} from "firebase/firestore";
+import { useMemo, useState } from "react";
+import Link from "next/link";
 import {
   Card,
   CardContent,
@@ -42,104 +34,17 @@ import {
   Mail,
   Wifi,
   WifiOff,
+  FileSignature,
 } from "lucide-react";
 import { format } from "date-fns";
-import { getDb, isFirebaseConfigured } from "@/lib/firebase";
+import { isFirebaseConfigured } from "@/lib/firebase";
 import { useTrips } from "@/lib/use-trips";
 import { useNewsletterList } from "@/lib/use-newsletter";
-import {
-  type TripReservation,
-  type ReservationStatus,
-} from "@/lib/use-trip-reservations";
+import { useAgreements } from "@/lib/use-agreements";
+import { AGREEMENT_STATUS_LABEL } from "@/lib/agreements-data";
+import { type ReservationStatus } from "@/lib/use-trip-reservations";
 import { cn } from "@/lib/utils";
-
-/* ------------------------------------------------------------------ */
-/* Local doc mapper (admin-wide reservations listener)                 */
-/* ------------------------------------------------------------------ */
-
-interface ReservationDoc {
-  tripId?: string;
-  userId?: string;
-  userName?: string;
-  userAvatar?: string | null;
-  status?: ReservationStatus;
-  note?: string | null;
-  createdAt?: { toDate?: () => Date };
-}
-
-function docToReservation(
-  d: QueryDocumentSnapshot<DocumentData, DocumentData>,
-): TripReservation {
-  const data = d.data() as ReservationDoc;
-  let createdAt = "";
-  try {
-    createdAt = data.createdAt?.toDate?.()?.toISOString() ?? "";
-  } catch {
-    createdAt = "";
-  }
-  return {
-    id: d.id,
-    tripId: data.tripId ?? "",
-    userId: data.userId ?? "",
-    userName: data.userName ?? "Amiga",
-    userAvatar: data.userAvatar ?? undefined,
-    status:
-      data.status === "waitlist"
-        ? "waitlist"
-        : data.status === "cancelled"
-          ? "cancelled"
-          : "reserved",
-    note: data.note ?? undefined,
-    createdAt,
-  };
-}
-
-/** Live listener over ALL reservations (admin roster view). */
-function useAllReservations(): {
-  reservations: TripReservation[];
-  loading: boolean;
-  error: boolean;
-} {
-  const [reservations, setReservations] = useState<TripReservation[]>([]);
-  const [loading, setLoading] = useState<boolean>(isFirebaseConfigured);
-  const [error, setError] = useState<boolean>(false);
-
-  useEffect(() => {
-    if (!isFirebaseConfigured) {
-      setLoading(false);
-      return;
-    }
-    const db = getDb();
-    if (!db) {
-      setLoading(false);
-      return;
-    }
-    // No orderBy (avoids composite-index requirements); sort newest-first
-    // client-side after the snapshot lands.
-    const q = query(collection(db, "tripReservations"), limit(1000));
-    const unsub = onSnapshot(
-      q,
-      (snap) => {
-        const list = snap.docs
-          .map(docToReservation)
-          .sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
-        setReservations(list);
-        setError(false);
-        setLoading(false);
-      },
-      (err: FirestoreError) => {
-        console.warn("[leads] reservations snapshot failed", err);
-        // Surface the failure so admins don't read an empty roster as
-        // "no reservations" when the listener was actually denied/offline.
-        setError(true);
-        setLoading(false);
-      },
-    );
-    return () => unsub();
-  }, []);
-
-  return { reservations, loading, error };
-}
+import { useAllReservations } from "@/components/admin/agreement-form";
 
 /* ------------------------------------------------------------------ */
 /* Helpers                                                             */
@@ -202,6 +107,7 @@ export default function AdminLeadsPage() {
   } = useAllReservations();
   const { trips } = useTrips();
   const { signups, loading: newsLoading } = useNewsletterList();
+  const { agreements } = useAgreements();
   const [filter, setFilter] = useState<StatusFilter>("all");
 
   // tripId → title lookup for resolving reservations to trip names.
@@ -210,6 +116,17 @@ export default function AdminLeadsPage() {
     for (const t of trips) map.set(t.id, t.title);
     return map;
   }, [trips]);
+
+  // reservationId → its latest agreement status label (agreements are
+  // newest-first, so the first match per reservation wins).
+  const agreementStatusByReservation = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const a of agreements) {
+      if (a.reservationId && !map.has(a.reservationId))
+        map.set(a.reservationId, AGREEMENT_STATUS_LABEL[a.status]);
+    }
+    return map;
+  }, [agreements]);
 
   const reservedCount = useMemo(
     () => reservations.filter((r) => r.status === "reserved").length,
@@ -352,25 +269,57 @@ export default function AdminLeadsPage() {
                   <span className="text-right">Date</span>
                 </div>
                 <div className="divide-y divide-border">
-                  {visibleReservations.map((r) => (
-                    <div
-                      key={r.id}
-                      className="grid grid-cols-[1fr_auto] sm:grid-cols-[1.4fr_1.6fr_auto_auto] items-center gap-x-3 gap-y-1 px-2 py-2.5 text-sm hover:bg-primary/5 rounded-md"
-                    >
-                      <span className="font-medium truncate">
-                        {r.userName}
-                      </span>
-                      <span className="text-muted-foreground truncate order-3 sm:order-none col-span-2 sm:col-span-1 text-xs sm:text-sm">
-                        {tripTitleById.get(r.tripId) ?? r.tripId ?? "—"}
-                      </span>
-                      <span className="justify-self-end sm:justify-self-start">
-                        <StatusBadge status={r.status} />
-                      </span>
-                      <span className="text-xs text-muted-foreground tabular-nums text-right order-4 sm:order-none">
-                        {formatDate(r.createdAt)}
-                      </span>
-                    </div>
-                  ))}
+                  {visibleReservations.map((r) => {
+                    const agreementStatus = agreementStatusByReservation.get(
+                      r.id,
+                    );
+                    return (
+                      <div
+                        key={r.id}
+                        className="grid grid-cols-[1fr_auto] sm:grid-cols-[1.4fr_1.6fr_auto_auto] items-center gap-x-3 gap-y-1 px-2 py-2.5 text-sm hover:bg-primary/5 rounded-md"
+                      >
+                        <span className="font-medium truncate flex items-center gap-1.5 min-w-0">
+                          <span className="truncate">{r.userName}</span>
+                          {agreementStatus ? (
+                            <Badge
+                              variant="outline"
+                              className="text-[9px] h-4 shrink-0 gap-0.5"
+                              title={`Agreement: ${agreementStatus}`}
+                            >
+                              <FileSignature className="h-2.5 w-2.5" />
+                              {agreementStatus}
+                            </Badge>
+                          ) : null}
+                        </span>
+                        <span className="text-muted-foreground truncate order-4 sm:order-none col-span-2 sm:col-span-1 text-xs sm:text-sm">
+                          {tripTitleById.get(r.tripId) ?? r.tripId ?? "—"}
+                        </span>
+                        <span className="justify-self-end sm:justify-self-start">
+                          <StatusBadge status={r.status} />
+                        </span>
+                        <span className="flex items-center justify-end gap-2 order-5 sm:order-none">
+                          <span className="text-xs text-muted-foreground tabular-nums text-right">
+                            {formatDate(r.createdAt)}
+                          </span>
+                          <Button
+                            size="xs"
+                            variant="ghost"
+                            className="h-6 px-1.5 text-[11px] text-primary shrink-0"
+                            render={
+                              <Link
+                                href={`/community/admin/agreements?reservation=${r.id}`}
+                              />
+                            }
+                            aria-label={`Create agreement for ${r.userName}`}
+                            title="Create agreement"
+                          >
+                            <FileSignature className="h-3 w-3 sm:mr-1" />
+                            <span className="hidden sm:inline">Agreement</span>
+                          </Button>
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}

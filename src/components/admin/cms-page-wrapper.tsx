@@ -14,14 +14,60 @@ import { Navbar } from "@/components/landing/navbar";
 import { Footer } from "@/components/landing/footer";
 import { v4 as uuid } from "uuid";
 import { PAGE_SNAPSHOTS } from "@/lib/page-snapshots";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { GripVertical } from "lucide-react";
 
 interface Props {
   slug: string;
   children: React.ReactNode;
 }
 
+/**
+ * Drag-to-reorder wrapper for a single builder section in edit mode.
+ * The grip handle (left gutter) carries the dnd-kit listeners; the rest of
+ * the row stays fully interactive (inline edit, select, toolbar buttons).
+ */
+function SortableSection({ id, children }: { id: string; children: React.ReactNode }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.6 : 1,
+    zIndex: isDragging ? 50 : undefined,
+  };
+  return (
+    <div ref={setNodeRef} style={style} className="group/sort relative">
+      <button
+        type="button"
+        {...attributes}
+        {...listeners}
+        onClick={(e) => e.stopPropagation()}
+        aria-label="Drag to reorder section"
+        title="Drag to reorder"
+        className="absolute -left-9 top-1/2 z-20 hidden h-8 w-8 -translate-y-1/2 cursor-grab items-center justify-center rounded-lg border border-[#221019]/12 bg-white/80 text-[#221019]/40 opacity-0 shadow-sm backdrop-blur transition-opacity hover:text-[#FF0099] focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099] active:cursor-grabbing group-hover/sort:opacity-100 sm:flex"
+      >
+        <GripVertical className="h-4 w-4" aria-hidden="true" />
+      </button>
+      {children}
+    </div>
+  );
+}
+
 export function CmsPageWrapper({ slug, children }: Props) {
-  const loadFromStorage = useCms((s) => s.loadFromStorage);
   const hasPublished = useCms((s) => s.hasPublishedPage(slug));
   const page = useCms((s) => s.pages[slug]);
   const setPageElements = useCms((s) => s.setPageElements);
@@ -38,9 +84,14 @@ export function CmsPageWrapper({ slug, children }: Props) {
 
   const isEditing = isEditMode && pageSlug === slug;
 
+  // Hydrate CMS content from Firestore in realtime so an admin's published
+  // edits are shared across all visitors (not just the editing browser).
+  // Falls back to localStorage when Firebase isn't configured; subscribe()
+  // returns its own unsubscribe fn for cleanup.
   useEffect(() => {
-    loadFromStorage();
-  }, [loadFromStorage]);
+    const unsubscribe = useCms.getState().subscribe();
+    return unsubscribe;
+  }, []);
 
   useEffect(() => {
     if (isEditing) {
@@ -126,15 +177,31 @@ export function CmsPageWrapper({ slug, children }: Props) {
     }));
   }, []);
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+  );
+
+  // Reorder sections by drag. Mutates the live builder canvas; the admin
+  // still Saves/Publishes to persist, same as button-based reordering.
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    useBuilder.setState((s) => {
+      const oldIndex = s.elements.findIndex((e) => e.id === active.id);
+      const newIndex = s.elements.findIndex((e) => e.id === over.id);
+      if (oldIndex === -1 || newIndex === -1) return s;
+      return { elements: arrayMove(s.elements, oldIndex, newIndex) };
+    });
+  }, []);
+
   // Published CMS override (NOT editing)
   if (hasPublished && page && !isEditing) {
     return (
       <>
         <Navbar />
         <main className="min-h-screen pt-[88px]">
-          <section className="relative bg-[#1A0814]">
-            <div className="absolute inset-0 bg-gradient-to-b from-[#3A0F2A]/30 to-[#1A0814]" />
-            <div className="absolute inset-0 pattern-dots opacity-5" />
+          <section className="grain relative bg-[#FDFCF7]">
+            <div className="absolute inset-0 pattern-dots opacity-[0.04]" aria-hidden="true" />
             <div className="relative mx-auto max-w-3xl px-4 py-16 sm:px-6 lg:px-8">
               <div className="space-y-6">
                 {page.elements.map((el) => (
@@ -163,33 +230,38 @@ export function CmsPageWrapper({ slug, children }: Props) {
         <div className="pt-10" onClick={() => setSelectedElement(null)}>
           <Navbar />
           <main className="min-h-screen pt-[88px]">
-            <div className="relative bg-[#1A0814] min-h-[60vh]">
-              <div className="absolute inset-0 bg-gradient-to-b from-[#3A0F2A]/20 to-[#1A0814]" />
-              <div className="relative mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8 space-y-4">
-                {elements.map((el, i) => (
-                  <EditableWrapper
-                    key={el.id}
-                    elementId={el.id}
-                    onSelect={() => handleSelect(el.id)}
-                    onDelete={() => handleDelete(el.id)}
-                    onDuplicate={() => handleDuplicate(el.id)}
-                    onMoveUp={() => handleMoveUp(el.id)}
-                    onMoveDown={() => handleMoveDown(el.id)}
-                    onOpenProps={() => handleSelect(el.id)}
-                    isFirst={i === 0}
-                    isLast={i === elements.length - 1}
-                    label={el.type}
-                  >
-                    <ElementRenderer
-                      element={el}
-                      editable
-                      isSelected={selectedElementId === el.id}
-                      onUpdate={(props) => handleUpdate(el.id, props)}
-                      onClick={() => handleSelect(el.id)}
-                    />
-                  </EditableWrapper>
-                ))}
-              </div>
+            <div className="grain relative min-h-[60vh] bg-[#FDFCF7]">
+              <div className="absolute inset-0 pattern-dots opacity-[0.04]" aria-hidden="true" />
+              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                <SortableContext items={elements.map((e) => e.id)} strategy={verticalListSortingStrategy}>
+                  <div className="relative mx-auto max-w-3xl space-y-4 px-4 py-12 sm:px-6 lg:px-8">
+                    {elements.map((el, i) => (
+                      <SortableSection key={el.id} id={el.id}>
+                        <EditableWrapper
+                          elementId={el.id}
+                          onSelect={() => handleSelect(el.id)}
+                          onDelete={() => handleDelete(el.id)}
+                          onDuplicate={() => handleDuplicate(el.id)}
+                          onMoveUp={() => handleMoveUp(el.id)}
+                          onMoveDown={() => handleMoveDown(el.id)}
+                          onOpenProps={() => handleSelect(el.id)}
+                          isFirst={i === 0}
+                          isLast={i === elements.length - 1}
+                          label={el.type}
+                        >
+                          <ElementRenderer
+                            element={el}
+                            editable
+                            isSelected={selectedElementId === el.id}
+                            onUpdate={(props) => handleUpdate(el.id, props)}
+                            onClick={() => handleSelect(el.id)}
+                          />
+                        </EditableWrapper>
+                      </SortableSection>
+                    ))}
+                  </div>
+                </SortableContext>
+              </DndContext>
             </div>
           </main>
           <Footer />

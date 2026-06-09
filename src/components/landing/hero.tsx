@@ -76,12 +76,13 @@ export function Hero() {
               className="mx-auto mb-8 w-fit"
             >
               <Image
-                src="/ayms-logo.svg"
+                src="/ayms-wordmark.png"
                 alt="Amigas Y Más Social"
-                width={92}
-                height={92}
+                width={266}
+                height={192}
                 priority
-                className="mx-auto rounded-full shadow-[0_10px_30px_rgb(255_0_153/0.18),0_2px_8px_rgb(34_16_25/0.08)]"
+                unoptimized
+                className="mx-auto h-auto w-44 drop-shadow-[0_10px_30px_rgb(255_0_153/0.18)] sm:w-52"
               />
             </motion.div>
 

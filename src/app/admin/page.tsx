@@ -40,18 +40,23 @@ export default function AdminPage() {
   const hydrated = useAuthHydrated();
 
   const [activeTab, setActiveTab] = useState<Tab>("pages");
-  const cmsLoad = useCms((s) => s.loadFromStorage);
   const templates = useCms((s) => s.templates);
   const deleteTemplate = useCms((s) => s.deleteTemplate);
 
+  // The admin dashboard authors the SHARED CMS, so once the signed-in admin is
+  // confirmed we subscribe to Firestore in realtime — pages/nav/templates
+  // published from any browser appear here, and our writes flow back. Falls
+  // back to localStorage when Firebase isn't configured. subscribe() returns
+  // its ref-counted unsubscribe for cleanup.
   useEffect(() => {
     if (!hydrated) return;
     if (!isAuthenticated || user?.role !== "admin") {
       router.replace("/login");
       return;
     }
-    cmsLoad();
-  }, [hydrated, isAuthenticated, user, router, cmsLoad]);
+    const unsubscribe = useCms.getState().subscribe();
+    return unsubscribe;
+  }, [hydrated, isAuthenticated, user, router]);
 
   const toggleEditMode = useEditMode((s) => s.toggleEditMode);
 

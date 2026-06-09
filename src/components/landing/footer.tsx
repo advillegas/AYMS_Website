@@ -155,6 +155,7 @@ export function Footer() {
                 alt="Amigas Y Más Social"
                 width={266}
                 height={192}
+                unoptimized
                 className="h-16 w-auto drop-shadow-[0_0_20px_rgb(255_0_153/0.28)]"
               />
             </Link>

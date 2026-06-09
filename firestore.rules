@@ -246,6 +246,38 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    /* ----------------------------- CMS pages --------------------------- */
+    // Admin page-builder content (see src/lib/cms-store.ts). One doc per
+    // page slug under cmsPages/{slug}. Published pages render on the public
+    // marketing site, so reads are world-readable by design; only an admin
+    // (signed-in Firebase user with users/{uid}.role == 'admin', or the
+    // canonical admin email) may create / edit / delete a page.
+    match /cmsPages/{slug} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    /* ---------------------------- CMS config --------------------------- */
+    // Site-chrome config managed by the admin page-builder. Currently holds
+    // cmsConfig/nav → { links: NavLink[] }, the ordered navbar links shown
+    // to every visitor (so reads are public). Admin-only writes. NOTE: this
+    // is a SEPARATE collection from the signed-in-only `config/*` used for
+    // channels/roles — kept apart precisely because nav must be public.
+    match /cmsConfig/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    /* -------------------------- CMS templates -------------------------- */
+    // Reusable page-builder templates saved by the admin (cmsTemplates/{id}).
+    // Built-in `starter-*` templates are generated client-side and never
+    // written here. Templates are an admin-authoring surface but harmless to
+    // expose, and reads stay public for parity with the rest of the CMS.
+    match /cmsTemplates/{templateId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     /* ---------------------------- catch-all ---------------------------- */
     // Anything not matched above is denied. Specific allows above are NOT
     // overridden by this — it is only a safety net for unmodeled paths.

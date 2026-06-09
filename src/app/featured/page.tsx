@@ -12,22 +12,22 @@ import { CmsPageWrapper } from "@/components/admin/cms-page-wrapper";
 import { Loader2, Sparkles } from "lucide-react";
 
 export default function FeaturedPage() {
-  const cmsLoad = useCms((s) => s.loadFromStorage);
   const cmsPage = useCms((s) => s.pages["featured"]);
   const builderPublished = useBuilder((s) => s.publishedElements);
   const builderLoad = useBuilder((s) => s.loadFromStorage);
   const reduceMotion = useReducedMotion();
 
-  // Both stores hydrate from localStorage on the client, so which branch we
-  // render depends on client-only state. Hold a neutral placeholder until
-  // mounted so the first client render matches the server HTML.
+  // The CMS "featured" page hydrates from Firestore via CmsPageWrapper's
+  // realtime subscription (shared across all visitors). The builder-store
+  // publishedElements fallback is still a localStorage seed, so hydrate that
+  // one here. Hold a neutral placeholder until mounted so the first client
+  // render matches the server HTML.
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    cmsLoad();
     builderLoad();
     setMounted(true);
-  }, [cmsLoad, builderLoad]);
+  }, [builderLoad]);
 
   const elements = (cmsPage?.isPublished && cmsPage.elements.length > 0)
     ? cmsPage.elements

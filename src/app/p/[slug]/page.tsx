@@ -15,29 +15,29 @@ import { cn } from "@/lib/utils";
 export default function DynamicPage() {
   const params = useParams();
   const slug = params.slug as string;
-  const loadFromStorage = useCms((s) => s.loadFromStorage);
   const page = useCms((s) => s.pages[slug]);
 
-  // Page content is hydrated from localStorage on the client only. Until that
-  // happens, render a neutral placeholder so the first client render matches
-  // the server-rendered HTML (avoids a hydration mismatch).
+  // CmsPageWrapper (rendered in both branches below) owns the realtime
+  // Firestore subscription that hydrates useCms.pages, so we don't hydrate
+  // here — doing so would race the snapshot with a stale localStorage write.
+  // We only flip `mounted` after the first client render so the initial paint
+  // matches the server HTML (avoids a hydration mismatch).
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    loadFromStorage();
     setMounted(true);
-  }, [loadFromStorage]);
+  }, []);
 
   if (!mounted) {
     return (
       <CmsPageWrapper slug={slug}>
         <Navbar />
         <main className="min-h-screen pt-[88px]">
-          <section className="relative overflow-hidden bg-[#1a0a12] py-32">
-            <div className="absolute inset-0 bg-gradient-to-b from-[#3A0F2A] to-[#1A0814]" />
+          <section className="grain relative overflow-hidden bg-[#FDFCF7] py-32">
+            <div className="absolute inset-0 pattern-dots opacity-[0.04]" aria-hidden="true" />
             <div className="relative mx-auto flex max-w-3xl flex-col items-center px-4 text-center" aria-busy="true" aria-live="polite">
-              <Loader2 className="h-8 w-8 animate-spin text-[#FFB3D0]" aria-hidden="true" />
-              <p className="mt-4 text-sm text-white/40">Loading page…</p>
+              <Loader2 className="h-8 w-8 animate-spin text-[#FF0099]" aria-hidden="true" />
+              <p className="mt-4 text-sm text-ink-soft">Loading page…</p>
               <span className="sr-only">Loading page content</span>
             </div>
           </section>
@@ -52,28 +52,27 @@ export default function DynamicPage() {
       <Navbar />
       <main className="min-h-screen pt-[88px]">
         {!page || !page.isPublished || page.elements.length === 0 ? (
-          <section className="relative overflow-hidden bg-[#1a0a12] py-32">
-            <div className="absolute inset-0 bg-gradient-to-b from-[#3A0F2A] to-[#1A0814]" />
+          <section className="grain relative overflow-hidden bg-[#FDFCF7] py-32">
+            <div className="absolute inset-0 pattern-dots opacity-[0.04]" aria-hidden="true" />
             <div className="relative mx-auto max-w-3xl px-4 text-center">
-              <FileX className="mx-auto h-12 w-12 text-white/20 mb-4" />
-              <h1 className="font-[family-name:var(--font-heading)] text-3xl font-bold text-white">
+              <FileX className="mx-auto h-12 w-12 text-[#221019]/20 mb-4" />
+              <h1 className="font-[family-name:var(--font-heading)] text-3xl font-bold text-ink">
                 Page Not Found
               </h1>
-              <p className="mt-4 text-white/40">
+              <p className="mt-4 text-ink-soft">
                 This page doesn&apos;t exist or hasn&apos;t been published yet.
               </p>
               <Link
                 href="/"
-                className={cn(buttonVariants({ variant: "outline" }), "mt-6 border-white/20 text-white hover:bg-white/10")}
+                className={cn(buttonVariants({ variant: "outline" }), "mt-6")}
               >
                 Go Home
               </Link>
             </div>
           </section>
         ) : (
-          <section className="relative bg-[#1A0814]">
-            <div className="absolute inset-0 bg-gradient-to-b from-[#3A0F2A]/30 to-[#1A0814]" />
-            <div className="absolute inset-0 pattern-dots opacity-5" />
+          <section className="grain relative bg-[#FDFCF7]">
+            <div className="absolute inset-0 pattern-dots opacity-[0.04]" aria-hidden="true" />
             <div className="relative mx-auto max-w-3xl px-4 py-16 sm:px-6 lg:px-8">
               <div className="space-y-6">
                 {page.elements.map((el) => (

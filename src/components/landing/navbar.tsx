@@ -49,11 +49,15 @@ export function Navbar() {
   const pathname = usePathname();
 
   const navLinks = useCms((s) => s.navLinks);
-  const loadFromStorage = useCms((s) => s.loadFromStorage);
 
+  // Hydrate nav links from Firestore in realtime so an admin's nav reorders/
+  // edits propagate to every visitor — not just the editing browser. Falls
+  // back to localStorage when Firebase isn't configured; subscribe() returns
+  // its own unsubscribe (ref-counted, shared with the page wrapper).
   useEffect(() => {
-    loadFromStorage();
-  }, [loadFromStorage]);
+    const unsubscribe = useCms.getState().subscribe();
+    return unsubscribe;
+  }, []);
 
   async function handleSignOut() {
     await logout();
@@ -83,17 +87,16 @@ export function Navbar() {
       <header className="fixed top-7 z-50 w-full">
         <div className="mx-auto max-w-7xl px-4 pt-3 sm:px-6 lg:px-8">
           <div className="glass-nav flex h-14 items-center justify-between rounded-full px-3 pl-5 shadow-[0_8px_30px_rgb(34_16_25/0.08)]">
-          <Link href="/" className="flex items-center gap-2.5">
+          <Link href="/" aria-label="Amigas Y Más Social — home" className="flex items-center">
             <Image
-              src="/ayms-logo.svg"
-              alt="AYMS Logo"
-              width={32}
-              height={32}
-              className="rounded-full shadow-[0_0_12px_rgb(255_0_153/0.18)]"
+              src="/ayms-wordmark.png"
+              alt="Amigas Y Más Social"
+              width={266}
+              height={192}
+              priority
+              unoptimized
+              className="h-10 w-auto drop-shadow-[0_2px_8px_rgb(255_0_153/0.18)]"
             />
-            <span className="font-display text-[1.05rem] font-semibold tracking-tight text-ink">
-              Amigas Y Más
-            </span>
           </Link>
 
           <nav aria-label="Primary" className="hidden items-center gap-6 lg:flex">
@@ -232,9 +235,8 @@ export function Navbar() {
               )}
             </SheetTrigger>
             <SheetContent side="right" className="w-72 canvas-editorial">
-              <div className="flex items-center gap-2 mb-6">
-                <Image src="/ayms-logo.svg" alt="AYMS" width={32} height={32} className="rounded-full" />
-                <span className="font-display text-lg font-semibold text-ink">Amigas Y Más</span>
+              <div className="flex items-center mb-6">
+                <Image src="/ayms-wordmark.png" alt="Amigas Y Más Social" width={266} height={192} unoptimized className="h-12 w-auto" />
               </div>
               <nav className="flex flex-col gap-3">
                 <Link

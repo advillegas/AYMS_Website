@@ -95,6 +95,7 @@ function ForgotPasswordInner() {
                 width={266}
                 height={192}
                 priority
+                unoptimized
                 className="h-24 w-auto drop-shadow-[0_0_24px_rgb(255_0_153/0.22)]"
               />
             </Link>

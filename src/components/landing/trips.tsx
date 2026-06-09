@@ -100,9 +100,9 @@ export function Trips() {
                         {trip.date}
                       </div>
                       <p className="mt-3 flex-1 text-sm leading-relaxed text-ink-soft">{trip.en.desc}</p>
-                      <div className="mt-4 flex items-end justify-between">
-                        <span className="text-xs font-medium text-[#FF7F50]">Hover to see in Spanish →</span>
-                        <span className="inline-flex items-center gap-1 text-sm text-ink-soft">
+                      <div className="mt-4 flex items-end justify-between gap-2">
+                        <span className="min-w-0 truncate text-xs font-medium text-[#FF7F50]">Hover to see in Spanish →</span>
+                        <span className="inline-flex shrink-0 items-center gap-1 text-sm text-ink-soft">
                           <Star className="h-3.5 w-3.5 fill-[#FF7F50] text-[#FF7F50]" aria-hidden="true" />
                           5.0
                         </span>

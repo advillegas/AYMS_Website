@@ -112,7 +112,7 @@ export function EmojiPickerPopover({
           navPosition="bottom"
         />
       ) : (
-        <div className="flex h-[380px] w-[352px] items-center justify-center rounded-xl border border-rosa/30 bg-card">
+        <div className="flex h-[380px] w-[min(352px,calc(100vw-1rem))] items-center justify-center rounded-xl border border-rosa/30 bg-card">
           <span className="text-xs text-muted-foreground">
             Loading emojis...
           </span>

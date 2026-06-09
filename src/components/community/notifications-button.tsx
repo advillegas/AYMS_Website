@@ -167,7 +167,7 @@ export function NotificationsButton() {
         width={380}
         className="bg-card border border-rosa/30"
       >
-        <div className="flex flex-col max-h-[480px] w-[380px]">
+        <div className="flex flex-col max-h-[480px] w-[min(380px,calc(100vw-1rem))]">
           <div className="flex shrink-0 items-center justify-between border-b border-rosa/20 px-3 py-2 bg-gradient-to-r from-rosa/15 to-blush/15">
             <div className="flex items-center gap-1.5">
               <Bell className="h-3.5 w-3.5 text-primary" />

@@ -62,9 +62,9 @@ export function Destinations() {
                     {dest.trips} trip{dest.trips !== 1 ? "s" : ""}
                   </span>
                 </div>
-                <div className="flex items-center justify-between p-4">
-                  <h3 className="font-display text-lg text-ink">{dest.name}</h3>
-                  <span className="inline-flex items-center gap-1 text-sm text-ink-soft">
+                <div className="flex items-center justify-between gap-2 p-3 sm:p-4">
+                  <h3 className="min-w-0 truncate font-display text-base text-ink sm:text-lg">{dest.name}</h3>
+                  <span className="inline-flex shrink-0 items-center gap-1 text-sm text-ink-soft">
                     <MapPin className="h-3.5 w-3.5 text-[#FF0099]" aria-hidden="true" />
                     Explore
                   </span>

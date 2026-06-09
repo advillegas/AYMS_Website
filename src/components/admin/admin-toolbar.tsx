@@ -131,7 +131,7 @@ export function AdminToolbar({ onAddElement, onSave, onPublish }: Props) {
               <div
                 role="menu"
                 aria-label="Add element"
-                className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-20 rounded-xl bg-[#1a0f18] border border-white/10 p-3 shadow-xl shadow-black/40 min-w-[340px] max-h-[70vh] overflow-y-auto space-y-3"
+                className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-20 rounded-xl bg-[#1a0f18] border border-white/10 p-3 shadow-xl shadow-black/40 w-[340px] max-w-[calc(100vw-1.5rem)] max-h-[70vh] overflow-y-auto space-y-3"
               >
                 {PALETTE.map((cat) => (
                   <div key={cat.name}>

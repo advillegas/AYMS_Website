@@ -11,7 +11,6 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/lib/store";
 import { isFirebaseConfigured } from "@/lib/firebase";
 import { toast } from "sonner";
-import { CmsPageWrapper } from "@/components/admin/cms-page-wrapper";
 import { Loader2 } from "lucide-react";
 import { GoogleButton } from "@/components/auth/google-button";
 
@@ -51,9 +50,7 @@ export default function LoginPage() {
       const result = await login(identifier, password);
       if (result.ok) {
         toast.success("Welcome back, amiga! ♡");
-        // Always land in the community after sign-in. Admins reach the
-        // CMS builder via the dedicated button in the nav, and the
-        // community admin panel via the Admin tab inside /community.
+        // Always land in the community after sign-in.
         router.push("/community");
       } else {
         const message = result.error ?? "Invalid credentials";
@@ -85,8 +82,7 @@ export default function LoginPage() {
   }
 
   return (
-    <CmsPageWrapper slug="login">
-      <div className="grain relative flex min-h-screen items-center justify-center px-4 overflow-hidden bg-[#FFF7FB]">
+    <div className="grain relative flex min-h-screen items-center justify-center px-4 overflow-hidden bg-[#FFF7FB]">
         {/* Brand background mesh */}
         <div className="absolute inset-0 bg-gradient-to-br from-rosa/40 via-background to-blush/25" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_60%_at_20%_15%,rgb(255_0_153/0.10),transparent_55%)]" />
@@ -224,6 +220,5 @@ export default function LoginPage() {
           </div>
         </motion.div>
       </div>
-    </CmsPageWrapper>
   );
 }

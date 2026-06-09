@@ -11,7 +11,6 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/lib/store";
 import { isFirebaseConfigured } from "@/lib/firebase";
 import { toast } from "sonner";
-import { CmsPageWrapper } from "@/components/admin/cms-page-wrapper";
 import { Loader2 } from "lucide-react";
 import { GoogleButton } from "@/components/auth/google-button";
 
@@ -108,8 +107,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <CmsPageWrapper slug="register">
-      <div className="grain relative flex min-h-screen items-center justify-center px-4 py-12 overflow-hidden bg-[#FFF7FB]">
+    <div className="grain relative flex min-h-screen items-center justify-center px-4 py-12 overflow-hidden bg-[#FFF7FB]">
         {/* Brand background mesh */}
         <div className="absolute inset-0 bg-gradient-to-br from-rosa/35 via-background to-blush/20" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_55%_55%_at_25%_80%,rgb(255_0_153/0.09),transparent_55%)]" />
@@ -283,6 +281,5 @@ export default function RegisterPage() {
           </div>
         </motion.div>
       </div>
-    </CmsPageWrapper>
   );
 }

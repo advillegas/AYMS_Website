@@ -13,11 +13,10 @@ import { Testimonials } from "@/components/landing/testimonials";
 import { CommunityPreview } from "@/components/landing/community-preview";
 import { Contact } from "@/components/landing/contact";
 import { Footer } from "@/components/landing/footer";
-import { CmsPageWrapper } from "@/components/admin/cms-page-wrapper";
 
 export default function Home() {
   return (
-    <CmsPageWrapper slug="home">
+    <>
       <Navbar />
       <main className="flex-1">
         <Hero />
@@ -33,6 +32,6 @@ export default function Home() {
         <Contact />
       </main>
       <Footer />
-    </CmsPageWrapper>
+    </>
   );
 }

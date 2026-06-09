@@ -17,7 +17,6 @@ import { Button } from "@/components/ui/button";
 import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { CmsPageWrapper } from "@/components/admin/cms-page-wrapper";
 import {
   Sparkles,
   Map,
@@ -107,7 +106,7 @@ export default function PlayPage() {
   const storyBroken = mode === "story" && (!story || !currentNode);
 
   return (
-    <CmsPageWrapper slug="play">
+    <>
       <Navbar />
       <main className="min-h-screen pt-[88px]">
         {/* Hero banner */}
@@ -591,6 +590,6 @@ export default function PlayPage() {
         </div>
       </main>
       <Footer />
-    </CmsPageWrapper>
+    </>
   );
 }

@@ -28,7 +28,6 @@ import {
   ArrowRight,
   Plane,
 } from "lucide-react";
-import { CmsPageWrapper } from "@/components/admin/cms-page-wrapper";
 import Image from "next/image";
 
 const STATUS_STYLE: Record<string, { label: string; cls: string }> = {
@@ -68,7 +67,7 @@ export default function TripsPage() {
   });
 
   return (
-    <CmsPageWrapper slug="trips">
+    <>
       <Navbar />
       <main className="min-h-screen pt-[88px]">
         {/* Hero banner — light editorial, coral accent allowed on trips */}
@@ -335,7 +334,7 @@ export default function TripsPage() {
           {selected && <TripDetail trip={selected} />}
         </DialogContent>
       </Dialog>
-    </CmsPageWrapper>
+    </>
   );
 }
 

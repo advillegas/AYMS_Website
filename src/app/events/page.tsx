@@ -20,7 +20,6 @@ import { Calendar, MapPin, Clock, Sparkles } from "lucide-react";
 import { format, parseISO, isPast, isValid } from "date-fns";
 import Link from "next/link";
 import Image from "next/image";
-import { CmsPageWrapper } from "@/components/admin/cms-page-wrapper";
 import { EventRsvp } from "@/components/community/event-rsvp";
 
 /** Event types that take RSVPs on the public page (not trips/synced feeds). */
@@ -72,7 +71,7 @@ export default function EventsPage() {
     .sort((a, b) => a.date.localeCompare(b.date));
 
   return (
-    <CmsPageWrapper slug="events">
+    <>
       <Navbar />
       <main className="min-h-screen pt-[88px]">
         {/* Hero — light editorial */}
@@ -362,6 +361,6 @@ export default function EventsPage() {
           )}
         </DialogContent>
       </Dialog>
-    </CmsPageWrapper>
+    </>
   );
 }

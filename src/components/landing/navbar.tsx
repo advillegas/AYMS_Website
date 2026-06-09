@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
@@ -10,7 +9,6 @@ import {
   X,
   LayoutDashboard,
   Sparkles,
-  Settings,
   LogOut,
   User as UserIcon,
   ChevronDown,
@@ -27,7 +25,6 @@ import {
 import { Sheet, SheetTrigger, SheetContent } from "@/components/ui/sheet";
 import { cn, initials } from "@/lib/utils";
 import { useAuth } from "@/lib/store";
-import { useCms } from "@/lib/cms-store";
 import { toast } from "sonner";
 
 const FALLBACK_LINKS = [
@@ -45,19 +42,7 @@ export function Navbar() {
   const isAuthenticated = useAuth((s) => s.isAuthenticated);
   const user = useAuth((s) => s.user);
   const logout = useAuth((s) => s.logout);
-  const isAdmin = user?.role === "admin";
   const pathname = usePathname();
-
-  const navLinks = useCms((s) => s.navLinks);
-
-  // Hydrate nav links from Firestore in realtime so an admin's nav reorders/
-  // edits propagate to every visitor — not just the editing browser. Falls
-  // back to localStorage when Firebase isn't configured; subscribe() returns
-  // its own unsubscribe (ref-counted, shared with the page wrapper).
-  useEffect(() => {
-    const unsubscribe = useCms.getState().subscribe();
-    return unsubscribe;
-  }, []);
 
   async function handleSignOut() {
     await logout();
@@ -65,10 +50,7 @@ export function Navbar() {
     router.push("/");
   }
 
-  const visibleLinks = navLinks.filter((l) => l.isVisible);
-  const links = visibleLinks.length > 0
-    ? visibleLinks.map((l) => ({ label: l.label, href: l.href }))
-    : FALLBACK_LINKS;
+  const links = FALLBACK_LINKS;
 
   return (
     <>
@@ -123,18 +105,6 @@ export function Navbar() {
           </nav>
 
           <div className="hidden items-center gap-2 lg:flex">
-            {isAdmin && (
-              <Link
-                href="/admin"
-                className={cn(
-                  buttonVariants({ variant: "ghost", size: "sm" }),
-                  "text-ink-soft/60 hover:text-ink hover:bg-[#FACDE8]/40 gap-1.5 text-xs rounded-full",
-                )}
-              >
-                <Settings className="h-3.5 w-3.5" />
-                Admin
-              </Link>
-            )}
             {isAuthenticated && user ? (
               <>
                 <Link
@@ -183,12 +153,6 @@ export function Navbar() {
                       <LayoutDashboard className="mr-2 h-4 w-4" />
                       Community
                     </DropdownMenuItem>
-                    {isAdmin && (
-                      <DropdownMenuItem onClick={() => router.push("/admin")}>
-                        <Settings className="mr-2 h-4 w-4" />
-                        Admin Dashboard
-                      </DropdownMenuItem>
-                    )}
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
                       onClick={handleSignOut}
@@ -257,15 +221,6 @@ export function Navbar() {
                   </Link>
                 ))}
                 <div className="my-2 h-px bg-[#221019]/10" />
-                {isAdmin && (
-                  <Link
-                    href="/admin"
-                    onClick={() => setOpen(false)}
-                    className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary"
-                  >
-                    <Settings className="h-4 w-4" /> Admin Portal
-                  </Link>
-                )}
                 {isAuthenticated && user ? (
                   <>
                     <div className="flex items-center gap-3 rounded-lg border border-rosa/20 bg-rosa/5 px-3 py-2">

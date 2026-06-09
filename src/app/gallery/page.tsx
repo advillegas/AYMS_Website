@@ -7,7 +7,6 @@ import { Navbar } from "@/components/landing/navbar";
 import { Footer } from "@/components/landing/footer";
 import { MapPin, Users, Calendar, Images, Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { CmsPageWrapper } from "@/components/admin/cms-page-wrapper";
 
 const YEARS = ["All", "2026", "2025", "2024"] as const;
 
@@ -29,7 +28,7 @@ export default function GalleryPage() {
   );
 
   return (
-    <CmsPageWrapper slug="gallery">
+    <>
       <Navbar />
       <main className="canvas-editorial min-h-screen pt-[88px]">
         {/* Hero — light editorial */}
@@ -211,6 +210,6 @@ export default function GalleryPage() {
         </section>
       </main>
       <Footer />
-    </CmsPageWrapper>
+    </>
   );
 }

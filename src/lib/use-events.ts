@@ -32,6 +32,11 @@ import {
   type Timestamp,
 } from "firebase/firestore";
 import { getDb, isFirebaseConfigured } from "./firebase";
+import { useSupabaseBackend } from "./supabase";
+import {
+  useEventsSupabase,
+  useSyncConfigsSupabase,
+} from "./use-events-supabase";
 import {
   COMMUNITY_EVENTS,
   type CalendarEvent,
@@ -158,6 +163,10 @@ export interface UseEventsResult {
 }
 
 export function useEvents(): UseEventsResult {
+  return useSupabaseBackend ? useEventsSupabase() : useEventsFirebase();
+}
+
+function useEventsFirebase(): UseEventsResult {
   const [events, setEvents] = useState<FirestoreEvent[]>([]);
   const [loading, setLoading] = useState<boolean>(isFirebaseConfigured);
   const isFirestore = isFirebaseConfigured;
@@ -330,13 +339,19 @@ function docToSyncConfig(
   };
 }
 
-export function useSyncConfigs(): {
+type UseSyncConfigsResult = {
   configs: CalendarSyncConfig[];
   loading: boolean;
   addConfig: (c: Omit<CalendarSyncConfig, "id" | "createdAt">) => Promise<string | null>;
   updateConfig: (id: string, patch: Partial<CalendarSyncConfig>) => Promise<boolean>;
   deleteConfig: (id: string) => Promise<boolean>;
-} {
+};
+
+export function useSyncConfigs(): UseSyncConfigsResult {
+  return useSupabaseBackend ? useSyncConfigsSupabase() : useSyncConfigsFirebase();
+}
+
+function useSyncConfigsFirebase(): UseSyncConfigsResult {
   const [configs, setConfigs] = useState<CalendarSyncConfig[]>([]);
   const [loading, setLoading] = useState(isFirebaseConfigured);
 

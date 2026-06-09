@@ -20,6 +20,8 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "i.giphy.com" },
       // Firebase Storage download URLs (profile photos, etc.)
       { protocol: "https", hostname: "firebasestorage.googleapis.com" },
+      // Supabase Storage public URLs (media bucket) — migration target
+      { protocol: "https", hostname: "erklhkrpdqyshwrkuxmf.supabase.co" },
       // Stream Video default avatars + uploaded user images
       { protocol: "https", hostname: "getstream.io" },
       { protocol: "https", hostname: "stream-io-cdn.com" },

@@ -6,6 +6,8 @@ import { Camera, X, Loader2 } from "lucide-react";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { toast } from "sonner";
 import { getStorageInstance, isStorageConfigured } from "@/lib/firebase";
+import { useSupabaseBackend } from "@/lib/supabase";
+import { uploadToSupabaseStorage } from "@/lib/supabase-storage";
 import { cn } from "@/lib/utils";
 
 interface CoverPhotoUploaderProps {
@@ -25,10 +27,6 @@ export function CoverPhotoUploader({
   const [uploading, setUploading] = useState(false);
 
   async function handleFile(file: File) {
-    if (!isStorageConfigured) {
-      toast.error("Photo uploads need Firebase Storage to be enabled.");
-      return;
-    }
     if (!file.type.startsWith("image/")) {
       toast.error("Please choose an image file.");
       return;
@@ -37,13 +35,27 @@ export function CoverPhotoUploader({
       toast.error("That image is over 8 MB. Try a smaller one.");
       return;
     }
-    const storage = getStorageInstance();
-    if (!storage) {
-      toast.error("Storage isn't available right now.");
-      return;
-    }
     setUploading(true);
     try {
+      if (useSupabaseBackend) {
+        const url = await uploadToSupabaseStorage("covers", file);
+        if (url) {
+          onChange(url);
+          toast.success("Cover photo updated!");
+        } else {
+          toast.error("Couldn't upload that cover photo. Please try again.");
+        }
+        return;
+      }
+      if (!isStorageConfigured) {
+        toast.error("Photo uploads need Firebase Storage to be enabled.");
+        return;
+      }
+      const storage = getStorageInstance();
+      if (!storage) {
+        toast.error("Storage isn't available right now.");
+        return;
+      }
       const storageRef = ref(
         storage,
         `covers/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.]/g, "_")}`,

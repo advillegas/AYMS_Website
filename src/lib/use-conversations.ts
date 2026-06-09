@@ -57,6 +57,8 @@ import {
   type Timestamp,
 } from "firebase/firestore";
 import { getDb, isFirebaseConfigured } from "./firebase";
+import { useSupabaseBackend } from "./supabase";
+import * as SB from "./use-conversations-supabase";
 import { useAuth } from "./store";
 import { useDMPrefs, type DMNotifyLevel } from "./use-dm-prefs";
 import type { GifAttachment } from "./use-firebase-chat";
@@ -246,6 +248,12 @@ export interface UseConversationsResult {
  * the top of the sidebar.
  */
 export function useConversations(): UseConversationsResult {
+  return useSupabaseBackend
+    ? SB.useConversationsSupabase()
+    : useConversationsFirebase();
+}
+
+function useConversationsFirebase(): UseConversationsResult {
   const userId = useAuth((s) => s.user?.id);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState<boolean>(
@@ -375,6 +383,14 @@ export interface UseConversationMessagesResult {
  * sidebar reorders correctly.
  */
 export function useConversationMessages(
+  conversationId: string | null,
+): UseConversationMessagesResult {
+  return useSupabaseBackend
+    ? SB.useConversationMessagesSupabase(conversationId)
+    : useConversationMessagesFirebase(conversationId);
+}
+
+function useConversationMessagesFirebase(
   conversationId: string | null,
 ): UseConversationMessagesResult {
   const user = useAuth((s) => s.user);
@@ -737,6 +753,9 @@ export async function resolveToFirebaseUid(
   candidateId: string,
   candidateEmail?: string,
 ): Promise<string> {
+  if (useSupabaseBackend) {
+    return SB.resolveToFirebaseUidSupabase(candidateId, candidateEmail);
+  }
   if (!isFirebaseConfigured) return candidateId;
   const db = getDb();
   if (!db) return candidateId;
@@ -773,6 +792,7 @@ export async function resolveToFirebaseUid(
 export async function fetchDMPrivacy(
   otherUserId: string,
 ): Promise<"anyone" | "friends" | "none"> {
+  if (useSupabaseBackend) return SB.fetchDMPrivacySupabase(otherUserId);
   if (!isFirebaseConfigured) return "anyone";
   const db = getDb();
   if (!db) return "anyone";
@@ -831,6 +851,9 @@ export async function getOrCreateDM(
     otherEmail?: string;
   } = {},
 ): Promise<{ id: string | null; error?: DMCheckResult }> {
+  if (useSupabaseBackend) {
+    return SB.getOrCreateDMSupabase(currentUserId, otherUserId, options);
+  }
   if (!isFirebaseConfigured) {
     return {
       id: null,
@@ -935,6 +958,9 @@ export async function createGroupConversation(
   participantIds: string[],
   options: { name?: string } = {},
 ): Promise<string | null> {
+  if (useSupabaseBackend) {
+    return SB.createGroupConversationSupabase(currentUserId, participantIds, options);
+  }
   if (!isFirebaseConfigured) return null;
   const db = getDb();
   if (!db) return null;
@@ -971,6 +997,9 @@ export async function addParticipants(
   conversationId: string,
   newUserIds: string[],
 ): Promise<boolean> {
+  if (useSupabaseBackend) {
+    return SB.addParticipantsSupabase(conversationId, newUserIds);
+  }
   if (!isFirebaseConfigured || newUserIds.length === 0) return false;
   const db = getDb();
   if (!db) return false;
@@ -1005,6 +1034,9 @@ export async function leaveConversation(
   conversationId: string,
   currentUserId: string,
 ): Promise<boolean> {
+  if (useSupabaseBackend) {
+    return SB.leaveConversationSupabase(conversationId, currentUserId);
+  }
   if (!isFirebaseConfigured) return false;
   const db = getDb();
   if (!db) return false;
@@ -1074,6 +1106,14 @@ async function writeTyping(
  * entry on unmount and on conversation switch.
  */
 export function useTypingPublisher(conversationId: string | null): {
+  notifyTyping: (stillTyping: boolean) => void;
+} {
+  return useSupabaseBackend
+    ? SB.useTypingPublisherSupabase(conversationId)
+    : useTypingPublisherFirebase(conversationId);
+}
+
+function useTypingPublisherFirebase(conversationId: string | null): {
   notifyTyping: (stillTyping: boolean) => void;
 } {
   const userId = useAuth((s) => s.user?.id);
@@ -1167,6 +1207,9 @@ export async function renameConversation(
   conversationId: string,
   newName: string,
 ): Promise<boolean> {
+  if (useSupabaseBackend) {
+    return SB.renameConversationSupabase(conversationId, newName);
+  }
   if (!isFirebaseConfigured) return false;
   const db = getDb();
   if (!db) return false;
@@ -1195,6 +1238,18 @@ export async function renameConversation(
  * expanded), so collapsed messages don't pay the listener cost.
  */
 export function useConversationThreadReplies(
+  conversationId: string | null,
+  parentId: string | null,
+): {
+  replies: DMMessage[];
+  loading: boolean;
+} {
+  return useSupabaseBackend
+    ? SB.useConversationThreadRepliesSupabase(conversationId, parentId)
+    : useConversationThreadRepliesFirebase(conversationId, parentId);
+}
+
+function useConversationThreadRepliesFirebase(
   conversationId: string | null,
   parentId: string | null,
 ): {

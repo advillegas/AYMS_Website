@@ -12,6 +12,11 @@ import {
   setDoc,
 } from "firebase/firestore";
 import { getDb, isFirebaseConfigured } from "./firebase";
+import { useSupabaseBackend } from "./supabase";
+import {
+  writeChannelsToSupabase,
+  useChannelsSyncSupabase,
+} from "./use-channels-supabase";
 
 /**
  * Channels store with CRUD + role-based view restrictions + channel
@@ -139,6 +144,10 @@ interface ChannelsState {
 /* ------------------------------------------------------------------ */
 
 async function writeChannelsToFirestore(channels: RichChannel[]): Promise<void> {
+  if (useSupabaseBackend) {
+    await writeChannelsToSupabase(channels);
+    return;
+  }
   if (!isFirebaseConfigured) return;
   const db = getDb();
   if (!db) return;
@@ -392,14 +401,23 @@ let writeTimer: ReturnType<typeof setTimeout> | null = null;
 let channelsSyncListenerStarted = false;
 
 useChannels.subscribe((state) => {
-  if (!isFirebaseConfigured) return;
+  if (!isFirebaseConfigured && !useSupabaseBackend) return;
   if (writeTimer) clearTimeout(writeTimer);
   writeTimer = setTimeout(() => {
     void writeChannelsToFirestore(state.channels);
   }, 300);
 });
 
+const setChannelsState = (channels: RichChannel[]) =>
+  useChannels.setState({ channels });
+
 export function useChannelsSync(): void {
+  return useSupabaseBackend
+    ? useChannelsSyncSupabase(setChannelsState, DEFAULT_CHANNELS)
+    : useChannelsSyncFirebase();
+}
+
+function useChannelsSyncFirebase(): void {
   useEffect(() => {
     if (!isFirebaseConfigured || channelsSyncListenerStarted) return;
     channelsSyncListenerStarted = true;

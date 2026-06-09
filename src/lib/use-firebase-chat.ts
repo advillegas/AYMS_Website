@@ -24,6 +24,11 @@ import {
   type Timestamp,
 } from "firebase/firestore";
 import { getDb, isFirebaseConfigured } from "./firebase";
+import { useSupabaseBackend } from "./supabase";
+import {
+  useChannelChatSupabase,
+  useThreadMessagesSupabase,
+} from "./use-supabase-chat";
 import { useAuth, useChat as useLocalChat, type Message } from "./store";
 import { useChannels, type RichChannel } from "./use-channels-store";
 import {
@@ -260,6 +265,12 @@ function passesGeoFilter(
  * thread replies are excluded; use useThreadMessages for those).
  */
 export function useChannelChat(channelId: string): UseChannelChatResult {
+  return useSupabaseBackend
+    ? useChannelChatSupabase(channelId)
+    : useChannelChatFirebase(channelId);
+}
+
+function useChannelChatFirebase(channelId: string): UseChannelChatResult {
   const user = useAuth((s) => s.user);
   const localMessages = useLocalChat((s) => s.messages);
   const localSend = useLocalChat((s) => s.sendMessage);
@@ -787,6 +798,15 @@ export function useChannelChat(channelId: string): UseChannelChatResult {
  * full page refresh before this change.
  */
 export function useThreadMessages(parentId: string | null): {
+  replies: RichMessage[];
+  loading: boolean;
+} {
+  return useSupabaseBackend
+    ? useThreadMessagesSupabase(parentId)
+    : useThreadMessagesFirebase(parentId);
+}
+
+function useThreadMessagesFirebase(parentId: string | null): {
   replies: RichMessage[];
   loading: boolean;
 } {

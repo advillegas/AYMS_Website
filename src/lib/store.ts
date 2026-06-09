@@ -12,6 +12,7 @@ import {
   friendlyAuthError,
 } from "./firebase-auth";
 import { isFirebaseConfigured } from "./firebase";
+import { useSupabaseBackend } from "./supabase";
 import type { NameDisplay } from "./name-format";
 
 // Re-exported so existing consumers (UI components) can keep importing
@@ -433,11 +434,11 @@ export const useAuth = create<AuthState>()(
       },
 
       loginWithGoogle: async () => {
-        if (!isFirebaseConfigured) {
+        if (!isFirebaseConfigured && !useSupabaseBackend) {
           return {
             ok: false,
             error:
-              "Google sign-in needs Firebase. Add your NEXT_PUBLIC_FIREBASE_* env vars and reload.",
+              "Google sign-in needs a configured backend. Add your auth env vars and reload.",
           };
         }
         try {
@@ -465,11 +466,11 @@ export const useAuth = create<AuthState>()(
         if (!trimmed) {
           return { ok: false, error: "Enter your email address first." };
         }
-        if (!isFirebaseConfigured) {
+        if (!isFirebaseConfigured && !useSupabaseBackend) {
           return {
             ok: false,
             error:
-              "Password reset needs Firebase Auth. Contact an admin to enable it.",
+              "Password reset needs a configured auth backend. Contact an admin to enable it.",
           };
         }
         try {

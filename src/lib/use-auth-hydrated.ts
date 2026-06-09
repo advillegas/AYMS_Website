@@ -7,6 +7,8 @@ import {
   getAuthInstance,
   isFirebaseConfigured,
 } from "./firebase";
+import { useSupabaseBackend } from "./supabase";
+import { onSupabaseAuthChange } from "./supabase-auth";
 import { readUserProfile, upsertUserProfile } from "./firebase-auth";
 
 /**
@@ -62,6 +64,20 @@ export function useAuthHydrated(): boolean {
  */
 export function useFirebaseAuthSync(): void {
   useEffect(() => {
+    if (useSupabaseBackend) {
+      return onSupabaseAuthChange((user) => {
+        const state = useAuth.getState();
+        if (!user) {
+          if (state.user && !isFirebaseUserId(state.user.id)) return;
+          if (state.isAuthenticated || state.user) {
+            useAuth.setState({ user: null, isAuthenticated: false });
+          }
+          return;
+        }
+        if (state.user?.id === user.id && state.isAuthenticated) return;
+        useAuth.setState({ user, isAuthenticated: true });
+      });
+    }
     if (!isFirebaseConfigured) return;
     const auth = getAuthInstance();
     if (!auth) return;

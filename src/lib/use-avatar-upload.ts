@@ -9,6 +9,8 @@ import {
   type StorageError,
 } from "firebase/storage";
 import { getStorageInstance, isStorageConfigured } from "./firebase";
+import { useSupabaseBackend, isSupabaseConfigured } from "./supabase";
+import { uploadToSupabaseStorage } from "./supabase-storage";
 
 const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
 const ALLOWED = ["image/jpeg", "image/png", "image/webp", "image/gif"];
@@ -44,18 +46,30 @@ export function useAvatarUpload(): UseAvatarUploadResult {
     async (file: File, userId: string): Promise<string | null> => {
       setError(null);
 
-      if (!isStorageConfigured) {
-        setError(
-          "Firebase Storage is not enabled for this project. Enable it in the Firebase console to upload photos.",
-        );
-        return null;
-      }
       if (!ALLOWED.includes(file.type)) {
         setError("Use a JPG, PNG, WebP, or GIF image.");
         return null;
       }
       if (file.size > MAX_BYTES) {
         setError("That image is over 5 MB. Try a smaller one.");
+        return null;
+      }
+
+      // Supabase Storage path (dual-run).
+      if (useSupabaseBackend) {
+        setUploading(true);
+        setProgress(20);
+        const url = await uploadToSupabaseStorage(`avatars/${userId}`, file);
+        setProgress(100);
+        setUploading(false);
+        if (!url) setError("Upload failed. Try again.");
+        return url;
+      }
+
+      if (!isStorageConfigured) {
+        setError(
+          "Firebase Storage is not enabled for this project. Enable it in the Firebase console to upload photos.",
+        );
         return null;
       }
 
@@ -117,7 +131,8 @@ export function useAvatarUpload(): UseAvatarUploadResult {
     progress,
     error,
     upload,
-    isStorageConfigured,
+    isStorageConfigured:
+      useSupabaseBackend ? isSupabaseConfigured : isStorageConfigured,
     reset,
   };
 }

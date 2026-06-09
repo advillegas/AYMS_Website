@@ -9,6 +9,7 @@
 import { useEffect, useRef } from "react";
 import { doc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { getDb, isFirebaseConfigured } from "./firebase";
+import { useSupabaseBackend, getSupabase } from "./supabase";
 import { useAuth } from "./store";
 
 /* ------------------------------------------------------------------ */
@@ -126,8 +127,25 @@ export function useGeoLocation(): void {
         user: s.user ? { ...s.user, geoLat: lat, geoLng: lng } : s.user,
       }));
 
-      // Persist to Firestore
-      if (!isFirebaseConfigured || !user) return;
+      // Persist to the active backend.
+      if (!user) return;
+      if (useSupabaseBackend) {
+        const sb = getSupabase();
+        if (!sb) return;
+        void sb
+          .from("users")
+          .update({
+            geo_lat: lat,
+            geo_lng: lng,
+            geo_updated_at: new Date().toISOString(),
+          })
+          .eq("id", user.id)
+          .then(({ error }) => {
+            if (error) console.warn("[geo:sb] write failed", error.message);
+          });
+        return;
+      }
+      if (!isFirebaseConfigured) return;
       const db = getDb();
       if (!db) return;
       void updateDoc(doc(db, "users", user.id), {

@@ -3,6 +3,9 @@
 import { useEffect, useMemo, useSyncExternalStore } from "react";
 import { collection, onSnapshot, type Timestamp } from "firebase/firestore";
 import { getDb, isFirebaseConfigured } from "./firebase";
+import { useSupabaseBackend } from "./supabase";
+import { subscribeQuery } from "./supabase-helpers";
+import { mapUserRowToDoc, type SupabaseUserRow } from "./supabase-user-map";
 import { useAuth, useCommunity, type User } from "./store";
 import {
   computeDisplayStatus,
@@ -88,10 +91,12 @@ interface CommunityMembersSnapshot {
   initialized: boolean;
 }
 
+const BACKEND_LIVE = isFirebaseConfigured || useSupabaseBackend;
+
 let snapshot: CommunityMembersSnapshot = {
   firebaseDocs: {},
   tick: 0,
-  loading: isFirebaseConfigured,
+  loading: BACKEND_LIVE,
   initialized: false,
 };
 
@@ -114,6 +119,34 @@ function startGlobalSubscription() {
     snapshot = { ...snapshot, tick: snapshot.tick + 1 };
     emit();
   }, PRESENCE.HEARTBEAT_MS);
+
+  // Supabase path: subscribe to the users table, map rows into the
+  // same FirestoreUserDoc shape the merge logic expects.
+  if (useSupabaseBackend) {
+    unsubFirestore = subscribeQuery<SupabaseUserRow>(
+      "users",
+      (sb) => sb.from("users").select("*").limit(1000),
+      (rows) => {
+        const next: Record<string, FirestoreUserDoc> = {};
+        for (const r of rows) {
+          next[r.id] = mapUserRowToDoc(r) as unknown as FirestoreUserDoc;
+        }
+        snapshot = {
+          ...snapshot,
+          firebaseDocs: next,
+          loading: false,
+          initialized: true,
+        };
+        emit();
+      },
+      (msg) => {
+        console.warn("[members:sb] users query failed", msg);
+        snapshot = { ...snapshot, loading: false, initialized: true };
+        emit();
+      },
+    );
+    return;
+  }
 
   if (!isFirebaseConfigured) {
     snapshot = { ...snapshot, loading: false, initialized: true };
@@ -381,7 +414,7 @@ export function useCommunityMembers(): {
     online: buckets.online,
     away: buckets.away,
     offline: buckets.offline,
-    isLive: isFirebaseConfigured,
+    isLive: BACKEND_LIVE,
     loading,
   };
 }
@@ -405,18 +438,18 @@ export function useMemberStatus(userId: string | undefined | null): {
   return useMemo(() => {
     void tick;
     if (!userId) {
-      return { status: "offline" as PresenceStatus, isLive: isFirebaseConfigured };
+      return { status: "offline" as PresenceStatus, isLive: BACKEND_LIVE };
     }
     const fb = firebaseDocs[userId];
     if (!fb) {
-      return { status: "offline" as PresenceStatus, isLive: isFirebaseConfigured };
+      return { status: "offline" as PresenceStatus, isLive: BACKEND_LIVE };
     }
     const status = computeDisplayStatus({
       status: fb.status,
       lastActiveAt: fb.lastActiveAt ?? null,
       manualOverride: fb.manualOverride,
     });
-    return { status, isLive: isFirebaseConfigured };
+    return { status, isLive: BACKEND_LIVE };
   }, [userId, firebaseDocs, tick]);
 }
 
@@ -432,3 +465,4 @@ export function usePrimeCommunityMembers(): void {
     return unsub;
   }, []);
 }
+

@@ -21,6 +21,15 @@ import {
   getDb,
   isFirebaseConfigured,
 } from "./firebase";
+import { useSupabaseBackend, getSupabase } from "./supabase";
+import { userToRow, type SupabaseUserRow } from "./supabase-user-map";
+import {
+  supabaseSignUp,
+  supabaseSignIn,
+  supabaseSignInWithGoogle,
+  supabaseSignOut,
+  supabaseSendPasswordReset,
+} from "./supabase-auth";
 import type { User } from "./store";
 
 /**
@@ -113,6 +122,53 @@ function buildUser(fbUser: FirebaseUser, doc: FirestoreUserDoc | null): User {
  * exist yet.
  */
 export async function readUserProfile(uid: string): Promise<FirestoreUserDoc | null> {
+  if (useSupabaseBackend) {
+    const sb = getSupabase();
+    if (!sb) return null;
+    try {
+      const { data } = await sb.from("users").select("*").eq("id", uid).maybeSingle();
+      if (!data) return null;
+      const r = data as SupabaseUserRow;
+      return {
+        name: r.name ?? undefined,
+        email: r.email ?? undefined,
+        avatar: r.avatar ?? undefined,
+        bio: r.bio ?? undefined,
+        location: r.location ?? undefined,
+        joinedDate: r.joined_date ?? undefined,
+        role: (r.role ?? undefined) as User["role"] | undefined,
+        nameDisplay: (r.name_display ?? undefined) as User["nameDisplay"],
+        dmPrivacy: (r.dm_privacy ?? undefined) as User["dmPrivacy"],
+        pronouns: r.pronouns ?? undefined,
+        headline: r.headline ?? undefined,
+        coverPhoto: r.cover_photo ?? undefined,
+        bioLong: r.bio_long ?? undefined,
+        instagram: r.instagram ?? undefined,
+        tiktok: r.tiktok ?? undefined,
+        twitter: r.twitter ?? undefined,
+        linkedin: r.linkedin ?? undefined,
+        website: r.website ?? undefined,
+        interests: r.interests ?? undefined,
+        languages: r.languages ?? undefined,
+        topFriendIds: r.top_friend_ids ?? undefined,
+        galleryPhotos: r.gallery_photos ?? undefined,
+        emailVisibility: (r.email_visibility ?? undefined) as User["emailVisibility"],
+        profileVisibility: (r.profile_visibility ?? undefined) as User["profileVisibility"],
+        geoLat: r.geo_lat ?? undefined,
+        geoLng: r.geo_lng ?? undefined,
+        manualLocations: r.manual_locations ?? undefined,
+        localRadiusMiles: r.local_radius_miles ?? undefined,
+        eventRadiusMiles: r.event_radius_miles ?? undefined,
+        localChatVisibility: (r.local_chat_visibility ?? undefined) as
+          | "everyone"
+          | "radius"
+          | undefined,
+      } as FirestoreUserDoc;
+    } catch (e) {
+      console.warn("[supabase-auth] readUserProfile failed", e);
+      return null;
+    }
+  }
   const db = getDb();
   if (!db) return null;
   try {
@@ -130,6 +186,16 @@ export async function readUserProfile(uid: string): Promise<FirestoreUserDoc | n
  * sign-in, profile-edit, and after server-side admin login.
  */
 export async function upsertUserProfile(user: User): Promise<void> {
+  if (useSupabaseBackend) {
+    const sb = getSupabase();
+    if (!sb) return;
+    try {
+      await sb.from("users").upsert(userToRow(user), { onConflict: "id" });
+    } catch (e) {
+      console.warn("[supabase-auth] upsertUserProfile failed", e);
+    }
+    return;
+  }
   const db = getDb();
   if (!db) return;
   try {
@@ -186,6 +252,7 @@ export async function firebaseSignUp(
   email: string,
   password: string,
 ): Promise<User | null> {
+  if (useSupabaseBackend) return supabaseSignUp(name, email, password);
   if (!isFirebaseConfigured) return null;
   const auth = getAuthInstance();
   if (!auth) return null;
@@ -215,6 +282,7 @@ export async function firebaseSignIn(
   email: string,
   password: string,
 ): Promise<User | null> {
+  if (useSupabaseBackend) return supabaseSignIn(email, password);
   if (!isFirebaseConfigured) return null;
   const auth = getAuthInstance();
   if (!auth) return null;
@@ -228,6 +296,10 @@ export async function firebaseSignIn(
 
 /** Sign out of Firebase Auth (no-op when not configured). */
 export async function firebaseSignOut(): Promise<void> {
+  if (useSupabaseBackend) {
+    await supabaseSignOut();
+    return;
+  }
   if (!isFirebaseConfigured) return;
   const auth = getAuthInstance();
   if (!auth) return;
@@ -248,6 +320,7 @@ export async function firebaseSignOut(): Promise<void> {
  * `friendlyAuthError` for a UI-ready message.
  */
 export async function firebaseSignInWithGoogle(): Promise<User | null> {
+  if (useSupabaseBackend) return supabaseSignInWithGoogle();
   if (!isFirebaseConfigured) return null;
   const auth = getAuthInstance();
   if (!auth) return null;
@@ -275,6 +348,10 @@ export async function firebaseSignInWithGoogle(): Promise<User | null> {
  * caller should run errors through `friendlyAuthError`.
  */
 export async function firebaseSendPasswordReset(email: string): Promise<void> {
+  if (useSupabaseBackend) {
+    await supabaseSendPasswordReset(email);
+    return;
+  }
   if (!isFirebaseConfigured) {
     throw new Error("Firebase isn't configured on this site.");
   }

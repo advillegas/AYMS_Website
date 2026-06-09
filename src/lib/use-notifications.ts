@@ -38,6 +38,8 @@ import {
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { getDb, isFirebaseConfigured } from "./firebase";
+import { useSupabaseBackend } from "./supabase";
+import { subscribeQuery } from "./supabase-helpers";
 import { useAuth } from "./store";
 import { useConversations } from "./use-conversations";
 import { useUserRoles } from "./use-roles-store";
@@ -341,10 +343,46 @@ function extractMentionsFor(
 
 const RECENT_LIMIT = 200;
 
+interface RecentMessageRow {
+  id: string;
+  channel_id: string;
+  user_id: string;
+  user_name: string;
+  user_avatar: string | null;
+  content: string | null;
+  reactions: Record<string, string[]> | null;
+  thread_parent_id: string | null;
+  created_at: string | null;
+}
+
 function useRecentMessages(): RecentMessage[] {
   const [messages, setMessages] = useState<RecentMessage[]>([]);
 
   useEffect(() => {
+    if (useSupabaseBackend) {
+      const unsub = subscribeQuery<RecentMessageRow>(
+        "messages",
+        (sb) => sb.from("messages").select("*").limit(RECENT_LIMIT),
+        (rows) => {
+          const next: RecentMessage[] = rows
+            .filter((r) => r.created_at)
+            .map((r) => ({
+              id: r.id,
+              channelId: r.channel_id,
+              userId: r.user_id,
+              userName: r.user_name,
+              userAvatar: r.user_avatar ?? "",
+              content: r.content ?? "",
+              reactions: r.reactions ?? {},
+              threadParentId: r.thread_parent_id ?? null,
+              createdAt: new Date(r.created_at as string).toISOString(),
+            }));
+          next.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+          setMessages(next);
+        },
+      );
+      return unsub;
+    }
     if (!isFirebaseConfigured) return;
     const db = getDb();
     if (!db) return;

@@ -10,7 +10,52 @@ import {
   type Timestamp,
 } from "firebase/firestore";
 import { getDb, isFirebaseConfigured } from "./firebase";
+import { useSupabaseBackend, getSupabase } from "./supabase";
 import { useAuth, type User } from "./store";
+
+/** Presence heartbeat write to Supabase (upsert into public.users). */
+async function writePresenceSupabase(
+  user: User,
+  status: PresenceStatus,
+  override: PresenceOverride,
+): Promise<void> {
+  const sb = getSupabase();
+  if (!sb) return;
+  try {
+    await sb.from("users").upsert(
+      {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        avatar: user.avatar ?? "",
+        bio: user.bio ?? "",
+        location: user.location ?? "",
+        role: user.role,
+        joined_date: user.joinedDate,
+        name_display: user.nameDisplay ?? "full",
+        status,
+        manual_override: override !== null,
+        last_active_at: new Date().toISOString(),
+      },
+      { onConflict: "id" },
+    );
+  } catch (e) {
+    console.warn("[presence:sb] heartbeat failed", e);
+  }
+}
+
+async function writeOfflineSupabase(userId: string): Promise<void> {
+  const sb = getSupabase();
+  if (!sb) return;
+  try {
+    await sb
+      .from("users")
+      .update({ status: "offline", last_active_at: new Date().toISOString() })
+      .eq("id", userId);
+  } catch {
+    /* best-effort */
+  }
+}
 
 /**
  * Discord-style presence states.
@@ -157,7 +202,7 @@ export function usePresenceHeartbeat(): void {
 
   useEffect(() => {
     if (!user) return;
-    if (!isFirebaseConfigured) return;
+    if (!isFirebaseConfigured && !useSupabaseBackend) return;
 
     const onActivity = () => {
       lastActivityRef.current = Date.now();
@@ -175,10 +220,14 @@ export function usePresenceHeartbeat(): void {
     async function pushHeartbeat() {
       const u = lastUserRef.current;
       if (!u) return;
-      const db = getDb();
-      if (!db) return;
       const ov = overrideRef.current;
       const status: PresenceStatus = ov ?? deriveAutoStatus();
+      if (useSupabaseBackend) {
+        await writePresenceSupabase(u, status, ov);
+        return;
+      }
+      const db = getDb();
+      if (!db) return;
       try {
         await setDoc(doc(db, "users", u.id), buildPresenceDoc(u, status, ov), {
           merge: true,
@@ -197,8 +246,13 @@ export function usePresenceHeartbeat(): void {
     // anything here so this is a fire-and-forget setDoc.
     const onUnload = () => {
       const u = lastUserRef.current;
+      if (!u) return;
+      if (useSupabaseBackend) {
+        void writeOfflineSupabase(u.id);
+        return;
+      }
       const db = getDb();
-      if (!u || !db) return;
+      if (!db) return;
       void setDoc(
         doc(db, "users", u.id),
         {

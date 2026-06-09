@@ -19,6 +19,13 @@ import {
 } from "firebase/firestore";
 import { getDb, isFirebaseConfigured } from "./firebase";
 import { useAuth } from "./store";
+import { useSupabaseBackend } from "./supabase";
+import {
+  useFriendshipsSupabase,
+  sendFriendRequestSupabase,
+  acceptFriendRequestSupabase,
+  removeFriendshipSupabase,
+} from "./use-friends-supabase";
 
 /**
  * Friends graph.
@@ -141,6 +148,10 @@ export interface UseFriendshipsResult {
  * consumer doesn't redo the filter.
  */
 export function useFriendships(): UseFriendshipsResult {
+  return useSupabaseBackend ? useFriendshipsSupabase() : useFriendshipsFirebase();
+}
+
+function useFriendshipsFirebase(): UseFriendshipsResult {
   const userId = useAuth((s) => s.user?.id);
   const [friendships, setFriendships] = useState<Friendship[]>([]);
   const [loading, setLoading] = useState<boolean>(
@@ -288,6 +299,9 @@ export async function sendFriendRequest(
   currentUserId: string,
   otherUserId: string,
 ): Promise<{ ok: boolean; status?: FriendshipStatus; error?: string }> {
+  if (useSupabaseBackend) {
+    return sendFriendRequestSupabase(currentUserId, otherUserId);
+  }
   if (!isFirebaseConfigured) {
     return { ok: false, error: "Friends need Firebase to be configured." };
   }
@@ -340,6 +354,7 @@ export async function sendFriendRequest(
 export async function acceptFriendRequest(
   friendshipDocId: string,
 ): Promise<boolean> {
+  if (useSupabaseBackend) return acceptFriendRequestSupabase(friendshipDocId);
   if (!isFirebaseConfigured) return false;
   const db = getDb();
   if (!db) return false;
@@ -363,6 +378,7 @@ export async function acceptFriendRequest(
 export async function removeFriendship(
   friendshipDocId: string,
 ): Promise<boolean> {
+  if (useSupabaseBackend) return removeFriendshipSupabase(friendshipDocId);
   if (!isFirebaseConfigured) return false;
   const db = getDb();
   if (!db) return false;

@@ -6,6 +6,8 @@ import { Plus, X, Loader2, Maximize2 } from "lucide-react";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { toast } from "sonner";
 import { getStorageInstance, isStorageConfigured } from "@/lib/firebase";
+import { useSupabaseBackend } from "@/lib/supabase";
+import { uploadToSupabaseStorage } from "@/lib/supabase-storage";
 import {
   Dialog,
   DialogContent,
@@ -33,12 +35,13 @@ export function PhotoGallery({
 
   async function handleFiles(files: FileList) {
     if (!onChange) return;
-    if (!isStorageConfigured) {
+    const supa = useSupabaseBackend;
+    if (!supa && !isStorageConfigured) {
       toast.error("Photo uploads need Firebase Storage to be enabled.");
       return;
     }
-    const storage = getStorageInstance();
-    if (!storage) {
+    const storage = supa ? null : getStorageInstance();
+    if (!supa && !storage) {
       toast.error("Storage isn't available right now.");
       return;
     }
@@ -52,13 +55,18 @@ export function PhotoGallery({
           skipped = true;
           continue;
         }
-        const storageRef = ref(
-          storage,
-          `gallery/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.]/g, "_")}`,
-        );
-        await uploadBytes(storageRef, file);
-        const url = await getDownloadURL(storageRef);
-        urls.push(url);
+        let url: string | null = null;
+        if (supa) {
+          url = await uploadToSupabaseStorage("gallery", file);
+        } else if (storage) {
+          const storageRef = ref(
+            storage,
+            `gallery/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.]/g, "_")}`,
+          );
+          await uploadBytes(storageRef, file);
+          url = await getDownloadURL(storageRef);
+        }
+        if (url) urls.push(url);
       }
       onChange(urls);
       if (skipped) {

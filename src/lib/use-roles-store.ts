@@ -35,6 +35,12 @@ import {
   setDoc,
 } from "firebase/firestore";
 import { getDb, isFirebaseConfigured } from "./firebase";
+import { useSupabaseBackend } from "./supabase";
+import {
+  writeRolesToSupabase,
+  writeUserRolesToSupabase,
+  useRolesSyncSupabase,
+} from "./use-roles-supabase";
 
 /* ------------------------------------------------------------------ */
 /* Store shape (unchanged from the localStorage era so all 16+         */
@@ -69,6 +75,10 @@ function generateId() {
 /* ------------------------------------------------------------------ */
 
 async function writeRolesToFirestore(roles: Role[]): Promise<void> {
+  if (useSupabaseBackend) {
+    await writeRolesToSupabase(roles);
+    return;
+  }
   if (!isFirebaseConfigured) return;
   const db = getDb();
   if (!db) return;
@@ -82,6 +92,10 @@ async function writeRolesToFirestore(roles: Role[]): Promise<void> {
 async function writeUserRolesToFirestore(
   map: Record<string, string[]>,
 ): Promise<void> {
+  if (useSupabaseBackend) {
+    await writeUserRolesToSupabase(map);
+    return;
+  }
   if (!isFirebaseConfigured) return;
   const db = getDb();
   if (!db) return;
@@ -220,7 +234,19 @@ export const useRoles = create<RolesState>()(
 
 let listenerStarted = false;
 
+const setRolesStore = (partial: {
+  roles?: Role[];
+  userRoles?: Record<string, string[]>;
+  _synced?: boolean;
+}) => useRoles.setState(partial);
+
 export function useRolesSync(): void {
+  return useSupabaseBackend
+    ? useRolesSyncSupabase(setRolesStore)
+    : useRolesSyncFirebase();
+}
+
+function useRolesSyncFirebase(): void {
   useEffect(() => {
     if (!isFirebaseConfigured || listenerStarted) return;
     listenerStarted = true;

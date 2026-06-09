@@ -26,6 +26,8 @@ import { Label } from "@/components/ui/label";
 import { ImagePlus, Loader2, X } from "lucide-react";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { getStorageInstance, isStorageConfigured } from "@/lib/firebase";
+import { useSupabaseBackend } from "@/lib/supabase";
+import { uploadToSupabaseStorage } from "@/lib/supabase-storage";
 import { toast } from "sonner";
 import type { PostMedia } from "@/lib/use-firebase-chat";
 
@@ -95,12 +97,13 @@ export function PostComposer({
   }, [open]);
 
   async function handleFiles(files: FileList) {
-    if (!isStorageConfigured) {
+    const supa = useSupabaseBackend;
+    if (!supa && !isStorageConfigured) {
       toast.error("Media uploads aren't enabled — text posts only for now.");
       return;
     }
-    const storage = getStorageInstance();
-    if (!storage) return;
+    const storage = supa ? null : getStorageInstance();
+    if (!supa && !storage) return;
     setUploading(true);
     try {
       const next: PostMedia[] = [...media];
@@ -109,10 +112,16 @@ export function PostComposer({
         const isVideo = file.type.startsWith("video/");
         const isImage = file.type.startsWith("image/");
         if (!isVideo && !isImage) continue;
-        const safeName = file.name.replace(/[^a-zA-Z0-9.]/g, "_");
-        const storageRef = ref(storage, `posts/${Date.now()}-${safeName}`);
-        await uploadBytes(storageRef, file);
-        const url = await getDownloadURL(storageRef);
+        let url: string | null = null;
+        if (supa) {
+          url = await uploadToSupabaseStorage("posts", file);
+        } else if (storage) {
+          const safeName = file.name.replace(/[^a-zA-Z0-9.]/g, "_");
+          const storageRef = ref(storage, `posts/${Date.now()}-${safeName}`);
+          await uploadBytes(storageRef, file);
+          url = await getDownloadURL(storageRef);
+        }
+        if (!url) continue;
         next.push({
           url,
           type: isVideo ? "video" : "image",

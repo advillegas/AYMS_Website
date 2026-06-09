@@ -43,7 +43,7 @@ const STATS = [
  */
 const HEADLINES: { before: string; accent: string }[] = [
   { before: "The world is better with ", accent: "amigas" },
-  { before: "Come as strangers, leave as ", accent: "amigas" },
+  { before: "Create unforgettable experiences with ", accent: "amigas" },
   { before: "Adventure is always better ", accent: "together" },
   { before: "Sisterhood knows no ", accent: "borders" },
   { before: "Your next trip, your new ", accent: "family" },

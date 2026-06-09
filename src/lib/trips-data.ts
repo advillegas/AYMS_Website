@@ -193,17 +193,32 @@ export function getTripById(id: string): Trip | undefined {
   return TRIPS_DATA.find((t) => t.id === id);
 }
 
-export const PAST_TRIPS = [
-  { title: "Thailand New Years 2026", location: "Bangkok & Chiang Mai", emoji: "🇹🇭", amigas: 16, year: 2026 },
-  { title: "Peru April 2026", location: "Lima, Cusco & Machu Picchu", emoji: "🇵🇪", amigas: 14, year: 2026 },
-  { title: "Tequila, Jalisco 2026", location: "Guadalajara & Tequila", emoji: "🇲🇽", amigas: 12, year: 2026 },
-  { title: "Egypt 2025", location: "Cairo, Luxor & Aswan", emoji: "🇪🇬", amigas: 13, year: 2025 },
-  { title: "Japan May 2025", location: "Tokyo & Kyoto", emoji: "🇯🇵", amigas: 12, year: 2025 },
-  { title: "Colombia 2025", location: "Cartagena & Medellín", emoji: "🇨🇴", amigas: 15, year: 2025 },
-  { title: "Safari 2025", location: "Kenya", emoji: "🦁", amigas: 10, year: 2025 },
-  { title: "Costa Rica 2024", location: "San José & Manuel Antonio", emoji: "🇨🇷", amigas: 14, year: 2024 },
-  { title: "Greece 2024", location: "Athens & Santorini", emoji: "🇬🇷", amigas: 16, year: 2024 },
-  { title: "Spain 2024", location: "Barcelona & Madrid", emoji: "🇪🇸", amigas: 12, year: 2024 },
-  { title: "Mexico City 2024", location: "CDMX", emoji: "🇲🇽", amigas: 18, year: 2024 },
-  { title: "Bali 2024", location: "Ubud & Seminyak", emoji: "🏝️", amigas: 12, year: 2024 },
+/**
+ * Past trips for the /gallery wall. `image` is a representative location
+ * photo self-hosted under /public — reusing the upcoming-trip + destination
+ * photos where they overlap, plus dedicated shots under /public/gallery for
+ * the rest. The card keeps its gradient + flag emoji as a fallback layer.
+ */
+export interface PastTrip {
+  title: string;
+  location: string;
+  emoji: string;
+  amigas: number;
+  year: number;
+  image: string;
+}
+
+export const PAST_TRIPS: PastTrip[] = [
+  { title: "Thailand New Years 2026", location: "Bangkok & Chiang Mai", emoji: "🇹🇭", amigas: 16, year: 2026, image: "/gallery/thailand.jpg" },
+  { title: "Peru April 2026", location: "Lima, Cusco & Machu Picchu", emoji: "🇵🇪", amigas: 14, year: 2026, image: "/destinations/peru.jpg" },
+  { title: "Tequila, Jalisco 2026", location: "Guadalajara & Tequila", emoji: "🇲🇽", amigas: 12, year: 2026, image: "/gallery/tequila-jalisco.jpg" },
+  { title: "Egypt 2025", location: "Cairo, Luxor & Aswan", emoji: "🇪🇬", amigas: 13, year: 2025, image: "/gallery/egypt.jpg" },
+  { title: "Japan May 2025", location: "Tokyo & Kyoto", emoji: "🇯🇵", amigas: 12, year: 2025, image: "/trips/japan-nov-26.jpg" },
+  { title: "Colombia 2025", location: "Cartagena & Medellín", emoji: "🇨🇴", amigas: 15, year: 2025, image: "/trips/colombia-dec-26.jpg" },
+  { title: "Safari 2025", location: "Kenya", emoji: "🦁", amigas: 10, year: 2025, image: "/trips/safari-jul-26.jpg" },
+  { title: "Costa Rica 2024", location: "San José & Manuel Antonio", emoji: "🇨🇷", amigas: 14, year: 2024, image: "/gallery/costa-rica.jpg" },
+  { title: "Greece 2024", location: "Athens & Santorini", emoji: "🇬🇷", amigas: 16, year: 2024, image: "/destinations/greece.jpg" },
+  { title: "Spain 2024", location: "Barcelona & Madrid", emoji: "🇪🇸", amigas: 12, year: 2024, image: "/gallery/spain.jpg" },
+  { title: "Mexico City 2024", location: "CDMX", emoji: "🇲🇽", amigas: 18, year: 2024, image: "/gallery/mexico-city.jpg" },
+  { title: "Bali 2024", location: "Ubud & Seminyak", emoji: "🏝️", amigas: 12, year: 2024, image: "/trips/bali-jun-26.jpg" },
 ];

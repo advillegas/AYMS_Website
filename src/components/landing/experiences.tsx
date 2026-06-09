@@ -1,15 +1,19 @@
 "use client";
 
+import Image from "next/image";
 import { motion, useReducedMotion } from "framer-motion";
 import { MapPin } from "lucide-react";
 
+// `image` reuses the self-hosted destination photos under /public/trips so
+// each card shows the real place; the gradient + emoji stay behind it as a
+// graceful fallback if a photo ever fails to load.
 const EXPERIENCES = [
-  { title: "Cenote Swimming in the Yucatán", location: "Mexico", emoji: "🏊‍♀️", gradient: "from-[#2D8B6F] to-[#1a5c4a]" },
-  { title: "Cooking Class in Cartagena", location: "Colombia", emoji: "🍳", gradient: "from-[#DAA520] to-[#8B6914]" },
-  { title: "Sunrise Safari Drive", location: "Kenya", emoji: "🦒", gradient: "from-[#C44B3F] to-[#8B3029]" },
-  { title: "Wine Tasting in Napa Valley", location: "California", emoji: "🍷", gradient: "from-[#9B2C8A] to-[#6B1D5E]" },
-  { title: "Salsa Night in Medellín", location: "Colombia", emoji: "💃", gradient: "from-[#FF0099] to-[#B8306A]" },
-  { title: "Temple Visit in Kyoto", location: "Japan", emoji: "⛩️", gradient: "from-[#B51760] to-[#9B2C8A]" },
+  { title: "Cenote Swimming in the Yucatán", location: "Mexico", emoji: "🏊‍♀️", gradient: "from-[#2D8B6F] to-[#1a5c4a]", image: "/trips/cancun-aug-26.jpg" },
+  { title: "Cooking Class in Cartagena", location: "Colombia", emoji: "🍳", gradient: "from-[#DAA520] to-[#8B6914]", image: "/trips/colombia-dec-26.jpg" },
+  { title: "Sunrise Safari Drive", location: "Kenya", emoji: "🦒", gradient: "from-[#C44B3F] to-[#8B3029]", image: "/trips/safari-jul-26.jpg" },
+  { title: "Wine Tasting in Napa Valley", location: "California", emoji: "🍷", gradient: "from-[#9B2C8A] to-[#6B1D5E]", image: "/trips/napa-oct-26.jpg" },
+  { title: "Salsa Night in Medellín", location: "Colombia", emoji: "💃", gradient: "from-[#FF0099] to-[#B8306A]", image: "/trips/colombia-dec-26.jpg" },
+  { title: "Temple Visit in Kyoto", location: "Japan", emoji: "⛩️", gradient: "from-[#B51760] to-[#9B2C8A]", image: "/trips/japan-nov-26.jpg" },
 ];
 
 type Experience = (typeof EXPERIENCES)[number];
@@ -27,10 +31,20 @@ function ExperienceCard({ exp, hidden }: { exp: Experience; hidden?: boolean }) 
         className={`photo-card-media photo-card-zoom aspect-[20/19] grain bg-gradient-to-br ${exp.gradient}`}
       >
         <div className="absolute inset-0 pattern-dots opacity-10" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent" />
-        <span className="absolute inset-0 flex items-center justify-center text-6xl drop-shadow-lg transition-transform duration-500 group-hover/card:scale-110" aria-hidden="true">
+        {/* Fallback emoji sits behind the photo — only visible if it fails. */}
+        <span className="absolute inset-0 flex items-center justify-center text-6xl drop-shadow-lg" aria-hidden="true">
           {exp.emoji}
         </span>
+        {/* unoptimized: ExFAT volume breaks Next's image optimizer in dev */}
+        <Image
+          src={exp.image}
+          alt={`${exp.title} — ${exp.location}`}
+          fill
+          unoptimized
+          sizes="(max-width: 640px) 18rem, 20rem"
+          className="object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-black/5 to-transparent" />
         <span className="pill-glass absolute left-3 top-3 inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-white">
           <MapPin className="h-3 w-3" aria-hidden="true" />
           {exp.location}

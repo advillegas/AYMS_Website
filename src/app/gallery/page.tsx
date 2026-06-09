@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { PAST_TRIPS } from "@/lib/trips-data";
 import { Navbar } from "@/components/landing/navbar";
@@ -114,8 +115,18 @@ export default function GalleryPage() {
                             tall ? "aspect-[3/4]" : "aspect-[4/3]",
                           )}
                         >
-                          {/* zoom layer for the Airbnb-style hover scale */}
+                          {/* zoom layer for the Airbnb-style hover scale —
+                              real location photo over the gradient fallback */}
                           <div className="photo-card-zoom absolute inset-0" aria-hidden="true">
+                            {/* unoptimized: ExFAT volume breaks Next's image optimizer in dev */}
+                            <Image
+                              src={trip.image}
+                              alt=""
+                              fill
+                              unoptimized
+                              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                              className="object-cover"
+                            />
                             <div className="absolute inset-0 pattern-dots opacity-[0.12]" />
                           </div>
                           <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/10 to-transparent" />

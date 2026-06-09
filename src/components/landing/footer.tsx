@@ -109,7 +109,6 @@ const FOOTER_COLUMNS: { heading: string; links: { label: string; href: string }[
     links: [
       { label: "Become an Amiga", href: "/register" },
       { label: "Log In", href: "/login" },
-      { label: "Play", href: "/play" },
       { label: "FAQ", href: "/faq" },
     ],
   },

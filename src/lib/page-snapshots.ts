@@ -17,7 +17,7 @@ const CTA_CREAM_GRAD = "linear-gradient(135deg, #FFF1F8 0%, #FDFCF7 100%)";
 export function snapshotHomePage(): BuilderElement[] {
   return [
     // ── HERO ──
-    el("hero", { title: "Come as strangers, leave as amigas", subtitle: "The Latina travel community where sisterhood meets adventure. Group trips, local meetups, and lifelong friendships — we're ready to be your new family.", ctaText: "Become an Amiga ♡", ctaHref: "/register", bgGradient: CREAM_GRAD, overlayOpacity: "0", minHeight: "560", align: "center" }),
+    el("hero", { title: "The world is better with amigas", subtitle: "The Latina travel community where sisterhood meets adventure. Group trips, local meetups, and lifelong friendships — we're ready to be your new family.", ctaText: "Become an Amiga ♡", ctaHref: "/register", bgGradient: CREAM_GRAD, overlayOpacity: "0", minHeight: "560", align: "center" }),
     el("button", { text: "Learn More", href: "#about", variant: "outline", align: "center", bgColor: "", textColor: INK }),
     el("spacer", { height: "16" }),
     el("card", { title: "Connect", description: "Build lifelong friendships", emoji: "❤️", bgColor: "", borderColor: "#FF0099", image: "", href: "", textColor: "#ffffff", descColor: "#ffffffe6", gradientFrom: "#FF0099", gradientTo: "#C2266A", flipEnabled: true, sparkleEnabled: true, glowEnabled: true, flipTitle: "Conectar", flipDescription: "Construye amistades para toda la vida", flipGradientFrom: "#B51760", flipGradientTo: "#9B2C8A", flipTextColor: "#ffffff", flipDescColor: "#ffffffe6", sparkleColor: "#ffffff", sparkleCount: "10", glowColor: "#FF0099" }),

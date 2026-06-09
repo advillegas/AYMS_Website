@@ -87,7 +87,7 @@ export default function TripsPage() {
             >
               <Plane className="h-4 w-4 text-[#FF7F50]" aria-hidden="true" />
               <span className="eyebrow text-[#B51760]">
-                Come as Strangers, Leave as Amigas
+                The World Is Better With Amigas
               </span>
             </motion.div>
             <h1 className="text-editorial font-display text-ink text-balance">

@@ -103,8 +103,8 @@ export function Hero() {
             </motion.div>
 
             <h1 className="text-editorial font-display text-ink text-balance">
-              Come as strangers,
-              <br className="hidden sm:block" /> leave as{" "}
+              The world is better
+              <br className="hidden sm:block" /> with{" "}
               <span className="font-display-italic marker-swipe">amigas</span>
             </h1>
 

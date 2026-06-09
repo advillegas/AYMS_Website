@@ -138,7 +138,7 @@ export function Footer() {
           </h2>
           <p className="mt-4 max-w-md text-base leading-relaxed text-white/55">
             A Latina travel community built on sisterhood, cultura y aventura.
-            Come as strangers, leave as amigas.
+            The world is better with amigas.
           </p>
         </div>
 

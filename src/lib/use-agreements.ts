@@ -35,11 +35,13 @@ import {
 import { getDb, getCurrentUid, isFirebaseConfigured } from "./firebase";
 import { useSupabaseBackend } from "./supabase";
 import { useAgreementsSupabase } from "./use-agreements-supabase";
-import type {
-  Agreement,
-  AgreementStatus,
-  DisclosureAck,
-  NewAgreement,
+import {
+  canTransition,
+  disclosuresSatisfied,
+  type Agreement,
+  type AgreementStatus,
+  type DisclosureAck,
+  type NewAgreement,
 } from "./agreements-data";
 
 export type { Agreement };
@@ -157,9 +159,13 @@ export interface AgreementsFilter {
 }
 
 export function useAgreements(filter?: AgreementsFilter): UseAgreementsResult {
-  const supa = useAgreementsSupabase(filter);
-  const fire = useAgreementsFirebase(filter);
-  return useSupabaseBackend ? supa : fire;
+  // useSupabaseBackend is a module-level constant, so this conditional
+  // hook call is stable for the lifetime of the app (same pattern as
+  // useTrips) — and it means only the ACTIVE backend ever subscribes,
+  // instead of both opening live listeners.
+  return useSupabaseBackend
+    ? useAgreementsSupabase(filter)
+    : useAgreementsFirebase(filter);
 }
 
 function useAgreementsFirebase(filter?: AgreementsFilter): UseAgreementsResult {
@@ -257,51 +263,94 @@ function useAgreementsFirebase(filter?: AgreementsFilter): UseAgreementsResult {
     [],
   );
 
+  // Every named transition re-checks the CURRENT status before writing,
+  // so a stale UI (or a direct hook call) can't sign a draft, countersign
+  // a voided document, double-countersign, or delete a completed
+  // contract. firestore.rules + the Postgres trigger enforce the same
+  // machine server-side; this layer just fails fast with a clean toast.
   const sendAgreement = useCallback(
-    (id: string) => updateAgreement(id, { status: "sent" }),
-    [updateAgreement],
+    async (id: string): Promise<boolean> => {
+      const cur = agreements.find((a) => a.id === id);
+      if (!cur || !canTransition(cur.status, "sent")) {
+        console.warn("[agreements] illegal send from", cur?.status);
+        return false;
+      }
+      return updateAgreement(id, { status: "sent" });
+    },
+    [agreements, updateAgreement],
   );
 
   const signAsProspect = useCallback(
-    (id: string, input: ProspectSignInput) =>
-      updateAgreement(id, {
+    async (id: string, input: ProspectSignInput): Promise<boolean> => {
+      const cur = agreements.find((a) => a.id === id);
+      if (!cur || !canTransition(cur.status, "prospect_signed")) {
+        console.warn("[agreements] illegal sign from", cur?.status);
+        return false;
+      }
+      if (!disclosuresSatisfied(cur.disclosures, input.disclosures)) {
+        console.warn("[agreements] disclosures incomplete");
+        return false;
+      }
+      return updateAgreement(id, {
         status: "prospect_signed",
         prospectSignerName: input.signerName,
         prospectSignatureText: input.signatureText,
         prospectSignedAt: new Date().toISOString(),
         disclosures: input.disclosures,
-      }),
-    [updateAgreement],
+      });
+    },
+    [agreements, updateAgreement],
   );
 
   const countersign = useCallback(
-    (id: string, input: AdminSignInput) =>
-      updateAgreement(id, {
+    async (id: string, input: AdminSignInput): Promise<boolean> => {
+      const cur = agreements.find((a) => a.id === id);
+      if (!cur || !canTransition(cur.status, "completed")) {
+        console.warn("[agreements] illegal countersign from", cur?.status);
+        return false;
+      }
+      return updateAgreement(id, {
         status: "completed",
         adminSignerName: input.signerName,
         adminSignatureText: input.signatureText,
         adminSignedAt: new Date().toISOString(),
-      }),
-    [updateAgreement],
+      });
+    },
+    [agreements, updateAgreement],
   );
 
   const voidAgreement = useCallback(
-    (id: string) => updateAgreement(id, { status: "void" }),
-    [updateAgreement],
+    async (id: string): Promise<boolean> => {
+      const cur = agreements.find((a) => a.id === id);
+      if (!cur || !canTransition(cur.status, "void")) {
+        console.warn("[agreements] illegal void from", cur?.status);
+        return false;
+      }
+      return updateAgreement(id, { status: "void" });
+    },
+    [agreements, updateAgreement],
   );
 
-  const deleteAgreement = useCallback(async (id: string): Promise<boolean> => {
-    if (!isFirebaseConfigured) return false;
-    const db = getDb();
-    if (!db) return false;
-    try {
-      await deleteDoc(doc(db, "agreements", id));
-      return true;
-    } catch (err) {
-      console.error("[agreements] delete failed", err);
-      return false;
-    }
-  }, []);
+  const deleteAgreement = useCallback(
+    async (id: string): Promise<boolean> => {
+      const cur = agreements.find((a) => a.id === id);
+      if (cur?.status === "completed") {
+        console.warn("[agreements] completed agreements cannot be deleted");
+        return false;
+      }
+      if (!isFirebaseConfigured) return false;
+      const db = getDb();
+      if (!db) return false;
+      try {
+        await deleteDoc(doc(db, "agreements", id));
+        return true;
+      } catch (err) {
+        console.error("[agreements] delete failed", err);
+        return false;
+      }
+    },
+    [agreements],
+  );
 
   return {
     agreements,

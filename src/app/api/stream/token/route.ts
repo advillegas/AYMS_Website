@@ -54,6 +54,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Malformed request body" }, { status: 400 });
   }
 
+  // The body-id fallback exists for LOCAL DEV ONLY (Firebase unconfigured).
+  // In production an unauthenticated caller could otherwise mint a token
+  // for any user id and join calls as them — refuse outright instead.
+  if (!FIREBASE_AUTH_ENABLED && process.env.NODE_ENV === "production") {
+    return NextResponse.json(
+      { error: "Video calls require Firebase auth to be configured." },
+      { status: 503 },
+    );
+  }
+
   // Resolve the *trusted* identity. With Firebase live we ignore the
   // body id entirely and trust only the verified token uid.
   let trustedId = (body.userId ?? "").trim();

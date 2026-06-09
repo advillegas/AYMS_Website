@@ -44,6 +44,9 @@ export function SignForm({ disclosures, defaultName, onSign }: SignFormProps) {
   );
   const [name, setName] = useState(defaultName);
   const [submitting, setSubmitting] = useState(false);
+  // Only surface aria-invalid after the member has interacted (blurred the
+  // field or attempted to sign) — never on first render.
+  const [nameTouched, setNameTouched] = useState(false);
 
   const allAcked = useMemo(
     () => disclosures.every((d) => acks[d.id]),
@@ -51,9 +54,12 @@ export function SignForm({ disclosures, defaultName, onSign }: SignFormProps) {
   );
   const nameFilled = name.trim().length > 0;
   const canSign = allAcked && nameFilled && !submitting;
+  const nameInvalid = nameTouched && !nameFilled;
+  const signBlocked = !canSign && !submitting;
 
   async function handleSign() {
     const signerName = name.trim();
+    setNameTouched(true);
     // Boundary validation — never submit a partial signature.
     if (!signerName || !disclosures.every((d) => acks[d.id])) return;
     setSubmitting(true);
@@ -124,10 +130,15 @@ export function SignForm({ disclosures, defaultName, onSign }: SignFormProps) {
           id="signature-name"
           value={name}
           onChange={(e) => setName(e.target.value)}
+          onBlur={() => setNameTouched(true)}
           placeholder="e.g. Maria Garcia"
           autoComplete="name"
           className="h-11 font-[family-name:var(--font-detail)] text-lg"
-          aria-describedby="signature-help"
+          aria-required="true"
+          aria-invalid={nameInvalid}
+          aria-describedby={
+            signBlocked ? "signature-help sign-blocked-hint" : "signature-help"
+          }
         />
         <p id="signature-help" className="text-xs text-muted-foreground">
           Typing your name here is your electronic signature and has the same
@@ -155,8 +166,12 @@ export function SignForm({ disclosures, defaultName, onSign }: SignFormProps) {
             </>
           )}
         </Button>
-        {!canSign && !submitting && (
-          <p className="text-center text-xs text-muted-foreground" aria-live="polite">
+        {signBlocked && (
+          <p
+            id="sign-blocked-hint"
+            className="text-center text-xs text-muted-foreground"
+            aria-live="polite"
+          >
             {!allAcked
               ? "Acknowledge every item above to continue."
               : "Type your full legal name to enable signing."}

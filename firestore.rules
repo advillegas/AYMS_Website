@@ -297,14 +297,28 @@ service cloud.firestore {
     // and legal commitments. A non-admin LIST must be constrained to
     // prospectId == uid (the query in use-agreements.ts does this); the
     // catch-all denies anything broader.
-    // HARDEN BEFORE LAUNCH: the prospect update allow is intentionally
-    // broad to let the signing flow write signature fields under the
-    // current test-mode posture. Before launch, restrict it to only the
-    // signature/disclosure/status fields (request.resource.data.diff).
+    //
+    // The prospect's update is locked to the SIGNING action only:
+    //  - may touch ONLY the prospect-signature fields + disclosures +
+    //    status + updatedAt (so they can never forge the admin
+    //    counter-signature, rewrite the contract body, or reassign the
+    //    document to someone else), and
+    //  - the status write must be the legal transition sent →
+    //    prospect_signed (so a draft can't be signed and a completed or
+    //    voided document can't be reopened).
     match /agreements/{agreementId} {
       allow read:   if isAdmin() || (signedIn() && request.auth.uid == resource.data.prospectId);
       allow create: if isAdmin();
-      allow update: if isAdmin() || (signedIn() && request.auth.uid == resource.data.prospectId);
+      allow update: if isAdmin() || (
+        signedIn()
+        && request.auth.uid == resource.data.prospectId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+             'prospectSignerName', 'prospectSignatureText', 'prospectSignedAt',
+             'disclosures', 'status', 'updatedAt'
+           ])
+        && resource.data.status == 'sent'
+        && request.resource.data.status == 'prospect_signed'
+      );
       allow delete: if isAdmin();
     }
 

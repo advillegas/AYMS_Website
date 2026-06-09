@@ -58,6 +58,15 @@ const nextConfig: NextConfig = {
             key: "Strict-Transport-Security",
             value: "max-age=63072000; includeSubDomains; preload",
           },
+          {
+            // Conservative CSP subset: blocks plugin embeds, base-tag
+            // hijacks, framing, and external form posts WITHOUT a
+            // script-src/connect-src (which would need constant curation
+            // for Firebase/Stream/GIPHY and break the app if it drifts).
+            key: "Content-Security-Policy",
+            value:
+              "object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'",
+          },
         ],
       },
     ];

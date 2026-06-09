@@ -15,16 +15,8 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
-import {
-  collection,
-  onSnapshot,
-  query,
-  limit,
-  type DocumentData,
-  type FirestoreError,
-  type QueryDocumentSnapshot,
-} from "firebase/firestore";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -37,7 +29,6 @@ import {
 } from "@/components/ui/dialog";
 import { Loader2, FileSignature } from "lucide-react";
 import { toast } from "sonner";
-import { getDb, isFirebaseConfigured } from "@/lib/firebase";
 import {
   AGREEMENT_TEMPLATES,
   getTemplate,
@@ -47,106 +38,9 @@ import {
   type NewAgreement,
 } from "@/lib/agreements-data";
 import type { Trip } from "@/lib/use-trips";
-import {
-  type ReservationStatus,
-  type TripReservation,
-} from "@/lib/use-trip-reservations";
+import { type TripReservation } from "@/lib/use-trip-reservations";
 
 const COMPANY_NAME = "Amigas y Más Social";
-
-/* ------------------------------------------------------------------ */
-/* Admin-wide reservations listener (recipient picker source)          */
-/* ------------------------------------------------------------------ */
-
-interface ReservationDoc {
-  tripId?: string;
-  userId?: string;
-  userName?: string;
-  userAvatar?: string | null;
-  status?: ReservationStatus;
-  note?: string | null;
-  createdAt?: { toDate?: () => Date };
-}
-
-function docToReservation(
-  d: QueryDocumentSnapshot<DocumentData, DocumentData>,
-): TripReservation {
-  const data = d.data() as ReservationDoc;
-  let createdAt = "";
-  try {
-    createdAt = data.createdAt?.toDate?.()?.toISOString() ?? "";
-  } catch {
-    createdAt = "";
-  }
-  return {
-    id: d.id,
-    tripId: data.tripId ?? "",
-    userId: data.userId ?? "",
-    userName: data.userName ?? "Amiga",
-    userAvatar: data.userAvatar ?? undefined,
-    status:
-      data.status === "waitlist"
-        ? "waitlist"
-        : data.status === "cancelled"
-          ? "cancelled"
-          : "reserved",
-    note: data.note ?? undefined,
-    createdAt,
-  };
-}
-
-/**
- * Live listener over ALL trip reservations (admin roster view). Powers
- * both the agreements recipient picker and the Leads page. Firestore
- * rules let admins read the whole collection; no orderBy (avoids a
- * composite index), sorted newest-first client-side. `error` surfaces a
- * denied/offline listener so an empty roster isn't misread as "no leads".
- * Cancelled rows are kept; callers filter them out as needed.
- */
-export function useAllReservations(): {
-  reservations: TripReservation[];
-  loading: boolean;
-  error: boolean;
-} {
-  const [reservations, setReservations] = useState<TripReservation[]>([]);
-  const [loading, setLoading] = useState<boolean>(isFirebaseConfigured);
-  const [error, setError] = useState<boolean>(false);
-
-  useEffect(() => {
-    if (!isFirebaseConfigured) {
-      setLoading(false);
-      return;
-    }
-    const db = getDb();
-    if (!db) {
-      setLoading(false);
-      return;
-    }
-    const q = query(collection(db, "tripReservations"), limit(1000));
-    const unsub = onSnapshot(
-      q,
-      (snap) => {
-        setReservations(
-          snap.docs
-            .map(docToReservation)
-            .sort((a, b) =>
-              (b.createdAt || "").localeCompare(a.createdAt || ""),
-            ),
-        );
-        setError(false);
-        setLoading(false);
-      },
-      (err: FirestoreError) => {
-        console.warn("[reservations] snapshot failed", err);
-        setError(true);
-        setLoading(false);
-      },
-    );
-    return () => unsub();
-  }, []);
-
-  return { reservations, loading, error };
-}
 
 /** Match the trip-form's multi-line field styling. */
 const selectClass =
@@ -172,6 +66,9 @@ function buildVars(prospectName: string, trip: Trip | undefined): MergeVars {
   };
 }
 
+/** Matches {{mergeField}} tokens that survived renderTemplate. */
+const UNRESOLVED_FIELD_RE = /\{\{\s*[a-zA-Z]+\s*\}\}/g;
+
 /* ------------------------------------------------------------------ */
 /* New agreement dialog                                                */
 /* ------------------------------------------------------------------ */
@@ -196,6 +93,7 @@ export function AgreementFormDialog({
   const [templateId, setTemplateId] = useState(AGREEMENT_TEMPLATES[0]?.id ?? "");
   const [reservationId, setReservationId] = useState("");
   const [prospectEmail, setProspectEmail] = useState("");
+  const [ackUnresolved, setAckUnresolved] = useState(false);
   const [busy, setBusy] = useState(false);
 
   // (Re)seed the controlled fields whenever the dialog opens or the
@@ -206,6 +104,7 @@ export function AgreementFormDialog({
     setTemplateId(AGREEMENT_TEMPLATES[0]?.id ?? "");
     setReservationId(initialReservationId ?? "");
     setProspectEmail("");
+    setAckUnresolved(false);
     setBusy(false);
   }, [open, initialReservationId]);
 
@@ -229,6 +128,18 @@ export function AgreementFormDialog({
     : "";
   const previewBody = template ? renderTemplate(template.body, vars) : "";
 
+  // Distinct {{tokens}} still visible after the merge (e.g. the trip has
+  // no dates yet). Creating stays allowed — the admin may fill the trip
+  // in later — but it requires an explicit acknowledgement first.
+  const unresolvedFields = useMemo(() => {
+    const hits = `${previewTitle}\n${previewBody}`.match(UNRESOLVED_FIELD_RE);
+    return [...new Set((hits ?? []).map((h) => h.replace(/\s+/g, "")))];
+  }, [previewTitle, previewBody]);
+  const hasUnresolved = unresolvedFields.length > 0;
+  const unresolvedKey = unresolvedFields.join(",");
+  // Re-require the acknowledgement whenever the unresolved set changes.
+  useEffect(() => setAckUnresolved(false), [unresolvedKey]);
+
   async function handleCreate() {
     if (!template) {
       toast.error("Pick a document template.");
@@ -236,6 +147,10 @@ export function AgreementFormDialog({
     }
     if (!reservation) {
       toast.error("Pick who this agreement is for.");
+      return;
+    }
+    if (hasUnresolved && !ackUnresolved) {
+      toast.error("Acknowledge the unresolved fields first.");
       return;
     }
     setBusy(true);
@@ -248,8 +163,8 @@ export function AgreementFormDialog({
         prospectName: reservation.userName,
         prospectEmail: prospectEmail.trim() || undefined,
         templateId: template.id,
-        title: renderTemplate(template.titleTemplate, vars),
-        bodyMarkdown: renderTemplate(template.body, vars),
+        title: previewTitle,
+        bodyMarkdown: previewBody,
         disclosures: templateDisclosures(template),
       };
       const ok = await onCreate(payload);
@@ -335,6 +250,24 @@ export function AgreementFormDialog({
             />
           </div>
 
+          {/* Unresolved-merge-field gate: visible warning + explicit ack. */}
+          {reservation && hasUnresolved ? (
+            <div className="space-y-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3">
+              <p className="text-[11px] leading-relaxed text-amber-700 dark:text-amber-300">
+                <span className="font-semibold">Unresolved fields:</span>{" "}
+                {unresolvedFields.join(", ")} — fill these in the trip or
+                they&apos;ll appear literally in the contract.
+              </p>
+              <label className="flex cursor-pointer items-center gap-2 text-xs font-medium text-amber-800 dark:text-amber-200">
+                <Checkbox
+                  checked={ackUnresolved}
+                  onCheckedChange={(v) => setAckUnresolved(v === true)}
+                />
+                Create anyway with unresolved fields
+              </label>
+            </div>
+          ) : null}
+
           {/* Live preview of the merged document the prospect will sign. */}
           <div className="grid gap-1.5">
             <Label>Preview</Label>
@@ -366,7 +299,12 @@ export function AgreementFormDialog({
           </Button>
           <Button
             onClick={handleCreate}
-            disabled={busy || !template || !reservation}
+            disabled={
+              busy ||
+              !template ||
+              !reservation ||
+              (hasUnresolved && !ackUnresolved)
+            }
             className="bg-primary hover:bg-magenta"
           >
             {busy ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}

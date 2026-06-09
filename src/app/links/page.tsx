@@ -148,7 +148,7 @@ export default function LinksPage() {
                 href={href}
                 {...EXT}
                 aria-label={`${label} (opens in a new tab)`}
-                className="glass-control text-ink size-11 hover:text-[#FF0099] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[#FF0099]/50"
+                className="glass-control text-ink size-12 hover:text-[#FF0099] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[#FF0099]/50"
               >
                 <Icon className="h-5 w-5" />
               </a>
@@ -157,7 +157,7 @@ export default function LinksPage() {
                 key={label}
                 href={href}
                 aria-label={`${label} — contact us`}
-                className="glass-control text-ink size-11 hover:text-[#FF0099] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[#FF0099]/50"
+                className="glass-control text-ink size-12 hover:text-[#FF0099] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[#FF0099]/50"
               >
                 <Icon className="h-5 w-5" />
               </Link>
@@ -166,8 +166,9 @@ export default function LinksPage() {
         </motion.nav>
 
         {/* ---------- Tab chips ---------- */}
-        <motion.div
+        <motion.nav
           {...rise(0.12)}
+          aria-label="Featured pages"
           className="scrollbar-hide mt-7 flex w-full snap-x gap-2 overflow-x-auto pb-1"
         >
           {CHIPS.map((chip) => (
@@ -176,12 +177,12 @@ export default function LinksPage() {
               href={chip.href}
               {...EXT}
               aria-label={`${chip.label} (opens in a new tab)`}
-              className="pill-glass elevate-2 snap-start shrink-0 whitespace-nowrap px-4 py-2 text-xs font-semibold text-ink transition-colors hover:text-[#B51760] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[#FF0099]/50"
+              className="pill-glass elevate-2 snap-start inline-flex min-h-11 shrink-0 items-center whitespace-nowrap px-4 py-2.5 text-xs font-semibold text-ink transition-colors hover:text-[#B51760] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[#FF0099]/50 focus-visible:ring-offset-2"
             >
               {chip.label}
             </a>
           ))}
-        </motion.div>
+        </motion.nav>
 
         {/* ---------- Main link buttons ---------- */}
         <div className="mt-7 flex w-full flex-col gap-3.5">

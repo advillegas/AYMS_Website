@@ -98,6 +98,44 @@ export function isFullySigned(a: Agreement): boolean {
   return Boolean(a.adminSignedAt && a.prospectSignedAt);
 }
 
+/**
+ * The legal e-sign state machine. Used by BOTH backend hooks (and
+ * mirrored in firestore.rules + the Postgres agreements_guard trigger)
+ * so a stale UI or direct hook call can't sign a draft, countersign a
+ * voided document, or reopen a completed one.
+ */
+export function canTransition(
+  from: AgreementStatus,
+  to: AgreementStatus,
+): boolean {
+  switch (to) {
+    case "sent":
+      return from === "draft";
+    case "prospect_signed":
+      return from === "sent";
+    case "completed":
+      return from === "prospect_signed";
+    case "void":
+      return from === "draft" || from === "sent" || from === "prospect_signed";
+    default:
+      return false;
+  }
+}
+
+/**
+ * True only when the submitted acks cover EXACTLY the required
+ * disclosures and every one is acknowledged — a tampered client can't
+ * sign with fewer (or fabricated) acknowledgements.
+ */
+export function disclosuresSatisfied(
+  required: DisclosureAck[],
+  submitted: DisclosureAck[],
+): boolean {
+  const ids = new Set(required.map((d) => d.id));
+  if (submitted.length !== ids.size) return false;
+  return submitted.every((d) => ids.has(d.id) && d.acknowledged);
+}
+
 /* ------------------------------------------------------------------ */
 /* Templates                                                           */
 /* ------------------------------------------------------------------ */

@@ -43,9 +43,19 @@ export async function POST(req: Request) {
     );
   }
 
+  // Bound the raw payload BEFORE parsing — the 24-turn slice below caps
+  // message count, but without a byte cap a single crafted 1MB message
+  // would still hit the model and burn token budget.
+  const raw = await req.text();
+  if (raw.length > 64_000) {
+    return new Response(
+      JSON.stringify({ error: "Message too long — please shorten it." }),
+      { status: 413, headers: { "Content-Type": "application/json" } },
+    );
+  }
   let body: { messages?: UIMessage[] };
   try {
-    body = await req.json();
+    body = JSON.parse(raw);
   } catch {
     return new Response(
       JSON.stringify({ error: "Malformed request body" }),

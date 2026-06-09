@@ -29,6 +29,7 @@ import {
   Ban,
   PenLine,
   CheckCircle2,
+  AlertTriangle,
   Loader2,
 } from "lucide-react";
 import { format } from "date-fns";
@@ -40,6 +41,7 @@ import { useTrips } from "@/lib/use-trips";
 import { useAgreements, sortAgreements } from "@/lib/use-agreements";
 import {
   AGREEMENT_STATUS_LABEL,
+  isFullySigned,
   type Agreement,
   type AgreementStatus,
   type NewAgreement,
@@ -47,8 +49,8 @@ import {
 import {
   AgreementFormDialog,
   CountersignDialog,
-  useAllReservations,
 } from "@/components/admin/agreement-form";
+import { useAllReservations } from "@/lib/use-all-reservations";
 
 /* ------------------------------------------------------------------ */
 /* Status presentation                                                 */
@@ -359,13 +361,26 @@ function AgreementRow({
         <div className="flex items-center gap-2 flex-wrap">
           <p className="text-sm font-medium truncate">{a.prospectName}</p>
           <StatusBadge status={a.status} />
+          {/* "Confirmed client" requires BOTH signature records, not just
+              the status string — a completed row missing one gets a subtle
+              warning instead so the gap is visible. */}
           {a.status === "completed" ? (
-            <Badge
-              variant="outline"
-              className="text-[9px] h-4 gap-0.5 border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-            >
-              <CheckCircle2 className="h-2.5 w-2.5" /> Confirmed client
-            </Badge>
+            isFullySigned(a) ? (
+              <Badge
+                variant="outline"
+                className="text-[9px] h-4 gap-0.5 border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+              >
+                <CheckCircle2 className="h-2.5 w-2.5" /> Confirmed client
+              </Badge>
+            ) : (
+              <Badge
+                variant="outline"
+                className="text-[9px] h-4 gap-0.5 border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+              >
+                <AlertTriangle className="h-2.5 w-2.5" /> Signature record
+                incomplete
+              </Badge>
+            )
           ) : null}
         </div>
         <p className="text-[11px] text-muted-foreground truncate">{a.title}</p>

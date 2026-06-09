@@ -284,6 +284,15 @@ create index if not exists agreements_status_idx on public.agreements (status);
 -- ============================================================
 -- Row Level Security — enable everywhere, permissive for now
 -- (mirrors current Firestore test-mode). HARDEN BEFORE LAUNCH.
+--
+-- IMPORTANT: the app talks to Supabase with the anon key only —
+-- Supabase Auth is NOT wired (Firebase is the identity provider), so
+-- auth.uid() is always NULL here and per-user RLS policies cannot
+-- distinguish callers. User-scoped RLS therefore requires wiring
+-- Supabase Auth (or minting Supabase JWTs from Firebase) first; until
+-- then the triggers below provide the enforceable subset: no role
+-- self-escalation and a legal e-sign state machine. Do NOT take the
+-- Supabase backend live for agreements before real auth lands.
 -- ============================================================
 do $$
 declare t text;
@@ -309,3 +318,83 @@ begin
     );
   end loop;
 end $$;
+
+-- ============================================================
+-- Hard guards (trigger-enforced; independent of RLS/auth)
+-- ============================================================
+
+-- True when the request carries the service_role JWT (dashboard, server
+-- jobs). Plain anon/authenticated app traffic is NOT service role.
+create or replace function public.is_service_role()
+returns boolean language sql stable as $$
+  select coalesce(
+    current_setting('request.jwt.claims', true)::jsonb ->> 'role', ''
+  ) = 'service_role';
+$$;
+
+-- users.role is the privilege boundary — with anon-key access nobody can
+-- be told apart, so the only safe posture is: role grants/changes happen
+-- exclusively via the service role (Supabase dashboard or a server job).
+-- Blocks the create-as-amiga-then-update-role-to-admin escalation.
+create or replace function public.guard_user_role()
+returns trigger language plpgsql as $$
+begin
+  if public.is_service_role() then
+    return new;
+  end if;
+  if tg_op = 'UPDATE' and new.role is distinct from old.role then
+    raise exception 'users.role changes require the service role';
+  end if;
+  if tg_op = 'INSERT' and coalesce(new.role, '') = 'admin' then
+    raise exception 'admin role grants require the service role';
+  end if;
+  return new;
+end $$;
+
+drop trigger if exists users_role_guard on public.users;
+create trigger users_role_guard
+  before insert or update on public.users
+  for each row execute function public.guard_user_role();
+
+-- Agreements are legal documents: enforce the e-sign state machine and
+-- make signatures write-once at the database layer, so no client (anon
+-- or otherwise) can forge a transition, reopen a closed document, or
+-- overwrite a recorded signature. Mirrors firestore.rules.
+create or replace function public.guard_agreement()
+returns trigger language plpgsql as $$
+begin
+  if public.is_service_role() then
+    return coalesce(new, old);
+  end if;
+  if tg_op = 'DELETE' then
+    if old.status = 'completed' then
+      raise exception 'completed agreements cannot be deleted';
+    end if;
+    return old;
+  end if;
+  if tg_op = 'UPDATE' then
+    if new.status is distinct from old.status then
+      if not (
+        (old.status = 'draft' and new.status in ('sent', 'void'))
+        or (old.status = 'sent' and new.status in ('prospect_signed', 'void'))
+        or (old.status = 'prospect_signed' and new.status in ('completed', 'void'))
+      ) then
+        raise exception 'illegal agreement status transition % -> %', old.status, new.status;
+      end if;
+    end if;
+    if old.prospect_signed_at is not null
+       and new.prospect_signed_at is distinct from old.prospect_signed_at then
+      raise exception 'prospect signature is immutable once set';
+    end if;
+    if old.admin_signed_at is not null
+       and new.admin_signed_at is distinct from old.admin_signed_at then
+      raise exception 'admin signature is immutable once set';
+    end if;
+  end if;
+  return new;
+end $$;
+
+drop trigger if exists agreements_guard on public.agreements;
+create trigger agreements_guard
+  before update or delete on public.agreements
+  for each row execute function public.guard_agreement();

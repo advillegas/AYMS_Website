@@ -44,7 +44,7 @@ import { useAgreements } from "@/lib/use-agreements";
 import { AGREEMENT_STATUS_LABEL } from "@/lib/agreements-data";
 import { type ReservationStatus } from "@/lib/use-trip-reservations";
 import { cn } from "@/lib/utils";
-import { useAllReservations } from "@/components/admin/agreement-form";
+import { useAllReservations } from "@/lib/use-all-reservations";
 
 /* ------------------------------------------------------------------ */
 /* Helpers                                                             */
@@ -347,7 +347,7 @@ export default function AdminLeadsPage() {
                 No newsletter signups yet.
               </p>
             ) : (
-              <div className="divide-y divide-border max-h-96 overflow-y-auto">
+              <div className="divide-y divide-border max-h-96 overflow-y-auto overscroll-contain">
                 {signups.map((s) => (
                   <div
                     key={s.id}

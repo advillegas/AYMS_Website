@@ -10,11 +10,13 @@ import { useCallback, useEffect, useState } from "react";
 import { getSupabase } from "./supabase";
 import { subscribeQuery, tsToIso } from "./supabase-helpers";
 import { getCurrentUid } from "./firebase";
-import type {
-  Agreement,
-  AgreementStatus,
-  DisclosureAck,
-  NewAgreement,
+import {
+  canTransition,
+  disclosuresSatisfied,
+  type Agreement,
+  type AgreementStatus,
+  type DisclosureAck,
+  type NewAgreement,
 } from "./agreements-data";
 import {
   sortAgreements,
@@ -178,49 +180,90 @@ export function useAgreementsSupabase(
     [],
   );
 
+  // Mirror of the Firebase hook's transition guards (parity — see
+  // use-agreements.ts). The Postgres agreements_guard trigger enforces
+  // the same machine server-side.
   const sendAgreement = useCallback(
-    (id: string) => updateAgreement(id, { status: "sent" }),
-    [updateAgreement],
+    async (id: string): Promise<boolean> => {
+      const cur = agreements.find((a) => a.id === id);
+      if (!cur || !canTransition(cur.status, "sent")) {
+        console.warn("[agreements:sb] illegal send from", cur?.status);
+        return false;
+      }
+      return updateAgreement(id, { status: "sent" });
+    },
+    [agreements, updateAgreement],
   );
 
   const signAsProspect = useCallback(
-    (id: string, input: ProspectSignInput) =>
-      updateAgreement(id, {
+    async (id: string, input: ProspectSignInput): Promise<boolean> => {
+      const cur = agreements.find((a) => a.id === id);
+      if (!cur || !canTransition(cur.status, "prospect_signed")) {
+        console.warn("[agreements:sb] illegal sign from", cur?.status);
+        return false;
+      }
+      if (!disclosuresSatisfied(cur.disclosures, input.disclosures)) {
+        console.warn("[agreements:sb] disclosures incomplete");
+        return false;
+      }
+      return updateAgreement(id, {
         status: "prospect_signed",
         prospectSignerName: input.signerName,
         prospectSignatureText: input.signatureText,
         prospectSignedAt: new Date().toISOString(),
         disclosures: input.disclosures,
-      }),
-    [updateAgreement],
+      });
+    },
+    [agreements, updateAgreement],
   );
 
   const countersign = useCallback(
-    (id: string, input: AdminSignInput) =>
-      updateAgreement(id, {
+    async (id: string, input: AdminSignInput): Promise<boolean> => {
+      const cur = agreements.find((a) => a.id === id);
+      if (!cur || !canTransition(cur.status, "completed")) {
+        console.warn("[agreements:sb] illegal countersign from", cur?.status);
+        return false;
+      }
+      return updateAgreement(id, {
         status: "completed",
         adminSignerName: input.signerName,
         adminSignatureText: input.signatureText,
         adminSignedAt: new Date().toISOString(),
-      }),
-    [updateAgreement],
+      });
+    },
+    [agreements, updateAgreement],
   );
 
   const voidAgreement = useCallback(
-    (id: string) => updateAgreement(id, { status: "void" }),
-    [updateAgreement],
+    async (id: string): Promise<boolean> => {
+      const cur = agreements.find((a) => a.id === id);
+      if (!cur || !canTransition(cur.status, "void")) {
+        console.warn("[agreements:sb] illegal void from", cur?.status);
+        return false;
+      }
+      return updateAgreement(id, { status: "void" });
+    },
+    [agreements, updateAgreement],
   );
 
-  const deleteAgreement = useCallback(async (id: string): Promise<boolean> => {
-    const sb = getSupabase();
-    if (!sb) return false;
-    const { error: delErr } = await sb.from("agreements").delete().eq("id", id);
-    if (delErr) {
-      console.error("[agreements:sb] delete failed", delErr.message);
-      return false;
-    }
-    return true;
-  }, []);
+  const deleteAgreement = useCallback(
+    async (id: string): Promise<boolean> => {
+      const cur = agreements.find((a) => a.id === id);
+      if (cur?.status === "completed") {
+        console.warn("[agreements:sb] completed agreements cannot be deleted");
+        return false;
+      }
+      const sb = getSupabase();
+      if (!sb) return false;
+      const { error: delErr } = await sb.from("agreements").delete().eq("id", id);
+      if (delErr) {
+        console.error("[agreements:sb] delete failed", delErr.message);
+        return false;
+      }
+      return true;
+    },
+    [agreements],
+  );
 
   return {
     agreements,

@@ -294,10 +294,37 @@ export async function POST(request: NextRequest) {
         continue;
       }
 
+      // SSRF guard: feed URLs are admin-configured, but defense-in-depth —
+      // never fetch private/loopback/metadata hosts (same blocklist as
+      // /api/og). A compromised admin account or poisoned config must not
+      // be able to pivot this server into the internal network.
+      let feedUrl: URL;
+      try {
+        feedUrl = new URL(icalUrl);
+      } catch {
+        results.push({ configId, name: configName, upserted: 0, deleted: 0, error: "Invalid iCal URL" });
+        continue;
+      }
+      const feedHost = feedUrl.hostname.toLowerCase();
+      if (
+        (feedUrl.protocol !== "http:" && feedUrl.protocol !== "https:") ||
+        feedHost === "localhost" ||
+        feedHost === "127.0.0.1" ||
+        feedHost === "::1" ||
+        feedHost.endsWith(".local") ||
+        feedHost.startsWith("10.") ||
+        feedHost.startsWith("192.168.") ||
+        feedHost.startsWith("169.254.") ||
+        /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(feedHost)
+      ) {
+        results.push({ configId, name: configName, upserted: 0, deleted: 0, error: "iCal host not allowed" });
+        continue;
+      }
+
       try {
         // 2. Fetch + parse iCal
         console.debug("[calendar-sync]", configName, "fetching:", icalUrl.slice(0, 80));
-        const response = await fetch(icalUrl, {
+        const response = await fetch(feedUrl.toString(), {
           signal: AbortSignal.timeout(15_000),
         });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);

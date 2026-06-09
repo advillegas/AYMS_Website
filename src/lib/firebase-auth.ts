@@ -411,20 +411,24 @@ export async function ensureFirebaseAdminSession(
       } catch (e2) {
         const c2 = (e2 as { code?: string })?.code ?? "";
         if (c2 === "auth/email-already-in-use") {
-          console.warn(
-            "[admin-bridge] Firebase admin account exists but ADMIN_PASSWORD " +
-              "doesn't match it. Reset it in Firebase Console → Authentication " +
-              "(or set ADMIN_PASSWORD to match).",
+          // Loud on purpose: the UI admin login SUCCEEDED but Firestore
+          // writes will fail without this session — a silent warn here
+          // reads as "admin works" while every admin mutation bounces.
+          console.error(
+            "[admin-bridge] ADMIN MUTATIONS WILL FAIL: Firebase admin account " +
+              "exists but ADMIN_PASSWORD doesn't match it. Reset it in Firebase " +
+              "Console → Authentication (or set ADMIN_PASSWORD to match).",
           );
         } else {
-          console.warn("[admin-bridge] couldn't provision Firebase admin account", e2);
+          console.error("[admin-bridge] couldn't provision Firebase admin account", e2);
         }
         return;
       }
     } else if (code === "auth/wrong-password") {
-      console.warn(
-        "[admin-bridge] Firebase admin account exists but the password differs " +
-          "from ADMIN_PASSWORD. Update it in Firebase Console → Authentication.",
+      console.error(
+        "[admin-bridge] ADMIN MUTATIONS WILL FAIL: Firebase admin account " +
+          "exists but the password differs from ADMIN_PASSWORD. Update it in " +
+          "Firebase Console → Authentication.",
       );
       return;
     } else {

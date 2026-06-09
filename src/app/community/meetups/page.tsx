@@ -29,10 +29,13 @@ import {
   Navigation,
   Sparkles,
   Loader2,
+  List,
+  Map as MapIcon,
 } from "lucide-react";
+import dynamic from "next/dynamic";
 import { format, parseISO, isValid } from "date-fns";
 import { toast } from "sonner";
-import { initials } from "@/lib/utils";
+import { cn, initials } from "@/lib/utils";
 import { useAuth } from "@/lib/store";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { getUserCoords, haversineDistance } from "@/lib/geo";
@@ -40,6 +43,24 @@ import { useMeetups, type Meetup } from "@/lib/use-meetups";
 import { EventRsvp } from "@/components/community/event-rsvp";
 import { useReminderScheduler } from "@/lib/use-event-reminders";
 import { MeetupForm } from "@/components/community/meetup-form";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
+// Leaflet touches `window` at import, so the map is loaded client-only.
+const MeetupsMap = dynamic(
+  () => import("@/components/community/meetups-map"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-[460px] w-full items-center justify-center rounded-2xl border border-rosa/20 bg-rosa/5 sm:h-[520px]">
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      </div>
+    ),
+  },
+);
 
 /* ------------------------------------------------------------------ */
 /* Helpers                                                             */
@@ -62,12 +83,25 @@ export default function MeetupsPage() {
   const { meetups, loading, isFirebase, deleteMeetup } = useMeetups();
   const confirm = useConfirm();
   const [formOpen, setFormOpen] = useState(false);
+  const [view, setView] = useState<"list" | "map">("list");
+  const [selected, setSelected] = useState<Meetup | null>(null);
 
   // Sweep due reminders while the member is on this page.
   useReminderScheduler();
 
   const coords = getUserCoords(user);
   const today = todayKey();
+
+  // Meetups whose location couldn't be geocoded can't be plotted.
+  const unmappable = useMemo(
+    () => meetups.filter((m) => m.lat == null || m.lng == null).length,
+    [meetups],
+  );
+
+  const selectedDistance =
+    selected && coords && selected.lat != null && selected.lng != null
+      ? haversineDistance(coords.lat, coords.lng, selected.lat, selected.lng)
+      : null;
 
   // Split upcoming vs past, then sort upcoming by distance (when we can)
   // else by soonest date. Past meetups stay date-descending at the end.
@@ -155,7 +189,54 @@ export default function MeetupsPage() {
         ) : meetups.length === 0 ? (
           <EmptyState canHost={!!user} onHost={() => setFormOpen(true)} />
         ) : (
-          <div className="space-y-8">
+          <div className="space-y-6">
+            {/* List / Map toggle */}
+            <div className="flex items-center justify-between gap-3">
+              <div className="inline-flex rounded-full border border-rosa/25 bg-card p-1">
+                <button
+                  type="button"
+                  onClick={() => setView("list")}
+                  aria-pressed={view === "list"}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-medium transition",
+                    view === "list"
+                      ? "bg-gradient-to-r from-[#FF0099] to-[#B51760] text-white shadow-sm"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  <List className="h-4 w-4" />
+                  List
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setView("map")}
+                  aria-pressed={view === "map"}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-medium transition",
+                    view === "map"
+                      ? "bg-gradient-to-r from-[#FF0099] to-[#B51760] text-white shadow-sm"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  <MapIcon className="h-4 w-4" />
+                  Map
+                </button>
+              </div>
+              {view === "map" && unmappable > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  {unmappable} without a map location
+                </p>
+              )}
+            </div>
+
+            {view === "map" ? (
+              <MeetupsMap
+                meetups={meetups}
+                coords={coords}
+                onSelect={setSelected}
+              />
+            ) : (
+              <div className="space-y-8">
             {/* Upcoming */}
             <section className="space-y-3">
               <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -201,11 +282,36 @@ export default function MeetupsPage() {
                 </div>
               </section>
             )}
+              </div>
+            )}
           </div>
         )}
       </div>
 
       <MeetupForm open={formOpen} onOpenChange={setFormOpen} />
+
+      {/* Meetup detail (opened from a map pin) */}
+      <Dialog
+        open={!!selected}
+        onOpenChange={(open) => {
+          if (!open) setSelected(null);
+        }}
+      >
+        <DialogContent className="max-w-lg">
+          {selected && (
+            <>
+              <DialogTitle className="sr-only">{selected.title}</DialogTitle>
+              <MeetupCard
+                meetup={selected}
+                distance={selectedDistance}
+                isHost={false}
+                onDelete={() => {}}
+                past={selected.date < today}
+              />
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

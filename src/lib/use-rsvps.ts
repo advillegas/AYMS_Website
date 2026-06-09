@@ -29,7 +29,7 @@ import {
   type QueryDocumentSnapshot,
   type Timestamp,
 } from "firebase/firestore";
-import { getDb, isFirebaseConfigured } from "./firebase";
+import { getCurrentUid, getDb, isFirebaseConfigured } from "./firebase";
 import { useAuth } from "./store";
 
 /* ------------------------------------------------------------------ */
@@ -151,10 +151,15 @@ export function useRsvps(
     [rsvps],
   );
 
-  const myRsvp = useMemo(
-    () => (user ? rsvps.find((r) => r.userId === user.id) ?? null : null),
-    [rsvps, user],
-  );
+  // The rsvp doc is keyed by `request.auth.uid` (rule: isOwner(uid)), which
+  // for the bridged admin session is the Firebase uid, not the store's
+  // literal "admin". Match my own rsvp by that same effective uid so the
+  // toggle reflects the correct state.
+  const myRsvp = useMemo(() => {
+    if (!user) return null;
+    const uid = getCurrentUid() ?? user.id;
+    return rsvps.find((r) => r.userId === uid) ?? null;
+  }, [rsvps, user]);
 
   const toggle = useCallback(
     async (status: RsvpStatus): Promise<RsvpStatus | null> => {
@@ -162,7 +167,9 @@ export function useRsvps(
       const db = getDb();
       if (!db) return null;
       const parent = parentCollection(targetType);
-      const ref = doc(db, parent, targetId, "rsvps", user.id);
+      // Doc id MUST be the real Firebase uid to satisfy isOwner(uid).
+      const uid = getCurrentUid() ?? user.id;
+      const ref = doc(db, parent, targetId, "rsvps", uid);
       try {
         // Tapping the status you already hold clears the RSVP.
         if (myRsvp?.status === status) {
@@ -170,7 +177,7 @@ export function useRsvps(
           return null;
         }
         await setDoc(ref, {
-          userId: user.id,
+          userId: uid,
           userName: user.name,
           userAvatar: user.avatar ?? null,
           status,
@@ -189,8 +196,9 @@ export function useRsvps(
     if (!targetId || !user || !isFirebaseConfigured) return false;
     const db = getDb();
     if (!db) return false;
+    const uid = getCurrentUid() ?? user.id;
     try {
-      await deleteDoc(doc(db, parentCollection(targetType), targetId, "rsvps", user.id));
+      await deleteDoc(doc(db, parentCollection(targetType), targetId, "rsvps", uid));
       return true;
     } catch (err) {
       console.error("[rsvps] remove failed", err);
@@ -235,7 +243,10 @@ export interface MyRsvpRef {
 export function useMyRsvpRefs(
   targets: Array<{ type: RsvpTargetType; id: string }>,
 ): { refs: MyRsvpRef[]; loading: boolean } {
-  const uid = useAuth((s) => s.user?.id);
+  // Effective uid (Firebase uid for the bridged admin, store id otherwise)
+  // so we read the same rsvp doc the toggle writes.
+  const storeId = useAuth((s) => s.user?.id);
+  const uid = getCurrentUid() ?? storeId;
   const [refs, setRefs] = useState<MyRsvpRef[]>([]);
   const [loading, setLoading] = useState(false);
 

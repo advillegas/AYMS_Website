@@ -36,7 +36,7 @@ import {
   type QueryDocumentSnapshot,
   type Timestamp,
 } from "firebase/firestore";
-import { getDb, isFirebaseConfigured } from "./firebase";
+import { getCurrentUid, getDb, isFirebaseConfigured } from "./firebase";
 import { useAuth } from "./store";
 import { geocodeLocation } from "./geo";
 
@@ -195,6 +195,11 @@ export function useMeetups(): UseMeetupsResult {
         }
       }
 
+      // Security rules gate create on `hostId == request.auth.uid`, so the
+      // doc MUST carry the real Firebase uid — not the Zustand user.id,
+      // which is the literal "admin" for the bridged admin session.
+      const hostId = getCurrentUid() ?? user.id;
+
       try {
         const ref = await addDoc(collection(db, "meetups"), {
           title: input.title.trim(),
@@ -204,7 +209,7 @@ export function useMeetups(): UseMeetupsResult {
           location: input.location.trim(),
           lat,
           lng,
-          hostId: user.id,
+          hostId,
           hostName: user.name,
           hostAvatar: user.avatar ?? null,
           capacity: input.capacity ?? null,

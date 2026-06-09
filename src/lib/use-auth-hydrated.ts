@@ -80,6 +80,12 @@ export function useFirebaseAuthSync(): void {
         }
         return;
       }
+      // The legacy server-side admin (id "admin") keeps its store identity
+      // even though a Firebase session runs under the admin@ayms.com
+      // account. That session exists ONLY to authorise Firestore writes —
+      // it must not replace the app's admin profile, because the roles
+      // store keys admin permissions off the literal id "admin".
+      if (state.user?.id === "admin") return;
       // Firebase says we're signed in. If Zustand already has the
       // same uid, don't clobber - the rest of the app may have
       // already loaded extra fields that aren't in Firebase yet.

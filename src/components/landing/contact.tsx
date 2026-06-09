@@ -95,8 +95,8 @@ export function Contact() {
   };
 
   return (
-    <section id="contact" className="relative py-32 overflow-hidden bg-[#FFF7FB]">
-      <div className="absolute inset-0 pattern-dots opacity-[0.30]" />
+    <section id="contact" className="canvas-editorial grain relative py-32 overflow-hidden">
+      <div className="mesh-warm" aria-hidden="true" />
       <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#FF0099]/25 to-transparent" />
 
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -107,14 +107,12 @@ export function Contact() {
             viewport={{ once: true }}
             transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
           >
-            <p className="font-detail text-base font-semibold italic tracking-[0.12em] text-[#FF0099]">
-              Contact Us
-            </p>
-            <h2 className="text-title mt-3 font-[family-name:var(--font-heading)] font-extrabold text-[#6A1B4D] text-balance">
-              Ready to Join the{" "}
-              <span className="text-gradient-brand">Family</span>?
+            <p className="eyebrow text-[#B51760]">Contact Us</p>
+            <h2 className="font-display text-title mt-3 text-ink text-balance">
+              Ready to join the{" "}
+              <span className="font-display-italic text-[#FF0099]">family</span>?
             </h2>
-            <p className="text-lead mt-5 text-[#6A1B4D]/80 leading-relaxed">
+            <p className="text-lead mt-5 text-ink-soft leading-relaxed">
               Have questions about events, trips, or membership? We&apos;d love
               to hear from you. Reach out and we&apos;ll get back to you
               shortly.
@@ -128,11 +126,11 @@ export function Contact() {
                       <item.icon className={`h-5 w-5 ${item.iconColor}`} aria-hidden="true" />
                     </div>
                     <div>
-                      <p className="text-sm font-semibold text-[#6A1B4D]">
+                      <p className="text-sm font-semibold text-ink">
                         <span className="group-hover:hidden">{item.en.title}</span>
                         <span className="hidden group-hover:inline text-[#FF0099]">{item.es.title}</span>
                       </p>
-                      <p className="text-xs text-[#6A1B4D]/80">
+                      <p className="text-xs text-ink-soft">
                         <span className="group-hover:hidden">{item.en.sub}</span>
                         <span className="hidden group-hover:inline">{item.es.sub}</span>
                       </p>
@@ -173,15 +171,20 @@ export function Contact() {
             <Card className="glass-strong elevate-float overflow-hidden rounded-3xl border-[#FACDE8]/60">
               <div className="absolute inset-0 bg-gradient-to-br from-[#FF0099]/4 to-[#FACDE8]/8" />
               <CardHeader className="relative">
-                <h3 className="text-xl font-bold font-[family-name:var(--font-heading)] text-[#6A1B4D]">Newsletter</h3>
-                <p className="text-sm text-[#6A1B4D]/60">
-                  Stay updated on events, trips, and community news.
+                <p className="eyebrow text-[#B51760]">Newsletter</p>
+                <h3 className="font-display mt-2 text-2xl text-ink">
+                  Stay in the{" "}
+                  <span className="font-display-italic text-[#FF0099]">loop</span>
+                </h3>
+                <p className="mt-1 text-sm text-ink-soft">
+                  Be the first to know about new events, trips, and community
+                  news.
                 </p>
               </CardHeader>
               <CardContent className="relative">
                 <form onSubmit={handleSubscribe} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="name" className="font-semibold text-[#6A1B4D]">Name</Label>
+                    <Label htmlFor="name" className="font-semibold text-ink">Name</Label>
                     <Input
                       id="name"
                       name="name"
@@ -190,11 +193,11 @@ export function Contact() {
                       onChange={(e) => setName(e.target.value)}
                       placeholder="Your name"
                       disabled={submitting}
-                      className="rounded-xl border-[#FACDE8]/50 focus-visible:ring-[#FF0099]/40 bg-white/60"
+                      className="rounded-xl border-[#221019]/12 focus-visible:ring-[#FF0099]/40 bg-white/70"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="email" className="font-semibold text-[#6A1B4D]">Email</Label>
+                    <Label htmlFor="email" className="font-semibold text-ink">Email</Label>
                     <Input
                       id="email"
                       name="email"
@@ -210,7 +213,7 @@ export function Contact() {
                       disabled={submitting}
                       aria-invalid={error ? true : undefined}
                       aria-describedby={error ? "newsletter-email-error" : undefined}
-                      className="rounded-xl border-[#FACDE8]/50 focus-visible:ring-[#FF0099]/40 bg-white/60"
+                      className="rounded-xl border-[#221019]/12 focus-visible:ring-[#FF0099]/40 bg-white/70"
                     />
                     {error ? (
                       <p
@@ -226,7 +229,7 @@ export function Contact() {
                     type="submit"
                     disabled={submitting}
                     aria-busy={submitting}
-                    className="lift w-full h-12 rounded-full bg-gradient-to-r from-[#FF0099] via-[#B51760] to-[#FF0099] text-white border-0 hover:brightness-110 shadow-[0_6px_24px_rgb(255_0_153/0.30)] font-semibold disabled:opacity-70"
+                    className="lift w-full h-12 rounded-full bg-gradient-to-r from-[#FF0099] to-[#B51760] text-white border-0 hover:brightness-110 shadow-[0_6px_24px_rgb(255_0_153/0.30)] font-semibold disabled:opacity-70"
                   >
                     {submitting ? (
                       <>
@@ -240,8 +243,8 @@ export function Contact() {
                       </>
                     )}
                   </Button>
-                  <p className="text-center text-[11px] text-[#6A1B4D]/55">
-                    No spam, ever. Unsubscribe anytime.
+                  <p className="text-center text-[11px] text-ink-soft">
+                    No spam, ever — just the good stuff. Unsubscribe anytime. ♡
                   </p>
                 </form>
               </CardContent>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import { useCms } from "@/lib/cms-store";
 import { useBuilder, type BuilderElement } from "@/lib/builder-store";
 import { ElementRenderer } from "@/components/builder/element-renderer";
@@ -8,13 +9,14 @@ import { Navbar } from "@/components/landing/navbar";
 import { Footer } from "@/components/landing/footer";
 import { FeaturedSpotlight } from "@/components/landing/featured-spotlight";
 import { CmsPageWrapper } from "@/components/admin/cms-page-wrapper";
-import { Loader2 } from "lucide-react";
+import { Loader2, Sparkles } from "lucide-react";
 
 export default function FeaturedPage() {
   const cmsLoad = useCms((s) => s.loadFromStorage);
   const cmsPage = useCms((s) => s.pages["featured"]);
   const builderPublished = useBuilder((s) => s.publishedElements);
   const builderLoad = useBuilder((s) => s.loadFromStorage);
+  const reduceMotion = useReducedMotion();
 
   // Both stores hydrate from localStorage on the client, so which branch we
   // render depends on client-only state. Hold a neutral placeholder until
@@ -35,12 +37,12 @@ export default function FeaturedPage() {
     return (
       <CmsPageWrapper slug="featured">
         <Navbar />
-        <main className="min-h-screen pt-[88px]">
-          <section className="grain relative overflow-hidden bg-[#1a0a12] py-40">
-            <div className="absolute inset-0 bg-gradient-to-b from-[#3A0F2A] via-[#1a0a12] to-[#1A0814]" />
+        <main className="canvas-editorial min-h-screen pt-[88px]">
+          <section className="grain relative overflow-hidden canvas-editorial py-40">
+            <div className="mesh-warm" />
             <div className="relative mx-auto flex max-w-3xl flex-col items-center px-4 text-center" aria-busy="true" aria-live="polite">
-              <Loader2 className="h-8 w-8 animate-spin text-[#FFB3D0]" aria-hidden="true" />
-              <p className="mt-4 text-sm text-white/40">Loading…</p>
+              <Loader2 className="h-8 w-8 animate-spin text-[#B51760]" aria-hidden="true" />
+              <p className="mt-4 text-sm text-ink-soft">Loading…</p>
               <span className="sr-only">Loading featured content</span>
             </div>
           </section>
@@ -53,22 +55,51 @@ export default function FeaturedPage() {
   return (
     <CmsPageWrapper slug="featured">
       <Navbar />
-      <main className="min-h-screen pt-[88px]">
+      <main className="canvas-editorial min-h-screen pt-[88px]">
         {elements.length === 0 ? (
           <FeaturedSpotlight />
         ) : (
-          <section className="grain relative overflow-hidden bg-[#1A0814]">
-            <div className="absolute inset-0 bg-gradient-to-b from-[#3A0F2A]/60 to-[#1A0814]" />
-            <div className="aurora opacity-40" />
-            <div className="absolute inset-0 pattern-dots opacity-[0.06]" />
-            <div className="relative mx-auto max-w-3xl px-4 py-16 sm:px-6 lg:px-8">
-              <div className="space-y-6">
-                {elements.map((el: BuilderElement) => (
-                  <ElementRenderer key={el.id} element={el} />
-                ))}
+          <>
+            {/* Editorial-luxe header above published CMS/builder content */}
+            <section className="grain relative overflow-hidden canvas-editorial py-24">
+              <div className="mesh-warm" />
+              <motion.div
+                initial={reduceMotion ? false : { opacity: 0, y: 32 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+                className="relative mx-auto max-w-3xl px-4 text-center sm:px-6 lg:px-8"
+              >
+                <div className="pill-glass mx-auto mb-6 flex w-fit items-center gap-2 px-4 py-1.5">
+                  <Sparkles className="h-3.5 w-3.5 text-[#B51760]" aria-hidden="true" />
+                  <span className="eyebrow text-[#B51760]">Featured Spotlight</span>
+                </div>
+                <h1 className="text-hero font-display text-ink text-balance">
+                  Your Next{" "}
+                  <span className="font-display-italic marker-swipe text-[#B51760]">
+                    Adventure
+                  </span>
+                </h1>
+                <p className="text-lead mx-auto mt-5 max-w-lg text-ink-soft">
+                  The trip everyone&apos;s talking about — grab your spot before
+                  it&apos;s gone.
+                </p>
+              </motion.div>
+            </section>
+
+            {/* Published content — rendered on a glass editorial card */}
+            <section className="relative overflow-hidden canvas-warm py-16">
+              <div className="mesh-warm opacity-60" />
+              <div className="relative mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
+                <div className="glass-strong elevate-3 rounded-3xl p-6 sm:p-10">
+                  <div className="space-y-6">
+                    {elements.map((el: BuilderElement) => (
+                      <ElementRenderer key={el.id} element={el} />
+                    ))}
+                  </div>
+                </div>
               </div>
-            </div>
-          </section>
+            </section>
+          </>
         )}
       </main>
       <Footer />

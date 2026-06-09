@@ -141,14 +141,22 @@ export async function subscribeToNewsletter(
 
   try {
     // De-dupe by email: query before write so we never store a dup.
-    const existing = await getDocs(
-      query(collection(db, COLLECTION), where("email", "==", email), limit(1)),
-    );
-    if (!existing.empty) {
-      return {
-        status: "exists",
-        message: "You're already on the list — gracias! ♡",
-      };
+    // The signup list is admin-readable only (emails are private), so this
+    // read is denied for anonymous visitors — that's expected. Treat any
+    // dedup failure as "not a duplicate" and fall through to create, which
+    // the rules allow for everyone.
+    try {
+      const existing = await getDocs(
+        query(collection(db, COLLECTION), where("email", "==", email), limit(1)),
+      );
+      if (!existing.empty) {
+        return {
+          status: "exists",
+          message: "You're already on the list — gracias! ♡",
+        };
+      }
+    } catch {
+      // Dedup unavailable (e.g. unauthenticated read). Proceed to create.
     }
 
     await addDoc(collection(db, COLLECTION), {

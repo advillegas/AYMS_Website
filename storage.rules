@@ -1,46 +1,62 @@
-// Firebase Storage rules for the AYMS community.
+// Firebase Storage rules — Amigas Y Más community.
 //
-// Switch to TEST MODE in the Firebase console for first-pass usage:
-//   1. Firebase Console -> Build -> Storage -> Get Started.
-//   2. Pick a region (us-central1 is fine).
-//   3. Choose "Start in test mode" (or pick "production mode" and
-//      paste the test-mode rules below into the Rules tab).
-//   4. Make sure NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET in your
-//      environment variables matches the bucket name shown at the top
-//      of the Storage page (something like
-//      amigas-y-mas-social.firebasestorage.app).
+// Upload paths (verified against src/):
+//   avatars/{uid}/{file}   — use-avatar-upload.ts        (owner-namespaced)
+//   covers/{file}          — cover-photo-uploader.tsx    (not namespaced)
+//   gallery/{file}         — photo-gallery.tsx           (not namespaced)
+//   posts/{file}           — post-composer.tsx           (not namespaced)
 //
-// CURRENT: fail closed (deny all). The old test-mode rule relied on an
-// expiry date that has now passed; this makes the deny explicit so
-// access never hinges on the wall clock. Activate the production block
-// below once Firebase Auth is wired (Lane B) and deploy it.
+// Reads are public (images render across the site, some on signed-out
+// pages). Writes require auth, an image content-type, and a size cap.
+// Avatars are additionally pinned to the owning uid via the path segment.
+//
+// Deploy:  firebase deploy --only storage
+// or paste into Firebase Console → Storage → Rules.
+
 rules_version = '2';
+
 service firebase.storage {
   match /b/{bucket}/o {
-    match /{allPaths=**} {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+    function isImage() {
+      return request.resource.contentType.matches('image/.*');
+    }
+    function underMb(n) {
+      return request.resource.size < n * 1024 * 1024;
+    }
+
+    // Avatars: world-readable, written only by the owning user (uid is the
+    // path segment), images only, < 5 MB.
+    match /avatars/{uid}/{file=**} {
+      allow read: if true;
+      allow write: if signedIn()
+                   && request.auth.uid == uid
+                   && isImage()
+                   && underMb(5);
+    }
+
+    // Cover photos, gallery, and post images are not uid-namespaced in the
+    // app, so writes are gated on auth + image type + size rather than
+    // ownership. World-readable.
+    match /covers/{file=**} {
+      allow read: if true;
+      allow write: if signedIn() && isImage() && underMb(8);
+    }
+    match /gallery/{file=**} {
+      allow read: if true;
+      allow write: if signedIn() && isImage() && underMb(10);
+    }
+    match /posts/{file=**} {
+      allow read: if true;
+      allow write: if signedIn() && isImage() && underMb(10);
+    }
+
+    // Everything else: denied.
+    match /{path=**} {
       allow read, write: if false;
     }
   }
 }
-
-// PRODUCTION-READY (paste this once Firebase Auth is wired up):
-//
-// rules_version = '2';
-// service firebase.storage {
-//   match /b/{bucket}/o {
-//     // Avatars: anyone can view, only the owning user can write,
-//     // and only image uploads under 5 MB are accepted.
-//     match /avatars/{uid}/{file=**} {
-//       allow read: if true;
-//       allow write: if request.auth != null
-//                    && request.auth.uid == uid
-//                    && request.resource.size < 5 * 1024 * 1024
-//                    && request.resource.contentType.matches('image/.*');
-//     }
-//
-//     // Default deny everything else.
-//     match /{path=**} {
-//       allow read, write: if false;
-//     }
-//   }
-// }

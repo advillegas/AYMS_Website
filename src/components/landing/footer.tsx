@@ -45,10 +45,11 @@ function FooterSignup() {
 
   return (
     <div className="w-full max-w-sm">
-      <p className="text-sm font-semibold text-white/80">
-        Get trips &amp; events in your inbox
+      <p className="eyebrow text-[#FACDE8]">La Carta · The Newsletter</p>
+      <p className="mt-2 font-display text-xl text-white">
+        Trips &amp; events, <span className="font-display-italic text-[#FACDE8]">in your inbox</span>
       </p>
-      <p className="mt-1 text-xs text-white/45">
+      <p className="mt-1.5 text-xs text-white/50">
         No spam, ever. Unsubscribe anytime. ♡
       </p>
       {done ? (
@@ -93,49 +94,118 @@ function FooterSignup() {
   );
 }
 
+const FOOTER_COLUMNS: { heading: string; links: { label: string; href: string }[] }[] = [
+  {
+    heading: "Explore",
+    links: [
+      { label: "Trips", href: "/trips" },
+      { label: "Events", href: "/events" },
+      { label: "Featured", href: "/featured" },
+      { label: "Gallery", href: "/gallery" },
+    ],
+  },
+  {
+    heading: "Community",
+    links: [
+      { label: "Become an Amiga", href: "/register" },
+      { label: "Log In", href: "/login" },
+      { label: "Play", href: "/play" },
+      { label: "FAQ", href: "/faq" },
+    ],
+  },
+];
+
 export function Footer() {
   return (
-    <footer className="relative overflow-hidden bg-[#1a0a12] py-16">
-      <div className="absolute inset-0 bg-gradient-to-t from-[#0f060a] to-[#1a0a12]" />
-      <div className="absolute inset-0 pattern-dots opacity-[0.06]" />
-      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#FF0099]/30 to-transparent" />
+    <footer className="relative overflow-hidden bg-[#2A0A1E] py-20 grain">
+      <div className="absolute inset-0 bg-gradient-to-b from-[#2A0A1E] via-[#1f0716] to-[#160510]" />
+      <div className="absolute inset-0 pattern-dots opacity-[0.05]" />
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#FF0099]/35 to-transparent" />
+      {/* soft blush glow, top-left */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -top-24 -left-24 h-72 w-72 rounded-full bg-[#FF0099]/10 blur-[90px]"
+      />
 
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col items-center justify-between gap-8 md:flex-row">
-          <Link
-            href="/"
-            aria-label="Amigas Y Más Social — home"
-            className="flex flex-col items-center gap-2 md:items-start"
-          >
-            <Image
-              src="/ayms-wordmark.png"
-              alt="Amigas Y Más Social"
-              width={266}
-              height={192}
-              className="h-20 w-auto drop-shadow-[0_0_20px_rgb(255_0_153/0.30)]"
-            />
-            <p className="text-[10px] text-white/60 tracking-[0.22em] uppercase font-medium">
-              connect · empower · celebrate
-            </p>
-          </Link>
+        {/* Big editorial sign-off */}
+        <div className="max-w-2xl">
+          <p className="eyebrow text-[#FACDE8]">Connect · Empower · Celebrate</p>
+          <h2 className="mt-4 font-display text-title leading-[1.05] text-white">
+            Find your new{" "}
+            <span className="font-display-italic text-[#FACDE8]">amigas</span>
+            <span className="text-[#FF0099]"> ♡</span>
+          </h2>
+          <p className="mt-4 max-w-md text-base leading-relaxed text-white/55">
+            A Latina travel community built on sisterhood, cultura y aventura.
+            Come as strangers, leave as amigas.
+          </p>
+        </div>
 
-          <div className="flex flex-col items-center gap-5 md:flex-row md:items-end">
-            <FooterSignup />
+        {/* Link columns + newsletter */}
+        <div className="mt-14 grid grid-cols-1 gap-10 border-t border-white/[0.08] pt-12 md:grid-cols-12">
+          <div className="md:col-span-5">
+            <Link
+              href="/"
+              aria-label="Amigas Y Más Social — home"
+              className="inline-flex flex-col items-start gap-2"
+            >
+              <Image
+                src="/ayms-wordmark.png"
+                alt="Amigas Y Más Social"
+                width={266}
+                height={192}
+                className="h-16 w-auto drop-shadow-[0_0_20px_rgb(255_0_153/0.28)]"
+              />
+            </Link>
+            <div className="mt-6">
+              <FooterSignup />
+            </div>
+          </div>
+
+          {FOOTER_COLUMNS.map((col) => (
+            <nav
+              key={col.heading}
+              aria-label={col.heading}
+              className="md:col-span-2"
+            >
+              <p className="eyebrow text-white/40">{col.heading}</p>
+              <ul className="mt-4 space-y-3">
+                {col.links.map((l) => (
+                  <li key={l.href}>
+                    <Link
+                      href={l.href}
+                      className="text-sm text-white/65 transition-colors hover:text-[#FACDE8] focus-visible:outline-none focus-visible:text-[#FACDE8]"
+                    >
+                      {l.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          ))}
+
+          <div className="md:col-span-3">
+            <p className="eyebrow text-white/40">Follow</p>
             <a
               href="https://www.instagram.com/amigasymassocial/"
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Follow Amigas Y Más Social on Instagram (opens in a new tab)"
-              className="lift flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-white/60 transition-colors hover:text-[#FF0099] hover:border-[#FF0099]/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#1a0a12]"
+              className="lift mt-4 inline-flex items-center gap-2.5 rounded-full border border-white/12 bg-white/[0.05] px-4 py-2.5 text-sm font-medium text-white/70 transition-colors hover:border-[#FF0099]/40 hover:text-[#FACDE8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#2A0A1E]"
             >
               <InstagramIcon className="h-5 w-5" />
+              @amigasymassocial
             </a>
           </div>
         </div>
 
-        <div className="mt-10 border-t border-white/[0.07] pt-6 text-center text-sm text-white/60">
-          &copy; {new Date().getFullYear()} Amigas Y Más Social. All rights
-          reserved. ♡
+        <div className="mt-12 flex flex-col items-center justify-between gap-3 border-t border-white/[0.07] pt-6 text-center text-xs text-white/45 sm:flex-row sm:text-left">
+          <p>
+            &copy; {new Date().getFullYear()} Amigas Y Más Social. All rights
+            reserved. ♡
+          </p>
+          <p className="tracking-[0.18em] uppercase">Hecho con cariño</p>
         </div>
       </div>
     </footer>

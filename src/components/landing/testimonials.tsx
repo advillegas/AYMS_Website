@@ -3,8 +3,7 @@
 import { useRef } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { ChevronLeft, ChevronRight, Star, Quote } from "lucide-react";
 import { FlipCard } from "@/components/ui/flip-card";
 import { useTestimonials } from "@/lib/use-testimonials";
 
@@ -25,10 +24,9 @@ export function Testimonials() {
   }
 
   return (
-    <section className="grain relative overflow-hidden py-32 bg-[#1a0a12]">
-      <div className="absolute inset-0 bg-gradient-to-b from-[#2A0A1E] via-[#1a0a12] to-[#1a0a12]" />
-      <div className="aurora opacity-35" />
-      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#FF0099]/40 to-transparent" />
+    <section className="canvas-editorial grain relative overflow-hidden py-32">
+      <div className="mesh-warm" aria-hidden="true" />
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#FF0099]/25 to-transparent" />
 
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <motion.div
@@ -36,31 +34,45 @@ export function Testimonials() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-          className="flex items-end justify-between"
+          className="flex items-end justify-between gap-6"
         >
-          <div>
-            <p className="font-detail text-base font-semibold italic tracking-[0.12em] text-[#FACDE8]/70">
-              Testimonials
-            </p>
-            <h2 className="text-title mt-3 font-[family-name:var(--font-heading)] font-extrabold text-white">
-              Hear From Our{" "}
-              <span className="text-gradient-brand">Amigas</span>
+          <div className="max-w-2xl">
+            <p className="eyebrow text-[#B51760]">Testimonials</p>
+            <h2 className="font-display text-title mt-3 text-ink text-balance">
+              See what it&apos;s{" "}
+              <span className="font-display-italic text-[#FF0099]">
+                really like
+              </span>
             </h2>
+            <p className="text-lead mt-4 max-w-xl text-ink-soft leading-relaxed">
+              Honest words from amigas who showed up solo and left with a
+              second family.
+            </p>
           </div>
-          <div className="hidden sm:flex items-center gap-2">
-            <Button aria-label="Scroll testimonials left" variant="outline" size="icon" onClick={() => scroll("left")} className="rounded-full border-white/15 bg-white/5 text-white hover:bg-white/10 hover:border-white/30">
+          <div className="hidden shrink-0 sm:flex items-center gap-3">
+            <button
+              type="button"
+              aria-label="Scroll testimonials left"
+              onClick={() => scroll("left")}
+              className="glass-control h-11 w-11 text-ink"
+            >
               <ChevronLeft className="h-4 w-4" aria-hidden="true" />
-            </Button>
-            <Button aria-label="Scroll testimonials right" variant="outline" size="icon" onClick={() => scroll("right")} className="rounded-full border-white/15 bg-white/5 text-white hover:bg-white/10 hover:border-white/30">
+            </button>
+            <button
+              type="button"
+              aria-label="Scroll testimonials right"
+              onClick={() => scroll("right")}
+              className="glass-control h-11 w-11 text-ink"
+            >
               <ChevronRight className="h-4 w-4" aria-hidden="true" />
-            </Button>
+            </button>
           </div>
         </motion.div>
 
-        {/* Horizontal scroll carousel */}
+        {/* Horizontal scroll-snap rail of pull-quote cards */}
         <div
           ref={scrollRef}
-          className="mt-10 flex gap-5 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide"
+          className="mt-12 flex gap-6 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide"
           style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
         >
           {testimonials.map((t, i) => (
@@ -73,45 +85,75 @@ export function Testimonials() {
               className="shrink-0 w-80 snap-center"
             >
               <FlipCard
-                className="ring-gradient h-72 cursor-pointer rounded-3xl"
+                className="h-80 cursor-pointer rounded-3xl"
                 front={
-                  <div className="flex h-full flex-col justify-between rounded-3xl border border-white/10 bg-white/[0.05] p-6 backdrop-blur-sm">
+                  <div className="glass elevate-2 flex h-full flex-col justify-between rounded-3xl p-7">
                     <div>
-                      <div className="mb-3 text-2xl text-[#FF0099]">♡</div>
-                      <p className="text-sm text-white/65 italic leading-relaxed line-clamp-5 font-detail">
+                      <Quote
+                        className="h-7 w-7 text-[#FF0099]/30"
+                        aria-hidden="true"
+                      />
+                      <div
+                        className="mt-3 flex items-center gap-1"
+                        aria-label="5 out of 5 stars"
+                      >
+                        {Array.from({ length: 5 }).map((_, s) => (
+                          <Star
+                            key={s}
+                            className="h-3.5 w-3.5 fill-[#FF0099] text-[#FF0099]"
+                            aria-hidden="true"
+                          />
+                        ))}
+                      </div>
+                      <p className="font-display mt-4 text-xl leading-snug text-ink line-clamp-5">
                         &ldquo;{t.en}&rdquo;
                       </p>
                     </div>
-                    <div className="mt-4 flex items-center gap-3">
-                      <Avatar className="h-9 w-9">
+                    <div className="mt-5 flex items-center gap-3 border-t border-[#221019]/10 pt-4">
+                      <Avatar className="h-10 w-10">
                         <AvatarFallback className={`bg-gradient-to-br ${t.gradient} text-white font-bold text-xs`}>
                           {t.initials}
                         </AvatarFallback>
                       </Avatar>
                       <div>
-                        <p className="text-sm font-bold text-white">{t.name}</p>
-                        <p className="text-[10px] text-white/45">{t.trip}</p>
+                        <p className="text-sm font-bold text-ink">{t.name}</p>
+                        <p className="text-[11px] text-ink-soft">{t.trip}</p>
                       </div>
                     </div>
                   </div>
                 }
                 back={
-                  <div className={`flex h-full flex-col justify-between rounded-3xl bg-gradient-to-br ${t.gradient} p-6 text-white`}>
+                  <div className={`flex h-full flex-col justify-between rounded-3xl bg-gradient-to-br ${t.gradient} p-7 text-white`}>
                     <div>
-                      <div className="mb-3 text-2xl text-white/70">♡</div>
-                      <p className="text-sm text-white/90 italic leading-relaxed line-clamp-5 font-detail">
+                      <Quote
+                        className="h-7 w-7 text-white/40"
+                        aria-hidden="true"
+                      />
+                      <div
+                        className="mt-3 flex items-center gap-1"
+                        aria-label="5 out of 5 stars"
+                      >
+                        {Array.from({ length: 5 }).map((_, s) => (
+                          <Star
+                            key={s}
+                            className="h-3.5 w-3.5 fill-white text-white"
+                            aria-hidden="true"
+                          />
+                        ))}
+                      </div>
+                      <p className="font-display-italic mt-4 text-xl leading-snug text-white/95 line-clamp-5">
                         &ldquo;{t.es}&rdquo;
                       </p>
                     </div>
-                    <div className="mt-4 flex items-center gap-3">
-                      <Avatar className="h-9 w-9">
+                    <div className="mt-5 flex items-center gap-3 border-t border-white/20 pt-4">
+                      <Avatar className="h-10 w-10">
                         <AvatarFallback className="bg-white/20 text-white font-bold text-xs backdrop-blur-sm">
                           {t.initials}
                         </AvatarFallback>
                       </Avatar>
                       <div>
                         <p className="text-sm font-bold">{t.name}</p>
-                        <p className="text-[10px] text-white/60">{t.trip}</p>
+                        <p className="text-[11px] text-white/70">{t.trip}</p>
                       </div>
                     </div>
                   </div>
@@ -121,9 +163,6 @@ export function Testimonials() {
           ))}
         </div>
       </div>
-
-      {/* Bottom fade into light bg */}
-      <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-[#FFF7FB] to-transparent" />
     </section>
   );
 }

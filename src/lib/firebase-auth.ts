@@ -284,6 +284,99 @@ export async function firebaseSendPasswordReset(email: string): Promise<void> {
 }
 
 /**
+ * Canonical admin email. The server-side admin login (/api/auth/login,
+ * ADMIN_PASSWORD) authenticates the *UI* but creates no Firebase
+ * identity — so Firestore writes guarded by isAdmin() (events, calendar
+ * feeds, testimonials, config) were denied. This bridges that gap.
+ *
+ * MUST stay in sync with the email hard-coded in firestore.rules
+ * `isAdminEmail()`.
+ */
+export const ADMIN_EMAIL = "admin@ayms.com";
+
+/**
+ * Establish a real Firebase Auth session for the admin so client-side
+ * admin writes satisfy the Firestore security rules. Called right after
+ * the server validates the admin password.
+ *
+ * Idempotent + best-effort: signs in under ADMIN_EMAIL (auto-provisioning
+ * the account on first login), then seeds the users/{uid} profile with
+ * role 'admin'. Any failure is logged and swallowed — the UI keeps
+ * working; admin Firestore writes just stay denied until a session
+ * exists.
+ *
+ * The Firebase admin account reuses the password the admin typed (the
+ * one the server checked against ADMIN_PASSWORD). Rotating ADMIN_PASSWORD
+ * therefore means updating this account's password too (Firebase Console
+ * → Authentication).
+ */
+export async function ensureFirebaseAdminSession(
+  password: string,
+): Promise<void> {
+  if (!isFirebaseConfigured) return;
+  const auth = getAuthInstance();
+  if (!auth) return;
+
+  // Already signed in as the admin account — just refresh the profile.
+  if (auth.currentUser?.email === ADMIN_EMAIL) {
+    await writeAdminProfile(auth.currentUser.uid);
+    return;
+  }
+
+  try {
+    await signInWithEmailAndPassword(auth, ADMIN_EMAIL, password);
+  } catch (e) {
+    const code = (e as { code?: string })?.code ?? "";
+    if (code === "auth/user-not-found" || code === "auth/invalid-credential") {
+      // First admin login on this Firebase project: provision the account.
+      try {
+        await createUserWithEmailAndPassword(auth, ADMIN_EMAIL, password);
+      } catch (e2) {
+        const c2 = (e2 as { code?: string })?.code ?? "";
+        if (c2 === "auth/email-already-in-use") {
+          console.warn(
+            "[admin-bridge] Firebase admin account exists but ADMIN_PASSWORD " +
+              "doesn't match it. Reset it in Firebase Console → Authentication " +
+              "(or set ADMIN_PASSWORD to match).",
+          );
+        } else {
+          console.warn("[admin-bridge] couldn't provision Firebase admin account", e2);
+        }
+        return;
+      }
+    } else if (code === "auth/wrong-password") {
+      console.warn(
+        "[admin-bridge] Firebase admin account exists but the password differs " +
+          "from ADMIN_PASSWORD. Update it in Firebase Console → Authentication.",
+      );
+      return;
+    } else {
+      console.warn("[admin-bridge] Firebase admin sign-in failed", e);
+      return;
+    }
+  }
+
+  const u = auth.currentUser;
+  if (u) await writeAdminProfile(u.uid);
+}
+
+/** Seed/refresh the admin's Firestore profile with role 'admin'. */
+async function writeAdminProfile(uid: string): Promise<void> {
+  await upsertUserProfile({
+    id: uid,
+    name: "AYMS Admin",
+    email: ADMIN_EMAIL,
+    avatar: "",
+    bio: "Site administrator",
+    location: "AYMS HQ",
+    joinedDate: "2026-01-01",
+    role: "admin",
+    nameDisplay: "full",
+    dmPrivacy: "anyone",
+  });
+}
+
+/**
  * Translate Firebase Auth error codes into UI-friendly messages.
  * Anything we don't recognise falls through to the raw error message.
  */

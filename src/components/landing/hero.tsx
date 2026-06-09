@@ -13,69 +13,51 @@ const PILLARS = [
     icon: Heart,
     en: { label: "Connect", desc: "Build lifelong friendships" },
     es: { label: "Conectar", desc: "Construye amistades para toda la vida" },
-    bg: "from-[#FF0099] to-[#C2266A]",
-    bgBack: "from-[#B51760] to-[#8B1A5A]",
+    accent: "from-[#FF0099] to-[#C2266A]",
   },
   {
     icon: Users,
     en: { label: "Empower", desc: "Grow together as a community" },
     es: { label: "Empoderar", desc: "Crecer juntas como comunidad" },
-    bg: "from-[#B51760] to-[#9B2C8A]",
-    bgBack: "from-[#8B1A5A] to-[#FF0099]",
+    accent: "from-[#B51760] to-[#9B2C8A]",
   },
   {
     icon: Sparkles,
     en: { label: "Celebrate", desc: "Travel and create memories" },
     es: { label: "Celebrar", desc: "Viajar y crear recuerdos" },
-    bg: "from-[#C44B3F] to-[#FF0099]",
-    bgBack: "from-[#DAA520] to-[#FF0099]",
+    accent: "from-[#C44B3F] to-[#FF0099]",
   },
 ];
 
-const DESTINATIONS = ["Cancún", "Bali", "Morocco", "Cartagena", "Sahara", "Safari"];
+const STATS = [
+  { value: "2k+", label: "amigas" },
+  { value: "30+", label: "trips" },
+  { value: "12", label: "countries" },
+];
 
 export function Hero() {
   const prefersReducedMotion = useReducedMotion();
   return (
     <section
       id="home"
-      className="grain relative min-h-screen overflow-hidden bg-[#1a0a12]"
+      className="canvas-editorial grain relative min-h-screen overflow-hidden"
     >
-      {/* Deep layered base */}
-      <div className="absolute inset-0 bg-gradient-to-b from-[#3A0F2A] via-[#150a10] to-[#1A0814]" />
+      {/* Warm radial mesh backdrop — airy, premium, light */}
+      <div className="mesh-warm" aria-hidden="true" />
 
-      {/* Animated aurora mesh — brand color clouds */}
-      <div className="aurora opacity-70" />
-
-      {/* Soft bokeh lights */}
+      {/* Soft floating brand glows over the cream */}
       {[
-        { x: "15%", y: "22%", size: "w-44 h-44", color: "bg-[#B51760]", opacity: "opacity-[0.05]", dur: 9, delay: 0 },
-        { x: "72%", y: "18%", size: "w-52 h-52", color: "bg-[#C8A050]", opacity: "opacity-[0.04]", dur: 11, delay: 2 },
-        { x: "55%", y: "68%", size: "w-48 h-48", color: "bg-[#B8306A]", opacity: "opacity-[0.045]", dur: 10, delay: 1 },
+        { x: "14%", y: "20%", size: "w-72 h-72", color: "bg-[#FF0099]", opacity: "opacity-[0.07]", dur: 11, delay: 0 },
+        { x: "78%", y: "26%", size: "w-80 h-80", color: "bg-[#FACDE8]", opacity: "opacity-50", dur: 13, delay: 1.5 },
+        { x: "60%", y: "74%", size: "w-72 h-72", color: "bg-[#FF7F50]", opacity: "opacity-[0.06]", dur: 12, delay: 1 },
       ].map((b, i) => (
         <motion.div
           key={i}
-          className={`absolute rounded-full blur-[80px] ${b.size} ${b.color} ${b.opacity}`}
+          aria-hidden="true"
+          className={`pointer-events-none absolute rounded-full blur-[90px] ${b.size} ${b.color} ${b.opacity}`}
           style={{ left: b.x, top: b.y }}
-          animate={prefersReducedMotion ? undefined : { scale: [1, 1.15, 1], opacity: [0.6, 1, 0.6] }}
+          animate={prefersReducedMotion ? undefined : { scale: [1, 1.12, 1], opacity: [0.85, 1, 0.85] }}
           transition={prefersReducedMotion ? undefined : { duration: b.dur, repeat: Infinity, ease: "easeInOut", delay: b.delay }}
-        />
-      ))}
-
-      {/* Sparse twinkling stars */}
-      {[
-        { x: "12%", y: "28%", dur: 4, delay: 0 },
-        { x: "85%", y: "20%", dur: 5, delay: 1.5 },
-        { x: "25%", y: "70%", dur: 4.5, delay: 0.8 },
-        { x: "70%", y: "65%", dur: 5.5, delay: 2.5 },
-        { x: "48%", y: "15%", dur: 3.5, delay: 3 },
-      ].map((s, i) => (
-        <motion.div
-          key={`s${i}`}
-          className="absolute h-0.5 w-0.5 rounded-full bg-white/50"
-          style={{ left: s.x, top: s.y }}
-          animate={prefersReducedMotion ? undefined : { opacity: [0, 0.8, 0], scale: [0.5, 1.2, 0.5] }}
-          transition={prefersReducedMotion ? undefined : { duration: s.dur, repeat: Infinity, ease: "easeInOut", delay: s.delay }}
         />
       ))}
 
@@ -96,10 +78,10 @@ export function Hero() {
               <Image
                 src="/ayms-logo.svg"
                 alt="Amigas Y Más Social"
-                width={104}
-                height={104}
+                width={92}
+                height={92}
                 priority
-                className="mx-auto rounded-full shadow-[0_0_36px_rgb(255_0_153/0.30),0_0_72px_rgb(181_23_96/0.12)]"
+                className="mx-auto rounded-full shadow-[0_10px_30px_rgb(255_0_153/0.18),0_2px_8px_rgb(34_16_25/0.08)]"
               />
             </motion.div>
 
@@ -108,42 +90,44 @@ export function Hero() {
               initial={prefersReducedMotion ? false : { opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: prefersReducedMotion ? 0 : 0.3 }}
-              className="mx-auto mb-7 flex w-fit items-center gap-2.5 rounded-full border border-white/15 bg-white/[0.06] px-4 py-1.5 backdrop-blur-md"
+              className="pill-glass mx-auto mb-8 flex w-fit items-center gap-2.5 px-4 py-1.5"
             >
               <span className="relative flex h-2 w-2" aria-hidden="true">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#FF0099] opacity-75" />
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-[#FF0099]" />
               </span>
-              <span className="text-xs font-semibold uppercase tracking-[0.32em] text-[#FFB3D0]">
+              <span className="eyebrow text-[#B51760]" style={{ fontSize: "0.68rem" }}>
                 Community · Travel · Sisterhood
               </span>
             </motion.div>
 
-            <h1 className="text-display font-[family-name:var(--font-heading)] font-extrabold text-white text-balance">
-              Home of Your{" "}
-              <span className="text-gradient-brand">New Amigas</span>
+            <h1 className="text-editorial font-display text-ink text-balance">
+              Come as strangers,
+              <br className="hidden sm:block" /> leave as{" "}
+              <span className="font-display-italic marker-swipe">amigas</span>
             </h1>
 
-            <p className="text-lead mx-auto mt-7 max-w-2xl text-white/65">
+            <p className="text-lead text-ink-soft mx-auto mt-7 max-w-2xl">
               The Latina travel community where sisterhood meets adventure.
               Group trips, local meetups, and lifelong friendships — we&apos;re
               ready to be your new family.
             </p>
 
-            {/* Real-destination chips */}
+            {/* Floating glass stat chips */}
             <motion.div
               initial={prefersReducedMotion ? false : { opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: prefersReducedMotion ? 0 : 0.55 }}
-              className="mx-auto mt-7 flex max-w-xl flex-wrap items-center justify-center gap-2"
+              className="mx-auto mt-8 flex max-w-xl flex-wrap items-center justify-center gap-3"
             >
-              {DESTINATIONS.map((d) => (
-                <span
-                  key={d}
-                  className="rounded-full border border-white/10 bg-white/[0.05] px-3.5 py-1 text-xs font-medium text-white/70 backdrop-blur-sm"
+              {STATS.map((s) => (
+                <div
+                  key={s.label}
+                  className="glass flex items-baseline gap-1.5 rounded-full px-4 py-1.5"
                 >
-                  {d}
-                </span>
+                  <span className="font-display text-base font-semibold text-ink">{s.value}</span>
+                  <span className="text-xs font-medium uppercase tracking-[0.18em] text-ink-soft">{s.label}</span>
+                </div>
               ))}
             </motion.div>
           </motion.div>
@@ -158,7 +142,7 @@ export function Hero() {
               href="/register"
               className={cn(
                 buttonVariants({ size: "lg" }),
-                "lift group h-14 rounded-full border-0 bg-gradient-to-r from-[#FF0099] via-[#B51760] to-[#FF0099] px-10 text-base font-semibold tracking-wide text-white shadow-[0_8px_30px_rgb(255_0_153/0.35)] hover:brightness-110",
+                "lift group h-14 rounded-full border-0 bg-gradient-to-r from-[#FF0099] to-[#B51760] px-10 text-base font-semibold tracking-wide text-white shadow-[0_8px_30px_rgb(255_0_153/0.30)] hover:brightness-110",
               )}
             >
               Become an Amiga ♡
@@ -167,7 +151,7 @@ export function Hero() {
               href="#about"
               className={cn(
                 buttonVariants({ size: "lg", variant: "outline" }),
-                "h-14 rounded-full border-white/20 bg-white/5 px-10 text-base font-semibold text-white backdrop-blur-sm hover:border-white/40 hover:bg-white/10",
+                "h-14 rounded-full border border-[#221019]/15 bg-transparent px-10 text-base font-semibold text-ink hover:border-[#221019]/25 hover:bg-[#221019]/[0.04]",
               )}
             >
               Learn More
@@ -178,7 +162,7 @@ export function Hero() {
             initial={prefersReducedMotion ? false : { opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: prefersReducedMotion ? 0 : 0.9, duration: 0.8 }}
-            className="mx-auto mt-20 grid max-w-3xl grid-cols-1 gap-6 sm:grid-cols-3"
+            className="mx-auto mt-16 grid max-w-3xl grid-cols-1 gap-6 sm:grid-cols-3"
           >
             {PILLARS.map((item, i) => (
               <motion.div
@@ -188,19 +172,23 @@ export function Hero() {
                 transition={{ delay: prefersReducedMotion ? 0 : 1.1 + i * 0.15, ease: [0.16, 1, 0.3, 1] }}
               >
                 <FlipCard
-                  className="ring-gradient h-48 cursor-pointer rounded-3xl"
+                  className="h-48 cursor-pointer rounded-3xl"
                   front={
-                    <div className={`flex h-full flex-col items-center justify-center gap-3 rounded-3xl bg-gradient-to-br ${item.bg} p-6 shadow-lg shadow-black/30`}>
-                      <item.icon className="h-9 w-9 text-white/90" aria-hidden="true" />
-                      <h3 className="font-[family-name:var(--font-heading)] text-lg font-bold text-white">{item.en.label}</h3>
-                      <p className="text-sm text-white/75">{item.en.desc}</p>
+                    <div className="glass-strong elevate-2 flex h-full flex-col items-center justify-center gap-3 rounded-3xl p-6">
+                      <span className={`inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br ${item.accent} shadow-[0_6px_18px_rgb(255_0_153/0.22)]`}>
+                        <item.icon className="h-6 w-6 text-white" aria-hidden="true" />
+                      </span>
+                      <h3 className="font-display text-lg font-semibold text-ink">{item.en.label}</h3>
+                      <p className="text-sm text-ink-soft">{item.en.desc}</p>
                     </div>
                   }
                   back={
-                    <div className={`flex h-full flex-col items-center justify-center gap-3 rounded-3xl bg-gradient-to-br ${item.bgBack} p-6 shadow-lg shadow-black/30`}>
-                      <item.icon className="h-9 w-9 text-white/90" aria-hidden="true" />
-                      <h3 className="font-[family-name:var(--font-heading)] text-lg font-bold text-white">{item.es.label}</h3>
-                      <p className="text-sm text-white/75">{item.es.desc}</p>
+                    <div className="glass-strong elevate-3 flex h-full flex-col items-center justify-center gap-3 rounded-3xl border border-[#FF0099]/15 p-6">
+                      <span className={`inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br ${item.accent} shadow-[0_6px_18px_rgb(255_0_153/0.22)]`}>
+                        <item.icon className="h-6 w-6 text-white" aria-hidden="true" />
+                      </span>
+                      <h3 className="font-display-italic text-lg text-[#B51760]">{item.es.label}</h3>
+                      <p className="text-sm text-ink-soft">{item.es.desc}</p>
                     </div>
                   }
                 />
@@ -215,7 +203,7 @@ export function Hero() {
             initial={prefersReducedMotion ? false : { opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: prefersReducedMotion ? 0 : 1.6 }}
-            className="mx-auto mt-16 flex w-fit flex-col items-center gap-2 text-white/65 transition-colors hover:text-white/70"
+            className="mx-auto mt-16 flex w-fit flex-col items-center gap-2 text-ink-soft transition-colors hover:text-ink"
           >
             <span className="text-[10px] font-medium uppercase tracking-[0.3em]">Scroll</span>
             <motion.span
@@ -229,7 +217,7 @@ export function Hero() {
       </div>
 
       {/* Bottom gradient fade into next section */}
-      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-background to-transparent" />
+      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-[#FDFCF7] to-transparent" aria-hidden="true" />
     </section>
   );
 }

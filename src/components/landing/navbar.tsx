@@ -68,35 +68,35 @@ export function Navbar() {
 
   return (
     <>
-      {/* Announcement bar */}
-      <div className="fixed top-0 z-[60] w-full bg-gradient-to-r from-[#FF0099] via-[#B51760] to-[#FF0099] animate-shimmer">
+      {/* Announcement bar — thin refined magenta strip */}
+      <div className="fixed top-0 z-[60] w-full bg-gradient-to-r from-[#FF0099] via-[#B51760] to-[#FF0099]">
         <Link
           href="/featured"
-          className="flex h-8 items-center justify-center gap-2 text-xs font-semibold text-white hover:text-white/90 transition-colors"
+          className="group flex h-7 items-center justify-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/95 transition-colors hover:text-white"
         >
-          <Sparkles className="h-3 w-3" />
-          <span>Featured Event — Check it out!</span>
-          <Sparkles className="h-3 w-3" />
+          <Sparkles className="h-3 w-3 opacity-80" aria-hidden="true" />
+          <span>Featured Event — Check it out</span>
+          <span className="opacity-70 transition-transform group-hover:translate-x-0.5" aria-hidden="true">&rarr;</span>
         </Link>
       </div>
 
-      <header className="fixed top-8 z-50 w-full">
+      <header className="fixed top-7 z-50 w-full">
         <div className="mx-auto max-w-7xl px-4 pt-3 sm:px-6 lg:px-8">
-          <div className="glass-strong flex h-14 items-center justify-between rounded-2xl px-5 shadow-[0_8px_32px_rgb(106_27_77/0.10)]">
+          <div className="glass-nav flex h-14 items-center justify-between rounded-full px-3 pl-5 shadow-[0_8px_30px_rgb(34_16_25/0.08)]">
           <Link href="/" className="flex items-center gap-2.5">
             <Image
               src="/ayms-logo.svg"
               alt="AYMS Logo"
-              width={34}
-              height={34}
-              className="rounded-full shadow-[0_0_14px_rgb(255_0_153/0.22)]"
+              width={32}
+              height={32}
+              className="rounded-full shadow-[0_0_12px_rgb(255_0_153/0.18)]"
             />
-            <span className="text-base font-bold tracking-tight font-[family-name:var(--font-heading)] text-[#6A1B4D]">
+            <span className="font-display text-[1.05rem] font-semibold tracking-tight text-ink">
               Amigas Y Más
             </span>
           </Link>
 
-          <nav aria-label="Primary" className="hidden items-center gap-5 lg:flex">
+          <nav aria-label="Primary" className="hidden items-center gap-6 lg:flex">
             {links.map((l) => {
               const active =
                 l.href === "/" ? pathname === "/" : pathname.startsWith(l.href);
@@ -106,8 +106,11 @@ export function Navbar() {
                   href={l.href}
                   aria-current={active ? "page" : undefined}
                   className={cn(
-                    "text-sm font-medium transition-colors hover:text-[#FF0099]",
-                    active ? "text-[#FF0099]" : "text-[#6A1B4D]/80",
+                    "relative text-sm font-medium transition-colors hover:text-[#FF0099]",
+                    "after:absolute after:-bottom-1.5 after:left-0 after:h-px after:bg-[#FF0099] after:transition-all after:duration-300",
+                    active
+                      ? "text-[#FF0099] after:w-full"
+                      : "text-ink-soft after:w-0 hover:after:w-full",
                   )}
                 >
                   {l.label}
@@ -122,7 +125,7 @@ export function Navbar() {
                 href="/admin"
                 className={cn(
                   buttonVariants({ variant: "ghost", size: "sm" }),
-                  "text-[#6A1B4D]/50 hover:text-[#6A1B4D] hover:bg-[#FACDE8]/30 gap-1.5 text-xs",
+                  "text-ink-soft/60 hover:text-ink hover:bg-[#FACDE8]/40 gap-1.5 text-xs rounded-full",
                 )}
               >
                 <Settings className="h-3.5 w-3.5" />
@@ -133,17 +136,14 @@ export function Navbar() {
               <>
                 <Link
                   href="/community"
-                  className={cn(
-                    buttonVariants({ size: "sm" }),
-                    "rounded-full bg-gradient-to-r from-[#FF0099] to-[#B51760] text-white border-0 hover:brightness-110 shadow-lg shadow-[#FF0099]/20 gap-1.5",
-                  )}
+                  className="lift inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-[#FF0099] to-[#B51760] px-5 py-2 text-sm font-semibold text-white shadow-[0_6px_20px_rgb(255_0_153/0.25)] transition-all hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#FDFCF7]"
                 >
                   <LayoutDashboard className="h-3.5 w-3.5" />
                   Community
                 </Link>
                 <DropdownMenu>
                   <DropdownMenuTrigger
-                    className="flex items-center gap-1.5 rounded-full bg-[#FACDE8]/25 hover:bg-[#FACDE8]/45 transition-colors px-2 py-1 text-[#6A1B4D]"
+                    className="flex items-center gap-1.5 rounded-full bg-[#FACDE8]/35 hover:bg-[#FACDE8]/55 transition-colors px-2 py-1 text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]/40"
                     aria-label="Account menu"
                   >
                     <Avatar className="h-7 w-7">
@@ -201,19 +201,13 @@ export function Navbar() {
               <>
                 <Link
                   href="/login"
-                  className={cn(
-                    buttonVariants({ variant: "ghost", size: "sm" }),
-                    "text-[#6A1B4D]/70 hover:text-[#6A1B4D] hover:bg-[#FACDE8]/30",
-                  )}
+                  className="rounded-full px-4 py-2 text-sm font-medium text-ink-soft transition-colors hover:bg-[#221019]/[0.04] hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]/40"
                 >
                   Log In
                 </Link>
                 <Link
                   href="/register"
-                  className={cn(
-                    buttonVariants({ size: "sm" }),
-                    "rounded-full bg-gradient-to-r from-[#FF0099] to-[#B51760] text-white border-0 hover:brightness-110 shadow-lg shadow-[#FF0099]/20 px-5",
-                  )}
+                  className="lift inline-flex items-center rounded-full bg-gradient-to-r from-[#FF0099] to-[#B51760] px-5 py-2 text-sm font-semibold text-white shadow-[0_6px_20px_rgb(255_0_153/0.25)] transition-all hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#FDFCF7]"
                 >
                   Become an Amiga
                 </Link>
@@ -228,7 +222,7 @@ export function Navbar() {
               aria-expanded={open}
               className={cn(
                 buttonVariants({ variant: "ghost", size: "icon" }),
-                "lg:hidden text-[#6A1B4D] hover:bg-[#FACDE8]/30",
+                "lg:hidden rounded-full text-ink hover:bg-[#FACDE8]/40",
               )}
             >
               {open ? (
@@ -237,10 +231,10 @@ export function Navbar() {
                 <Menu className="h-5 w-5" aria-hidden="true" />
               )}
             </SheetTrigger>
-            <SheetContent side="right" className="w-72">
+            <SheetContent side="right" className="w-72 canvas-editorial">
               <div className="flex items-center gap-2 mb-6">
                 <Image src="/ayms-logo.svg" alt="AYMS" width={32} height={32} className="rounded-full" />
-                <span className="font-semibold font-[family-name:var(--font-heading)]">Amigas Y Más</span>
+                <span className="font-display text-lg font-semibold text-ink">Amigas Y Más</span>
               </div>
               <nav className="flex flex-col gap-3">
                 <Link
@@ -255,12 +249,12 @@ export function Navbar() {
                     key={l.href}
                     href={l.href}
                     onClick={() => setOpen(false)}
-                    className="text-base font-medium text-foreground transition-colors hover:text-primary"
+                    className="text-base font-medium text-ink transition-colors hover:text-[#FF0099]"
                   >
                     {l.label}
                   </Link>
                 ))}
-                <div className="my-2 h-px bg-rosa/15" />
+                <div className="my-2 h-px bg-[#221019]/10" />
                 {isAdmin && (
                   <Link
                     href="/admin"

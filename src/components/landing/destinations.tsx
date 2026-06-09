@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { motion, useReducedMotion } from "framer-motion";
+import { MapPin, Plane } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const DESTINATIONS = [
@@ -18,10 +19,8 @@ const DESTINATIONS = [
 export function Destinations() {
   const prefersReducedMotion = useReducedMotion();
   return (
-    <section className="grain relative overflow-hidden py-32 bg-[#1a0a12]">
-      <div className="absolute inset-0 bg-gradient-to-b from-[#1a0a12] via-[#2A0A1E] to-[#1a0a12]" />
-      <div className="aurora opacity-40" />
-      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#FF0099]/40 to-transparent" />
+    <section className="canvas-editorial grain relative overflow-hidden py-28">
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#FF0099]/25 to-transparent" />
 
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <motion.div
@@ -31,16 +30,14 @@ export function Destinations() {
           transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
           className="text-center"
         >
-          <p className="font-detail text-base font-semibold italic tracking-[0.12em] text-[#FACDE8]/70">
-            Explore by Destination
-          </p>
-          <h2 className="text-title mt-3 font-[family-name:var(--font-heading)] font-extrabold text-white text-balance">
-            Where Will{" "}
-            <span className="text-gradient-brand">You Go</span>?
+          <p className="eyebrow text-[#B51760]">Explore by Destination</p>
+          <h2 className="text-title mt-3 font-display text-ink text-balance">
+            Where will{" "}
+            <span className="font-display-italic text-[#FF0099]">you go</span>?
           </h2>
         </motion.div>
 
-        <div className="mt-14 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+        <div className="mt-14 grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-4">
           {DESTINATIONS.map((dest, i) => (
             <motion.div
               key={dest.name}
@@ -49,32 +46,34 @@ export function Destinations() {
               viewport={{ once: true }}
               transition={{ delay: prefersReducedMotion ? 0 : i * 0.06, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
             >
-              <Link
-                href="/trips"
-                className={cn(
-                  "lift group relative flex aspect-[4/3] flex-col items-center justify-center overflow-hidden rounded-3xl bg-gradient-to-br p-6 text-center text-white elevate-3",
-                  dest.gradient,
-                )}
-              >
-                <div className="absolute inset-0 pattern-dots opacity-10" />
-                <div className="absolute inset-0 bg-black/15 transition-colors group-hover:bg-black/0" />
-                <span className="relative text-5xl mb-2 transition-transform group-hover:scale-115 drop-shadow-lg" aria-hidden="true">
-                  {dest.emoji}
-                </span>
-                <h3 className="relative text-lg font-bold font-[family-name:var(--font-heading)] drop-shadow-md">
-                  {dest.name}
-                </h3>
-                <p className="relative mt-0.5 rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white/80 backdrop-blur-sm">
-                  {dest.trips} trip{dest.trips !== 1 ? "s" : ""}
-                </p>
+              <Link href="/trips" className="photo-card group block elevate-2" aria-label={`${dest.name} — ${dest.trips} trip${dest.trips !== 1 ? "s" : ""}`}>
+                <div
+                  className={cn(
+                    "photo-card-media photo-card-zoom aspect-[20/19] grain flex items-center justify-center bg-gradient-to-br",
+                    dest.gradient,
+                  )}
+                >
+                  <div className="absolute inset-0 pattern-dots opacity-10" />
+                  <span className="relative text-5xl drop-shadow-lg transition-transform duration-500 group-hover:scale-110" aria-hidden="true">
+                    {dest.emoji}
+                  </span>
+                  <span className="pill-glass absolute left-3 top-3 inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-white">
+                    <Plane className="h-3 w-3" aria-hidden="true" />
+                    {dest.trips} trip{dest.trips !== 1 ? "s" : ""}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between p-4">
+                  <h3 className="font-display text-lg text-ink">{dest.name}</h3>
+                  <span className="inline-flex items-center gap-1 text-sm text-ink-soft">
+                    <MapPin className="h-3.5 w-3.5 text-[#FF0099]" aria-hidden="true" />
+                    Explore
+                  </span>
+                </div>
               </Link>
             </motion.div>
           ))}
         </div>
       </div>
-
-      {/* Bottom fade into light bg */}
-      <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-[#FFF7FB] to-transparent" />
     </section>
   );
 }

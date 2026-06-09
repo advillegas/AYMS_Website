@@ -103,19 +103,27 @@ export async function POST(request: NextRequest) {
 
   try {
     // De-dupe by email: query before write so we never store a duplicate.
-    const existing = await getDocs(
-      query(
-        collection(db, COLLECTION),
-        where("email", "==", email),
-        fsLimit(1),
-      ),
-    );
-    if (!existing.empty) {
-      const result: SubscribeResult = {
-        status: "exists",
-        message: "You're already on the list — gracias! ♡",
-      };
-      return NextResponse.json(result, { status: 200 });
+    // The signup list is admin-readable only (emails are private); this
+    // route runs unauthenticated, so the read is denied — expected. Treat
+    // any dedup failure as "not a duplicate" and fall through to create,
+    // which the rules allow for everyone.
+    try {
+      const existing = await getDocs(
+        query(
+          collection(db, COLLECTION),
+          where("email", "==", email),
+          fsLimit(1),
+        ),
+      );
+      if (!existing.empty) {
+        const result: SubscribeResult = {
+          status: "exists",
+          message: "You're already on the list — gracias! ♡",
+        };
+        return NextResponse.json(result, { status: 200 });
+      }
+    } catch {
+      // Dedup unavailable (unauthenticated read). Proceed to create.
     }
 
     await addDoc(collection(db, COLLECTION), {

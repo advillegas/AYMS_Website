@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist_Mono, Montserrat, Playfair_Display, Cormorant_Garamond } from "next/font/google";
+import { Geist_Mono, Montserrat, Playfair_Display, Cormorant_Garamond, Fraunces } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "sonner";
@@ -34,6 +34,17 @@ const cormorant = Cormorant_Garamond({
   subsets: ["latin"],
   weight: ["300", "400", "500", "600", "700"],
   style: ["italic", "normal"],
+  display: "swap",
+});
+
+// Editorial-luxe display serif (contemporary high-contrast; PP-Editorial-New
+// vibe). Scoped via the --font-display CSS var + .font-display utility so it
+// only touches the marketing surfaces, not the logged-in community app.
+const fraunces = Fraunces({
+  variable: "--font-display",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "900"],
+  style: ["normal", "italic"],
   display: "swap",
 });
 
@@ -120,7 +131,7 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${montserrat.variable} ${geistMono.variable} ${playfair.variable} ${cormorant.variable} h-full antialiased`}
+      className={`${montserrat.variable} ${geistMono.variable} ${playfair.variable} ${cormorant.variable} ${fraunces.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col font-sans">
         <a

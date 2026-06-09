@@ -8,6 +8,7 @@ import {
   firebaseSignInWithGoogle,
   firebaseSendPasswordReset,
   upsertUserProfile,
+  ensureFirebaseAdminSession,
   friendlyAuthError,
 } from "./firebase-auth";
 import { isFirebaseConfigured } from "./firebase";
@@ -311,6 +312,11 @@ export const useAuth = create<AuthState>()(
           if (data.ok && data.user) {
             set({ user: data.user, isAuthenticated: true });
             void upsertUserProfile(data.user);
+            // Bridge the password-only admin into a real Firebase Auth
+            // session so client-side admin writes (events, calendar feeds,
+            // testimonials, config) pass the Firestore isAdmin() rules.
+            // Best-effort; the UI identity stays the legacy "admin".
+            void ensureFirebaseAdminSession(password);
             return { ok: true };
           }
           if (!data.fallback && data.error) {

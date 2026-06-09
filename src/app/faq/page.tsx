@@ -75,12 +75,10 @@ export default function FAQPage() {
   return (
     <CmsPageWrapper slug="faq">
       <Navbar />
-      <main className="min-h-screen pt-[88px]">
-        {/* Hero */}
-        <section className="grain relative overflow-hidden bg-[#1a0a12] py-28">
-          <div className="absolute inset-0 bg-gradient-to-b from-[#3A0F2A] via-[#1a0a12] to-[#1A0814]" />
-          <div className="aurora opacity-50" />
-          <div className="absolute inset-0 pattern-dots opacity-[0.07]" />
+      <main className="canvas-editorial min-h-screen pt-[88px]">
+        {/* Hero — light editorial */}
+        <section className="grain relative overflow-hidden canvas-editorial py-28">
+          <div className="mesh-warm" />
           <motion.div
             initial={reduceMotion ? false : { opacity: 0, y: 32 }}
             animate={{ opacity: 1, y: 0 }}
@@ -91,20 +89,18 @@ export default function FAQPage() {
               initial={reduceMotion ? false : { scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ duration: 0.5, ease: [0.34, 1.56, 0.64, 1] }}
-              className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/[0.08] backdrop-blur-md border border-white/15 shadow-[0_0_32px_rgb(255_0_153/0.25)]"
+              className="glass-control mx-auto mb-6 flex h-16 w-16 items-center justify-center"
             >
-              <HelpCircle className="h-8 w-8 text-[#FFB3D0]" aria-hidden="true" />
+              <HelpCircle className="h-8 w-8 text-[#B51760]" aria-hidden="true" />
             </motion.div>
-            <div className="mx-auto mb-6 flex w-fit items-center gap-2.5 rounded-full border border-white/15 bg-white/[0.06] px-4 py-1.5 backdrop-blur-md">
-              <span className="text-xs font-semibold uppercase tracking-[0.32em] text-[#FFB3D0]">
-                Got Questions? We&apos;ve Got Answers
-              </span>
-            </div>
-            <h1 className="text-hero font-[family-name:var(--font-heading)] font-extrabold text-white text-balance">
+            <p className="eyebrow text-[#B51760]">Got Questions? We&apos;ve Got Answers</p>
+            <h1 className="text-hero font-display text-ink text-balance mt-3">
               Frequently{" "}
-              <span className="text-gradient-brand">Asked</span>
+              <span className="font-display-italic marker-swipe text-[#B51760]">
+                Asked
+              </span>
             </h1>
-            <p className="text-lead mx-auto mt-6 max-w-xl text-white/60">
+            <p className="text-lead mx-auto mt-6 max-w-xl text-ink-soft">
               Everything you need to know about traveling with AYMS.
               Can&apos;t find your answer? Reach out to us anytime.
             </p>
@@ -112,10 +108,10 @@ export default function FAQPage() {
         </section>
 
         {/* Search */}
-        <section className="border-b border-rosa/15 bg-background/95 backdrop-blur-sm sticky top-[88px] z-10">
+        <section className="glass-nav border-b border-[#221019]/10 sticky top-[88px] z-10">
           <div className="mx-auto max-w-3xl px-4 py-4 sm:px-6 lg:px-8">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" aria-hidden="true" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#B51760]" aria-hidden="true" />
               <label htmlFor="faq-search" className="sr-only">
                 Search frequently asked questions
               </label>
@@ -125,19 +121,18 @@ export default function FAQPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search questions..."
-                className="pl-9 border-rosa/30 focus-visible:ring-primary/30 glass"
+                className="pl-9 rounded-full border-[#221019]/15 bg-white/70 text-ink placeholder:text-ink-soft focus-visible:ring-[#FF0099]/30"
               />
             </div>
-            <p className="mt-2 text-xs text-muted-foreground" aria-live="polite" role="status">
+            <p className="mt-2 text-xs text-ink-soft" aria-live="polite" role="status">
               {search ? `${totalResults} result${totalResults !== 1 ? "s" : ""} found` : ""}
             </p>
           </div>
         </section>
 
         {/* FAQ content */}
-        <section className="relative py-14">
-          <div className="absolute inset-0 pattern-grid opacity-[0.07]" />
-          <div className="relative mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 space-y-12">
+        <section className="relative py-16 canvas-editorial">
+          <div className="relative mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 space-y-14">
             {filteredCategories.map((cat, catIdx) => (
               <motion.div
                 key={cat.category}
@@ -146,24 +141,26 @@ export default function FAQPage() {
                 viewport={{ once: true }}
                 transition={{ delay: reduceMotion ? 0 : catIdx * 0.08, ease: [0.16, 1, 0.3, 1] }}
               >
-                <div className="mb-5 flex items-center gap-3">
-                  <div className="h-px flex-1 bg-gradient-to-r from-transparent via-rosa/30 to-transparent" />
-                  <h2 className="text-sm font-bold font-[family-name:var(--font-heading)] text-primary uppercase tracking-widest">
-                    {cat.category}
+                <div className="mb-6 flex items-center gap-4">
+                  <h2 className="font-display text-title text-ink">
+                    {cat.category.split(" ")[0]}{" "}
+                    <span className="font-display-italic text-[#B51760]">
+                      {cat.category.split(" ").slice(1).join(" ")}
+                    </span>
                   </h2>
-                  <div className="h-px flex-1 bg-gradient-to-r from-transparent via-rosa/30 to-transparent" />
+                  <div className="h-px flex-1 bg-gradient-to-r from-[#B51760]/25 via-[#221019]/10 to-transparent" />
                 </div>
-                <Accordion className="space-y-3">
+                <Accordion className="divide-y divide-[#221019]/10 border-y border-[#221019]/10">
                   {cat.items.map((item, i) => (
                     <AccordionItem
                       key={i}
                       value={`${cat.category}-${i}`}
-                      className="rounded-2xl border border-rosa/20 glass px-5 overflow-hidden data-[state=open]:border-primary/30 data-[state=open]:elevate-3 transition-all elevate-2"
+                      className="px-1 transition-colors data-[state=open]:bg-[#FF0099]/[0.03]"
                     >
-                      <AccordionTrigger className="text-left text-sm font-semibold hover:text-primary py-4 [&>svg]:text-primary/50">
+                      <AccordionTrigger className="text-left font-display text-base text-ink hover:text-[#B51760] py-6 [&>svg]:text-[#B51760]/60">
                         {item.q}
                       </AccordionTrigger>
-                      <AccordionContent className="text-sm text-muted-foreground leading-relaxed pb-4">
+                      <AccordionContent className="text-[15px] text-ink-soft leading-relaxed pb-6 pr-6">
                         {item.a}
                       </AccordionContent>
                     </AccordionItem>
@@ -178,17 +175,17 @@ export default function FAQPage() {
                 animate={{ opacity: 1 }}
                 className="py-24 text-center"
               >
-                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl glass elevate-2">
-                  <HelpCircle className="h-7 w-7 text-muted-foreground/50" aria-hidden="true" />
+                <div className="glass-control mx-auto mb-4 flex h-16 w-16 items-center justify-center">
+                  <HelpCircle className="h-7 w-7 text-ink-soft/60" aria-hidden="true" />
                 </div>
-                <p className="text-lg font-semibold font-[family-name:var(--font-heading)]">No matches yet, amiga</p>
-                <p className="text-sm text-muted-foreground mt-1">
+                <p className="font-display text-lg text-ink">No matches yet, amiga</p>
+                <p className="text-sm text-ink-soft mt-1">
                   Try another word — or just ask us, we&apos;re here ♡
                 </p>
                 {search && (
                   <button
                     onClick={() => setSearch("")}
-                    className="mt-5 rounded-full border border-primary/25 px-5 py-1.5 text-sm font-medium text-primary transition-colors hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]"
+                    className="mt-5 rounded-full border border-[#221019]/15 px-5 py-1.5 text-sm font-semibold text-[#B51760] transition-colors hover:bg-[#FF0099]/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]"
                   >
                     Clear search
                   </button>
@@ -198,44 +195,47 @@ export default function FAQPage() {
           </div>
         </section>
 
-        {/* CTA */}
-        <section className="relative overflow-hidden border-t border-rosa/15 py-20">
-          <div className="absolute inset-0 bg-gradient-to-b from-rosa/8 via-background to-background" />
-          <div className="absolute inset-0 pattern-dots opacity-[0.05]" />
+        {/* CTA — glass "still have questions?" card */}
+        <section className="relative overflow-hidden border-t border-[#221019]/10 canvas-warm py-20">
+          <div className="mesh-warm opacity-70" />
           <motion.div
             initial={reduceMotion ? false : { opacity: 0, y: 24 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-            className="relative mx-auto max-w-2xl px-4 text-center sm:px-6 lg:px-8"
+            className="relative mx-auto max-w-2xl px-4 sm:px-6 lg:px-8"
           >
-            <h2 className="text-title font-[family-name:var(--font-heading)] font-bold">
-              Still have{" "}
-              <span className="text-gradient-brand">questions?</span>
-            </h2>
-            <p className="mt-3 text-muted-foreground">
-              We&apos;re here to help. Reach out anytime and we&apos;ll get back
-              to you within 24–48 hours.
-            </p>
-            <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link
-                href="/#contact"
-                className={cn(
-                  buttonVariants({ size: "lg" }),
-                  "lift h-14 rounded-full border-0 bg-gradient-to-r from-[#FF0099] via-[#B51760] to-[#FF0099] px-10 text-base font-semibold tracking-wide text-white shadow-[0_8px_30px_rgb(255_0_153/0.30)] hover:brightness-110"
-                )}
-              >
-                Contact Us ♡
-              </Link>
-              <Link
-                href="/trips"
-                className={cn(
-                  buttonVariants({ variant: "outline", size: "lg" }),
-                  "h-14 rounded-full border-primary/25 hover:bg-primary/5 px-10 font-semibold"
-                )}
-              >
-                Browse Trips
-              </Link>
+            <div className="glass-strong elevate-3 rounded-3xl px-8 py-12 text-center sm:px-12">
+              <h2 className="font-display text-title text-ink">
+                Still have{" "}
+                <span className="font-display-italic marker-swipe text-[#B51760]">
+                  questions?
+                </span>
+              </h2>
+              <p className="mt-3 text-ink-soft">
+                We&apos;re here to help. Reach out anytime and we&apos;ll get back
+                to you within 24–48 hours.
+              </p>
+              <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
+                <Link
+                  href="/#contact"
+                  className={cn(
+                    buttonVariants({ size: "lg" }),
+                    "lift h-14 rounded-full border-0 bg-gradient-to-r from-[#FF0099] to-[#B51760] px-10 text-base font-semibold tracking-wide text-white shadow-[0_8px_30px_rgb(255_0_153/0.30)] hover:brightness-110"
+                  )}
+                >
+                  Contact Us ♡
+                </Link>
+                <Link
+                  href="/trips"
+                  className={cn(
+                    buttonVariants({ variant: "outline", size: "lg" }),
+                    "h-14 rounded-full border-[#221019]/15 bg-white/40 text-ink hover:bg-[#FF0099]/5 px-10 font-semibold"
+                  )}
+                >
+                  Browse Trips
+                </Link>
+              </div>
             </div>
           </motion.div>
         </section>

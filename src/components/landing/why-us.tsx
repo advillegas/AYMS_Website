@@ -52,9 +52,9 @@ const PROPS = [
 export function WhyUs() {
   const prefersReducedMotion = useReducedMotion();
   return (
-    <section className="relative py-32 overflow-hidden bg-[#FFF7FB]">
-      <div className="absolute inset-0 pattern-grid opacity-[0.25]" />
-      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#FF0099]/25 to-transparent" />
+    <section className="canvas-editorial grain relative overflow-hidden py-28 sm:py-32">
+      <div className="mesh-warm opacity-70" />
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#FF0099]/20 to-transparent" />
 
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <motion.div
@@ -62,16 +62,14 @@ export function WhyUs() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-          className="text-center"
+          className="mx-auto max-w-2xl text-center"
         >
-          <p className="font-detail text-base font-semibold italic tracking-[0.12em] text-[#FF0099]">
-            Why Travel With Us
-          </p>
-          <h2 className="text-title mt-3 font-[family-name:var(--font-heading)] font-extrabold text-[#6A1B4D] text-balance">
-            Sit Back &amp; Relax,{" "}
-            <span className="text-gradient-brand">You&apos;re in Good Hands</span>
+          <p className="eyebrow text-[#FF0099]">Why Travel With Us</p>
+          <h2 className="text-title mt-4 font-display text-ink text-balance">
+            Sit back &amp; relax,{" "}
+            <span className="font-display-italic marker-swipe">you&apos;re in good hands</span>
           </h2>
-          <p className="text-lead mx-auto mt-4 max-w-2xl text-[#6A1B4D]/80">
+          <p className="text-lead mx-auto mt-5 text-ink-soft">
             Unlike big commercial group tours, we prioritize boutique
             experiences, hand-crafted itineraries, and real connections.
           </p>
@@ -87,21 +85,21 @@ export function WhyUs() {
               transition={{ delay: prefersReducedMotion ? 0 : i * 0.08, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
             >
               <FlipCard
-                className="ring-gradient h-52 cursor-pointer rounded-3xl"
+                className="h-52 cursor-pointer rounded-3xl"
                 front={
-                  <div className="glass lift flex h-full flex-col items-start justify-center gap-3 rounded-3xl p-7 elevate-2">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-[#FF0099]/15 to-[#FACDE8]/30">
+                  <div className="glass lift elevate-2 flex h-full flex-col items-start justify-center gap-3 rounded-3xl p-7">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[#FF0099]/12 to-[#FACDE8]/45">
                       <p.icon className="h-6 w-6 text-[#FF0099]" aria-hidden="true" />
                     </div>
-                    <h3 className="text-base font-bold font-[family-name:var(--font-heading)] text-[#6A1B4D]">{p.en.title}</h3>
-                    <p className="text-sm text-[#6A1B4D]/60 leading-relaxed">{p.en.desc}</p>
+                    <h3 className="font-display text-lg text-ink">{p.en.title}</h3>
+                    <p className="text-sm leading-relaxed text-ink-soft">{p.en.desc}</p>
                   </div>
                 }
                 back={
                   <div className={`flex h-full flex-col items-start justify-center gap-3 rounded-3xl bg-gradient-to-br ${p.gradientBack} p-7 text-white`}>
                     <p.icon className="h-7 w-7 text-white/80" aria-hidden="true" />
-                    <h3 className="text-base font-bold font-[family-name:var(--font-heading)]">{p.es.title}</h3>
-                    <p className="text-sm text-white/80 leading-relaxed">{p.es.desc}</p>
+                    <h3 className="font-display text-lg">{p.es.title}</h3>
+                    <p className="text-sm leading-relaxed text-white/85">{p.es.desc}</p>
                   </div>
                 }
               />

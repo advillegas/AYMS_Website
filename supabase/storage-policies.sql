@@ -42,9 +42,10 @@ drop policy if exists "media_delete" on storage.objects;
 drop policy if exists "media_member_insert" on storage.objects;
 drop policy if exists "media_owner_delete" on storage.objects;
 
--- Public read (bucket is public; avatars/covers render while signed out).
-create policy "media_public_read" on storage.objects
-  for select to anon, authenticated using (bucket_id = 'media');
+-- NO select policy on purpose: the bucket is public, so objects are served
+-- via their public URLs (/object/public/media/...) without one — but the
+-- storage list API stays blocked, so clients cannot enumerate the bucket.
+-- (The app never calls storage list; it stores full URLs in rows.)
 
 -- Members upload only into their own folder of the four app prefixes.
 create policy "media_member_insert" on storage.objects

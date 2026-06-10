@@ -514,6 +514,12 @@ begin
   return coalesce(uid, public.current_app_user_id());
 end $$;
 
+-- The helpers are for policies (authenticated) and the link RPC — anon
+-- never needs them (no anon-facing policy references them).
+revoke execute on function public.current_app_user_id() from anon;
+revoke execute on function public.is_app_admin() from anon;
+revoke execute on function public.link_auth_identity() from anon;
+
 -- ============================================================
 -- Row Level Security — enabled on every table here; the hardened
 -- per-table policies live in supabase/policies.sql (apply it right after
@@ -544,7 +550,7 @@ end $$;
 -- True when the request carries the service_role JWT (dashboard, server
 -- jobs). Plain anon/authenticated app traffic is NOT service role.
 create or replace function public.is_service_role()
-returns boolean language sql stable as $$
+returns boolean language sql stable set search_path = public as $$
   select coalesce(
     current_setting('request.jwt.claims', true)::jsonb ->> 'role', ''
   ) = 'service_role';
@@ -557,7 +563,7 @@ $$;
 -- Blocks the create-as-amiga-then-update-role-to-admin escalation —
 -- is_app_admin() is evaluated against the ACTOR, not the row.
 create or replace function public.guard_user_role()
-returns trigger language plpgsql as $$
+returns trigger language plpgsql set search_path = public as $$
 begin
   if public.is_service_role() or public.is_app_admin() then
     return new;
@@ -589,7 +595,7 @@ create trigger users_role_guard
 -- INSERT may self-link only (new-member seed rows write their own
 -- auth.uid(); users_insert RLS already pins id + email to the JWT).
 create or replace function public.guard_user_auth_id()
-returns trigger language plpgsql as $$
+returns trigger language plpgsql set search_path = public as $$
 begin
   if public.is_service_role()
      or current_user not in ('anon', 'authenticated') then
@@ -617,7 +623,7 @@ create trigger users_auth_id_guard
 -- or otherwise) can forge a transition, reopen a closed document, or
 -- overwrite a recorded signature. Mirrors firestore.rules.
 create or replace function public.guard_agreement()
-returns trigger language plpgsql as $$
+returns trigger language plpgsql set search_path = public as $$
 begin
   if public.is_service_role() then
     return coalesce(new, old);

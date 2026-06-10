@@ -80,15 +80,22 @@ export function subscribeQuery<T>(
     }
   };
 
-  // postgres_changes subscriptions are RLS-checked with the claims held
-  // at SUBSCRIBE time — a channel joined before the session resolved (or
-  // across a sign-in/out) keeps anon claims and goes silent on
-  // authenticated-only tables. So: prime the socket auth before joining,
-  // and rejoin whenever the auth identity changes.
-  const joinChannel = (accessToken: string | null) => {
+  // postgres_changes subscriptions are RLS-checked with the token the
+  // socket holds AT JOIN TIME — a channel joined before the user token is
+  // applied stays on anon claims and goes silent on authenticated-only
+  // tables (every event RLS-filtered → the list only updates on the slow
+  // poll below). setAuth() is async (it awaits an internal token push),
+  // so it MUST be awaited before .subscribe(), or the join races ahead
+  // with the pre-auth token. Re-join whenever the auth identity changes.
+  const joinChannel = async (accessToken: string | null) => {
     if (disposed) return;
     teardownChannel();
-    sb.realtime.setAuth(accessToken);
+    try {
+      await sb.realtime.setAuth(accessToken);
+    } catch {
+      /* fall back to whatever token the socket holds; poll still converges */
+    }
+    if (disposed) return;
     const channelName = `rt:${table}:${filter ? `${filter.column}=${filter.value}` : "all"}:${Math.random()
       .toString(36)
       .slice(2, 8)}`;
@@ -123,7 +130,7 @@ export function subscribeQuery<T>(
     const snap = getAuthSnapshot();
     lastAuthUid = snap.uid;
     void fetchNow();
-    joinChannel(snap.token);
+    void joinChannel(snap.token);
   };
 
   if (getAuthSnapshot().known) {
@@ -139,18 +146,20 @@ export function subscribeQuery<T>(
     if (snap.uid !== lastAuthUid) {
       lastAuthUid = snap.uid;
       // Rejoin with the new identity so postgres_changes re-evaluates RLS.
-      setTimeout(() => joinChannel(getAuthSnapshot().token), 0);
+      setTimeout(() => void joinChannel(getAuthSnapshot().token), 0);
       scheduleRefetch();
     }
   });
 
-  // Safety net: realtime can drop or be RLS-silenced without an error
-  // surface; a slow visible-tab poll guarantees eventual consistency.
+  // Safety net: realtime is the primary path (sub-second when healthy),
+  // but an occasional event can be dropped by the socket; a visible-tab
+  // poll bounds the worst-case staleness for a missed event. Only runs
+  // while the tab is visible, so it's cheap.
   const pollTimer = setInterval(() => {
     if (typeof document === "undefined" || document.visibilityState === "visible") {
       void fetchNow();
     }
-  }, 30_000);
+  }, 12_000);
 
   return () => {
     disposed = true;

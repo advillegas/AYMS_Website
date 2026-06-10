@@ -130,7 +130,15 @@ export default function AdminCalendarPage() {
         method: "POST",
         headers,
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) {
+        // Surface the server's own message (e.g. "CRON_SECRET unset",
+        // "SUPABASE_SERVICE_ROLE_KEY not set", "Admin access required")
+        // instead of an opaque status code.
+        const body = (await res.json().catch(() => null)) as {
+          error?: string;
+        } | null;
+        throw new Error(body?.error ? body.error : `HTTP ${res.status}`);
+      }
       const data = await res.json();
       const result = data.results?.find(
         (r: { configId: string }) => r.configId === configId,

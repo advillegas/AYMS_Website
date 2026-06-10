@@ -37,15 +37,19 @@ export async function verifySupabaseToken(
 }
 
 /**
- * Look up the canonical app user row by verified email (service role —
- * users may not be anon-readable under hardened RLS). Case-insensitive;
- * prefers the oldest row when historic duplicates exist, matching the
- * client-side canonical resolution.
+ * Look up the canonical app user row by verified email. Prefers the
+ * service-role client, but falls back to the anon server client when the
+ * service key is unset: the `users` SELECT policy is public (the member
+ * directory), so the role is anon-readable. This keeps server-side admin
+ * checks (e.g. sync-now) working even if SUPABASE_SERVICE_ROLE_KEY is
+ * missing — the downstream operation surfaces the real missing-key error
+ * instead of a misleading 403 here. Case-insensitive; prefers the oldest
+ * row when historic duplicates exist, matching client-side resolution.
  */
 export async function resolveAppUserByEmail(
   email: string,
 ): Promise<{ id: string; role: string } | null> {
-  const svc = getServiceClient();
+  const svc = getServiceClient() ?? getAnonServerClient();
   if (!svc || !email.trim()) return null;
   try {
     // Escape ilike metacharacters so this is a literal (case-insensitive)

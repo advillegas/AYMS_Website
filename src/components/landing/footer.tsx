@@ -205,12 +205,18 @@ export function Footer() {
             &copy; {new Date().getFullYear()} Amigas Y Más Social. All rights
             reserved. ♡
           </p>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
             <Link
               href="/privacy"
               className="transition-colors hover:text-[#FACDE8] focus-visible:outline-none focus-visible:text-[#FACDE8]"
             >
               Privacy Policy
+            </Link>
+            <Link
+              href="/terms"
+              className="transition-colors hover:text-[#FACDE8] focus-visible:outline-none focus-visible:text-[#FACDE8]"
+            >
+              Terms of Service
             </Link>
             <span className="tracking-[0.18em] uppercase">Hecho con cariño</span>
           </div>

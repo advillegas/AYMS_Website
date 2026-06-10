@@ -445,27 +445,27 @@ export async function getOrCreateDMSupabase(
   });
   if (!check.ok) return { id: null, error: check };
 
-  const id = dmConversationId(currentUserId, resolvedOtherId);
+  // Atomic find-or-create keyed on the participant set (see the
+  // get_or_create_conversation RPC). This collapses any prior thread
+  // between these two members regardless of how its id was minted, and
+  // the advisory lock prevents two tabs racing into parallel DMs. The
+  // deterministic dmConversationId is passed only as the id for a
+  // brand-new row.
+  const participantIds = [currentUserId, resolvedOtherId].sort();
   try {
-    const { data: existing } = await sb
-      .from("conversations")
-      .select("id")
-      .eq("id", id)
-      .maybeSingle();
-    if (existing) return { id };
-    const participantIds = [currentUserId, resolvedOtherId].sort();
-    const ts = nowIso();
-    const { error: e } = await sb.from("conversations").insert({
-      id,
-      type: "dm",
-      participant_ids: participantIds,
-      created_by: currentUserId,
-      created_at: ts,
-      updated_at: ts,
-      read_at: {},
+    const { data, error: e } = await sb.rpc("get_or_create_conversation", {
+      p_id: dmConversationId(currentUserId, resolvedOtherId),
+      p_ids: participantIds,
+      p_type: "dm",
+      p_name: null,
     });
-    if (e) return { id: null, error: { ok: false, reason: e.message } };
-    return { id };
+    if (e || !data) {
+      return {
+        id: null,
+        error: { ok: false, reason: e?.message ?? "Couldn't open the conversation." },
+      };
+    }
+    return { id: data as string };
   } catch (err) {
     return {
       id: null,
@@ -486,23 +486,21 @@ export async function createGroupConversationSupabase(
   if (!sb) return null;
   const all = Array.from(new Set([currentUserId, ...participantIds])).sort();
   if (all.length < 2) return null;
-  const id = genId("grp");
-  const ts = nowIso();
-  const { error: e } = await sb.from("conversations").insert({
-    id,
-    type: "group",
-    participant_ids: all,
-    created_by: currentUserId,
-    name: options.name?.trim() || null,
-    created_at: ts,
-    updated_at: ts,
-    read_at: {},
+  // Same atomic find-or-create as DMs: a group whose member set already
+  // exists returns the existing thread instead of spawning a duplicate
+  // (the user's "same members → same group" rule). A 2-person set is a
+  // DM; anything larger is a group.
+  const { data, error: e } = await sb.rpc("get_or_create_conversation", {
+    p_id: genId("grp"),
+    p_ids: all,
+    p_type: all.length > 2 ? "group" : "dm",
+    p_name: options.name?.trim() || null,
   });
-  if (e) {
-    console.error("[createGroupConversation:sb]", e.message);
+  if (e || !data) {
+    console.error("[createGroupConversation:sb]", e?.message);
     return null;
   }
-  return id;
+  return data as string;
 }
 
 export async function addParticipantsSupabase(

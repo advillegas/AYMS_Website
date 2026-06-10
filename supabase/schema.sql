@@ -690,3 +690,64 @@ drop trigger if exists agreements_guard on public.agreements;
 create trigger agreements_guard
   before update or delete on public.agreements
   for each row execute function public.guard_agreement();
+
+-- ============================================================
+-- Conversation dedup — one thread per unique participant set
+--
+-- The canonical key is the sorted, de-duplicated participant id list, so
+-- a DM between A and B (or a group with an identical member set) can only
+-- exist once regardless of how its id was minted or what order the ids
+-- were passed in. Creation goes through get_or_create_conversation, which
+-- serializes concurrent attempts with an advisory lock so two tabs can't
+-- spawn parallel threads. NOT a unique index: that would make leaving or
+-- adding members fail if the resulting set ever matched another thread.
+-- ============================================================
+
+create or replace function public.participants_key(ids text[])
+returns text language sql immutable set search_path = public as $$
+  select array_to_string(array(select distinct e from unnest(ids) e order by e), ',')
+$$;
+grant execute on function public.participants_key(text[]) to authenticated, service_role, anon;
+
+create index if not exists conversations_participants_key_idx
+  on public.conversations (public.participants_key(participant_ids));
+
+-- Atomic find-or-create. SECURITY DEFINER (bypasses the conversations
+-- insert RLS) but validates the caller is a member of the set; auth.*
+-- still reflect the calling user under definer rights.
+create or replace function public.get_or_create_conversation(
+  p_id text,
+  p_ids text[],
+  p_type text,
+  p_name text default null
+)
+returns text language plpgsql security definer set search_path = public as $$
+declare
+  caller text := public.current_app_user_id();
+  norm   text[] := array(select distinct e from unnest(p_ids) e where e is not null and e <> '' order by e);
+  k      text := array_to_string(norm, ',');
+  cid    text;
+begin
+  if caller is null or not (caller = any(norm)) then
+    raise exception 'not a participant of this conversation';
+  end if;
+  if array_length(norm, 1) < 2 then
+    raise exception 'a conversation needs at least two participants';
+  end if;
+  perform pg_advisory_xact_lock(hashtext('conv:' || k));
+  select id into cid from public.conversations
+    where public.participants_key(participant_ids) = k
+    order by created_at, id limit 1;
+  if cid is not null then
+    return cid;
+  end if;
+  insert into public.conversations
+    (id, type, participant_ids, created_by, name, read_at, typing, created_at, updated_at)
+  values
+    (p_id, p_type, norm, caller, p_name, '{}'::jsonb, '{}'::jsonb, now(), now())
+  returning id into cid;
+  return cid;
+end $$;
+
+revoke execute on function public.get_or_create_conversation(text, text[], text, text) from public, anon;
+grant execute on function public.get_or_create_conversation(text, text[], text, text) to authenticated, service_role;

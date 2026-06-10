@@ -43,5 +43,47 @@ export function getSupabase(): SupabaseClient | null {
     },
     realtime: { params: { eventsPerSecond: 10 } },
   });
+  // ONE auth listener for the whole app (subscriptions must not each
+  // register their own — auth-js awaits every callback under its internal
+  // lock during the restore-time INITIAL_SESSION emission, and a listener
+  // storm there freezes the data layer). It keeps the realtime socket's
+  // claims current — without setAuth, channels negotiate with the anon
+  // key and RLS silently filters every postgres_changes event on
+  // authenticated-only tables (chat messages "send" but never confirm) —
+  // and feeds the auth registry that subscribeQuery reads synchronously.
+  client.auth.onAuthStateChange((_event, session) => {
+    authState.token = session?.access_token ?? null;
+    authState.uid = session?.user?.id ?? null;
+    authState.known = true;
+    client?.realtime.setAuth(authState.token);
+    for (const fn of authListeners) fn();
+  });
   return client;
+}
+
+/* ------------------------------------------------------------------ */
+/* Auth registry — a synchronous snapshot of the session for the data  */
+/* layer. subscribeQuery (mounted dozens of times) reads this instead  */
+/* of each calling auth.getSession(), which at restore time piles into */
+/* auth-js's internal lock queue and can deadlock the page.            */
+/* ------------------------------------------------------------------ */
+
+const authState: { token: string | null; uid: string | null; known: boolean } =
+  { token: null, uid: null, known: false };
+const authListeners = new Set<() => void>();
+
+/** Current session snapshot (synchronous; `known` is false until the
+ * first auth event after page load has fired). */
+export function getAuthSnapshot(): {
+  token: string | null;
+  uid: string | null;
+  known: boolean;
+} {
+  return authState;
+}
+
+/** Subscribe to auth identity changes. Returns an unsubscribe fn. */
+export function onAuthSnapshotChange(fn: () => void): () => void {
+  authListeners.add(fn);
+  return () => authListeners.delete(fn);
 }

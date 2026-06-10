@@ -472,7 +472,10 @@ export default function AdminCalendarPage() {
             );
             setAddFeedOpen(false);
           } else {
-            toast.error("Couldn't add the feed.");
+            toast.error(
+              "Couldn't add the feed — the database rejected the write. " +
+                "Make sure your account has the admin role (not just admin-panel access), then try again.",
+            );
           }
         }}
       />

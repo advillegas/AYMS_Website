@@ -313,18 +313,25 @@ export function onSupabaseAuthChange(
     apply(user);
   });
 
-  const { data: sub } = sb.auth.onAuthStateChange(async (event, session) => {
+  // The callback body is deferred out of the emission with setTimeout:
+  // auth-js awaits onAuthStateChange callbacks while holding its internal
+  // session lock/queue, so running Supabase queries (resolveCanonicalUser)
+  // inside the callback entangles the restore-time INITIAL_SESSION
+  // emission with the very requests that need the session — freezing the
+  // whole data layer on page reload. Deferring lets the emission finish
+  // first; the work runs one tick later against a free client.
+  const { data: sub } = sb.auth.onAuthStateChange((event, session) => {
     if (event === "SIGNED_OUT" || !session?.user) {
       apply(null);
       return;
     }
-    if (!session.user.email) return;
-    const user = await resolveCanonicalUser(
-      session.user.email,
-      session.user.id,
-      { name: (session.user.user_metadata?.name as string) ?? undefined },
-    );
-    apply(user);
+    const email = session.user.email;
+    if (!email) return;
+    const authId = session.user.id;
+    const name = (session.user.user_metadata?.name as string) ?? undefined;
+    setTimeout(() => {
+      void resolveCanonicalUser(email, authId, { name }).then(apply);
+    }, 0);
   });
 
   return () => sub.subscription.unsubscribe();

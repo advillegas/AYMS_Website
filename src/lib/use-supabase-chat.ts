@@ -296,7 +296,12 @@ export function useChannelChatSupabase(channelId: string): UseChannelChatResult 
         );
         return null;
       }
-      setPendingMessages((prev) => prev.filter((p) => p.id !== tempId));
+      // Keep the optimistic bubble until the confirmed row shows up in a
+      // refetch (the subscription's reconcile pass removes it) — dropping
+      // it here makes the message vanish whenever realtime lags.
+      setPendingMessages((prev) =>
+        prev.map((p) => (p.id === tempId ? { ...p, _pending: false } : p)),
+      );
 
       if (opts.threadParentId) {
         const parent = fbMessages.find((m) => m.id === opts.threadParentId);

@@ -28,6 +28,7 @@ import {
 import { toast } from "sonner";
 import { useAuth } from "@/lib/store";
 import { getAuthInstance } from "@/lib/firebase";
+import { getSupabase, useSupabaseBackend } from "@/lib/supabase";
 import {
   useEvents,
   useSyncConfigs,
@@ -114,10 +115,16 @@ export default function AdminCalendarPage() {
     try {
       const headers: Record<string, string> = {};
       try {
-        const idToken = await getAuthInstance()?.currentUser?.getIdToken();
-        if (idToken) headers.authorization = `Bearer ${idToken}`;
+        if (useSupabaseBackend) {
+          const accessToken = (await getSupabase()?.auth.getSession())?.data
+            .session?.access_token;
+          if (accessToken) headers.authorization = `Bearer ${accessToken}`;
+        } else {
+          const idToken = await getAuthInstance()?.currentUser?.getIdToken();
+          if (idToken) headers.authorization = `Bearer ${idToken}`;
+        }
       } catch {
-        /* no Firebase session — proxy will reject if auth is required */
+        /* no session — proxy will reject if auth is required */
       }
       const res = await fetch("/api/calendar/sync-now", {
         method: "POST",

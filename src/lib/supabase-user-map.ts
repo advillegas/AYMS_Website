@@ -13,6 +13,13 @@ import type { PresenceStatus } from "./use-presence";
 
 export interface SupabaseUserRow {
   id: string;
+  /**
+   * Supabase auth uid linked to this canonical row (null until the
+   * user's first Supabase login backfills it via link_auth_identity).
+   * NOT the same as `id` for migrated members, whose ids are their
+   * original Firebase UIDs.
+   */
+  auth_id: string | null;
   name: string | null;
   email: string | null;
   avatar: string | null;
@@ -64,6 +71,7 @@ export function isoToTimestampLike(iso: string | null): TimestampLike | null {
 /** Shape consumed by use-community-members (its local FirestoreUserDoc). */
 export interface MappedUserDoc {
   id: string;
+  authId?: string;
   name?: string;
   email?: string;
   avatar?: string;
@@ -104,6 +112,7 @@ const u = <T>(v: T | null): T | undefined => (v == null ? undefined : v);
 export function mapUserRowToDoc(r: SupabaseUserRow): MappedUserDoc {
   return {
     id: r.id,
+    authId: u(r.auth_id),
     name: u(r.name),
     email: u(r.email),
     avatar: u(r.avatar),

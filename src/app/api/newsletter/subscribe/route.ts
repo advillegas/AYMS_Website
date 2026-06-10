@@ -26,6 +26,8 @@ import {
 } from "firebase/firestore";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { getDb, isFirebaseConfigured } from "@/lib/firebase";
+import { useSupabaseBackend } from "@/lib/supabase";
+import { getServiceClient } from "@/lib/supabase-server";
 // Type-only import (erased at runtime) — keeps this server route off the
 // client module boundary while reusing the canonical result shape.
 import type { SubscribeResult } from "@/lib/use-newsletter";
@@ -82,6 +84,54 @@ export async function POST(request: NextRequest) {
   }
 
   const { email, name, source, tripId, locale } = parsed.data;
+
+  if (useSupabaseBackend) {
+    // RLS denies anon access to newsletter_signups (emails are private),
+    // so the write goes through the service-role client. The unique index
+    // on lower(email) is the de-dupe: an insert that violates it (23505)
+    // means the address is already on the list. (zod lowercased the email
+    // above, so lower(email) matches route-written and migrated rows.)
+    const svc = getServiceClient();
+    if (!svc) {
+      // Service key unconfigured: accept gracefully so the UI still works.
+      const result: SubscribeResult = {
+        status: "local",
+        message: "You're on the list! ♡",
+      };
+      return NextResponse.json(result, { status: 200 });
+    }
+    try {
+      const { error } = await svc.from("newsletter_signups").insert({
+        email,
+        name: name?.trim() || null,
+        source,
+        trip_id: tripId ?? null,
+        locale: locale ?? "en",
+        status: "active",
+      });
+      if (error) {
+        if (error.code === "23505") {
+          const result: SubscribeResult = {
+            status: "exists",
+            message: "You're already on the list — gracias! ♡",
+          };
+          return NextResponse.json(result, { status: 200 });
+        }
+        throw new Error(error.message);
+      }
+      const result: SubscribeResult = {
+        status: "subscribed",
+        message: "You're on the list! ♡",
+      };
+      return NextResponse.json(result, { status: 200 });
+    } catch (err) {
+      console.error("[newsletter] subscribe failed", err);
+      return NextResponse.json(
+        { error: "Something went wrong. Please try again." },
+        { status: 500 },
+      );
+    }
+  }
 
   // Firebase not configured: accept gracefully so the UI still works.
   if (!isFirebaseConfigured) {

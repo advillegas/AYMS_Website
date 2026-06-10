@@ -42,6 +42,7 @@ import {
 } from "@/lib/use-friends";
 import { getOrCreateDM } from "@/lib/use-conversations";
 import { isFirebaseConfigured } from "@/lib/firebase";
+import { useSupabaseBackend } from "@/lib/supabase";
 import { pushNotification } from "@/lib/notify";
 import { formatDisplayName } from "@/lib/name-format";
 import { AvatarStatusOverlay } from "./status-indicator";
@@ -123,8 +124,8 @@ function FriendRow({ userId, friendshipId, kind }: FriendRowProps) {
 
   async function handleMessage() {
     if (!currentUser) return;
-    if (!isFirebaseConfigured) {
-      toast.error("Direct messages need Firebase to be configured.");
+    if (!(isFirebaseConfigured || useSupabaseBackend)) {
+      toast.error("Direct messages need a live backend to be configured.");
       return;
     }
     setBusy(true);

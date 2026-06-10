@@ -42,6 +42,7 @@ import { formatDisplayName } from "@/lib/name-format";
 import { AvatarStatusOverlay, statusLabel } from "./status-indicator";
 import { format, parseISO, isValid } from "date-fns";
 import { isFirebaseConfigured } from "@/lib/firebase";
+import { useSupabaseBackend } from "@/lib/supabase";
 import { initials } from "@/lib/utils";
 import { useMemo } from "react";
 
@@ -102,8 +103,8 @@ export function FullProfileDialog({
 
   async function handleSendMessage() {
     if (!currentUser || !profile || isSelf) return;
-    if (!isFirebaseConfigured) {
-      toast.error("Direct messages need Firebase to be configured.");
+    if (!(isFirebaseConfigured || useSupabaseBackend)) {
+      toast.error("Direct messages need a live backend to be configured.");
       return;
     }
     const result = await getOrCreateDM(currentUser.id, profile.id, {

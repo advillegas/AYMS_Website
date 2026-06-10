@@ -37,6 +37,8 @@ import {
   type Timestamp,
 } from "firebase/firestore";
 import { getCurrentUid, getDb, isFirebaseConfigured } from "./firebase";
+import { useSupabaseBackend } from "./supabase";
+import { useMeetupsSupabase } from "./use-meetups-supabase";
 import { useAuth } from "./store";
 import { geocodeLocation } from "./geo";
 
@@ -140,6 +142,10 @@ export interface UseMeetupsResult {
 }
 
 export function useMeetups(): UseMeetupsResult {
+  return useSupabaseBackend ? useMeetupsSupabase() : useMeetupsFirebase();
+}
+
+function useMeetupsFirebase(): UseMeetupsResult {
   const user = useAuth((s) => s.user);
   const [meetups, setMeetups] = useState<Meetup[]>([]);
   const [loading, setLoading] = useState(isFirebaseConfigured);

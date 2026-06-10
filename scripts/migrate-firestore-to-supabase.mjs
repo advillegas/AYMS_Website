@@ -128,6 +128,9 @@ async function upsert(table, rows) {
 const iso = (v) => (v ? v : null);
 
 /* ---------------- Per-collection transforms ---------------- */
+// users.auth_id is intentionally never written here: Firebase UIDs have no
+// Supabase auth identity until first login, when link_auth_identity() (RLS
+// helper) backfills it from the verified JWT.
 function rowUser(id, d) {
   return {
     id, name: d.name ?? "", email: d.email ?? "", avatar: d.avatar ?? "",
@@ -186,7 +189,9 @@ function rowEvent(id, d) {
   return {
     id, title: d.title ?? "", description: d.description ?? "", date: d.date ?? null,
     end_date: d.endDate ?? null, start_time: d.startTime ?? null, end_time: d.endTime ?? null,
-    type: d.type ?? "social", location: d.location ?? "", source_calendar_id: d.sourceCalendarId ?? null,
+    type: d.type ?? "social", location: d.location ?? "", capacity: d.capacity ?? null,
+    image: d.image ?? null, published: d.published ?? true,
+    source_calendar_id: d.sourceCalendarId ?? null,
     source_uid: d.sourceUid ?? null, synced_at: iso(d.syncedAt), created_by: d.createdBy ?? null,
     created_at: iso(d.createdAt) ?? new Date().toISOString(),
     updated_at: iso(d.updatedAt) ?? iso(d.createdAt) ?? new Date().toISOString(),
@@ -222,6 +227,112 @@ function rowRole(r) {
   return {
     id: r.id, name: r.name ?? "", color: r.color ?? "#888888", priority: r.priority ?? 0,
     permissions: r.permissions ?? [], system: r.system ?? false,
+  };
+}
+function rowTrip(id, d) {
+  return {
+    id, title: d.title ?? "", destination: d.destination ?? "", country: d.country ?? "",
+    dates: d.dates ?? "", duration: d.duration ?? "", price: d.price ?? 0, deposit: d.deposit ?? 0,
+    status: d.status ?? "available", spots: d.spots ?? 0, spots_left: d.spotsLeft ?? 0,
+    description: d.description ?? "", highlights: d.highlights ?? [], includes: d.includes ?? [],
+    not_included: d.notIncluded ?? [], emoji: d.emoji ?? "", gradient: d.gradient ?? "",
+    image: d.image ?? "", published: d.published ?? true, featured: d.featured ?? false,
+    sort_order: d.order ?? 0, created_by: d.createdBy ?? null,
+    created_at: iso(d.createdAt) ?? new Date().toISOString(),
+    updated_at: iso(d.updatedAt) ?? iso(d.createdAt) ?? new Date().toISOString(),
+  };
+}
+function rowAgreement(id, d) {
+  return {
+    id, reservation_id: d.reservationId ?? null, trip_id: d.tripId ?? null,
+    trip_title: d.tripTitle ?? "", prospect_id: d.prospectId ?? "",
+    prospect_name: d.prospectName ?? "", prospect_email: d.prospectEmail ?? null,
+    template_id: d.templateId ?? "", title: d.title ?? "", body_markdown: d.bodyMarkdown ?? "",
+    disclosures: d.disclosures ?? [], status: d.status ?? "draft",
+    admin_signer_name: d.adminSignerName ?? null, admin_signature_text: d.adminSignatureText ?? null,
+    admin_signed_at: iso(d.adminSignedAt), prospect_signer_name: d.prospectSignerName ?? null,
+    prospect_signature_text: d.prospectSignatureText ?? null,
+    prospect_signed_at: iso(d.prospectSignedAt), created_by: d.createdBy ?? null,
+    created_at: iso(d.createdAt) ?? new Date().toISOString(),
+    updated_at: iso(d.updatedAt) ?? iso(d.createdAt) ?? new Date().toISOString(),
+  };
+}
+function rowMeetup(id, d) {
+  return {
+    id, title: d.title ?? "", description: d.description ?? "", date: d.date ?? null,
+    start_time: d.startTime ?? null, location: d.location ?? "", lat: d.lat ?? null,
+    lng: d.lng ?? null, host_id: d.hostId ?? "", host_name: d.hostName ?? "",
+    host_avatar: d.hostAvatar ?? null, capacity: d.capacity ?? null,
+    created_at: iso(d.createdAt) ?? new Date().toISOString(),
+  };
+}
+function rowRsvp(targetType, targetId, uid, d) {
+  // Firestore doc id == member uid; PK (target_type,target_id,user_id)
+  // preserves the one-RSVP-per-member invariant.
+  return {
+    target_type: targetType, target_id: targetId, user_id: d.userId ?? uid,
+    user_name: d.userName ?? "", user_avatar: d.userAvatar ?? null,
+    status: d.status ?? "going", created_at: iso(d.createdAt) ?? new Date().toISOString(),
+  };
+}
+function rowTripReservation(id, d) {
+  return {
+    id, trip_id: d.tripId ?? "", user_id: d.userId ?? "", user_name: d.userName ?? "",
+    user_avatar: d.userAvatar ?? null, status: d.status ?? "reserved", note: d.note ?? null,
+    created_at: iso(d.createdAt) ?? new Date().toISOString(),
+  };
+}
+function rowNotification(id, recipientId, d) {
+  return {
+    id, recipient_id: recipientId, kind: d.kind ?? "system", title: d.title ?? "",
+    body: d.body ?? "", actor_id: d.actorId ?? null, actor_name: d.actorName ?? null,
+    actor_avatar: d.actorAvatar ?? null, href: d.href ?? "", read: d.read ?? false,
+    created_at: iso(d.createdAt) ?? new Date().toISOString(),
+  };
+}
+function rowReport(id, d) {
+  return {
+    id, target_type: d.targetType ?? "message", target_id: d.targetId ?? "",
+    channel_id: d.channelId ?? null, reported_user_id: d.reportedUserId ?? "",
+    reporter_id: d.reporterId ?? "", reporter_name: d.reporterName ?? null,
+    reason: d.reason ?? "", snapshot: d.snapshot ?? {}, status: d.status ?? "open",
+    resolved_by: d.resolvedBy ?? null, resolved_by_name: d.resolvedByName ?? null,
+    resolved_at: iso(d.resolvedAt), created_at: iso(d.createdAt) ?? new Date().toISOString(),
+  };
+}
+function rowModAction(id, d) {
+  return {
+    id, action: d.action ?? "", actor_id: d.actorId ?? "", actor_name: d.actorName ?? "",
+    target_id: d.targetId ?? "", target_name: d.targetName ?? null, reason: d.reason ?? null,
+    meta: d.meta ?? null, created_at: iso(d.createdAt) ?? new Date().toISOString(),
+  };
+}
+function rowTestimonial(id, d) {
+  return {
+    id, name: d.name ?? "", location: d.location ?? "", trip: d.trip ?? "",
+    en: d.en ?? "", es: d.es ?? "", initials: d.initials ?? "", gradient: d.gradient ?? "",
+    featured: d.featured ?? false, created_at: iso(d.createdAt) ?? new Date().toISOString(),
+  };
+}
+function rowNewsletterSignup(id, d) {
+  return {
+    id, email: d.email ?? "", name: d.name ?? null, source: d.source ?? "contact",
+    trip_id: d.tripId ?? null, locale: d.locale ?? "en", status: d.status ?? "active",
+    created_at: iso(d.createdAt) ?? new Date().toISOString(),
+  };
+}
+function rowUserBadge(uid, badgeId, d) {
+  return {
+    user_id: uid, badge_id: badgeId,
+    earned_at: iso(d.earnedAt) ?? new Date().toISOString(), seen: d.seen ?? false,
+  };
+}
+function rowPassportStamp(id, uid, d) {
+  return {
+    id, user_id: uid, trip_id: d.tripId ?? null, country: d.country ?? "",
+    city: d.city ?? null, label: d.label ?? "", emoji: d.emoji ?? "",
+    year: d.year ?? null, note: d.note ?? null, photo_url: d.photoUrl ?? null,
+    added_at: iso(d.addedAt) ?? new Date().toISOString(),
   };
 }
 
@@ -263,6 +374,57 @@ async function main() {
   }
   report.event_comments = await upsert("event_comments", comments);
 
+  // trips
+  const trips = await fsList("trips");
+  report.trips = await upsert("trips", trips.map((t) => rowTrip(t.id, t.data)));
+
+  // agreements (service-role key bypasses the agreements_guard trigger)
+  const agreements = await fsList("agreements");
+  report.agreements = await upsert("agreements", agreements.map((a) => rowAgreement(a.id, a.data)));
+
+  // meetups
+  const meetups = await fsList("meetups");
+  report.meetups = await upsert("meetups", meetups.map((m) => rowMeetup(m.id, m.data)));
+
+  // events/{id}/rsvps + meetups/{id}/rsvps -> one rsvps table, discriminated
+  // by target_type (mirrors the generic useRsvps(targetType, targetId) hook)
+  let rsvps = [];
+  for (const e of events) {
+    const sub = await fsList(`events/${e.id}/rsvps`);
+    rsvps = rsvps.concat(sub.map((r) => rowRsvp("event", e.id, r.id, r.data)));
+  }
+  for (const m of meetups) {
+    const sub = await fsList(`meetups/${m.id}/rsvps`);
+    rsvps = rsvps.concat(sub.map((r) => rowRsvp("meetup", m.id, r.id, r.data)));
+  }
+  report.rsvps = await upsert("rsvps", rsvps);
+
+  // tripReservations
+  const reservations = await fsList("tripReservations");
+  report.trip_reservations = await upsert(
+    "trip_reservations", reservations.map((r) => rowTripReservation(r.id, r.data)));
+
+  // reports + modActions
+  const reports = await fsList("reports");
+  report.reports = await upsert("reports", reports.map((r) => rowReport(r.id, r.data)));
+  const modActions = await fsList("modActions");
+  report.mod_actions = await upsert("mod_actions", modActions.map((a) => rowModAction(a.id, a.data)));
+
+  // testimonials
+  const testimonials = await fsList("testimonials");
+  report.testimonials = await upsert("testimonials", testimonials.map((t) => rowTestimonial(t.id, t.data)));
+
+  // newsletterSignups — the table enforces unique lower(email); Firestore's
+  // dedupe was best-effort, so collapse duplicates here (keep the oldest)
+  const signups = await fsList("newsletterSignups");
+  const byEmail = new Map();
+  for (const s of signups.map((s) => rowNewsletterSignup(s.id, s.data))) {
+    const key = (s.email || "").toLowerCase();
+    const prev = byEmail.get(key);
+    if (!prev || s.created_at < prev.created_at) byEmail.set(key, s);
+  }
+  report.newsletter_signups = await upsert("newsletter_signups", [...byEmail.values()]);
+
   // calendarSyncConfigs
   const syncs = await fsList("calendarSyncConfigs");
   report.calendar_sync_configs = await upsert("calendar_sync_configs", syncs.map((s) => rowSyncConfig(s.id, s.data)));
@@ -281,6 +443,34 @@ async function main() {
     for (const rid of map[uid] || []) urRows.push({ user_id: uid, role_id: rid });
   }
   report.user_roles = await upsert("user_roles", urRows);
+
+  // config/moderation -> moderation_config singleton (bans/mutes maps 1:1)
+  const moderationDoc = await fsGet("config/moderation");
+  if (moderationDoc) {
+    report.moderation_config = await upsert("moderation_config", [{
+      id: "moderation", bans: moderationDoc.bans ?? {}, mutes: moderationDoc.mutes ?? {},
+      updated_at: new Date().toISOString(),
+    }]);
+  }
+
+  // per-user subcollections. notifications/{uid} parent docs are virtual
+  // (no fields), so fsList("notifications") returns nothing — iterate the
+  // migrated user ids instead (alternative: :runQuery collection-group on
+  // "items").
+  let notifRows = [];
+  let badgeRows = [];
+  let stampRows = [];
+  for (const u of users) {
+    const items = await fsList(`notifications/${u.id}/items`);
+    notifRows = notifRows.concat(items.map((n) => rowNotification(n.id, u.id, n.data)));
+    const badges = await fsList(`users/${u.id}/badges`);
+    badgeRows = badgeRows.concat(badges.map((b) => rowUserBadge(u.id, b.id, b.data)));
+    const stamps = await fsList(`users/${u.id}/passport`);
+    stampRows = stampRows.concat(stamps.map((s) => rowPassportStamp(s.id, u.id, s.data)));
+  }
+  report.notifications = await upsert("notifications", notifRows);
+  report.user_badges = await upsert("user_badges", badgeRows);
+  report.passport_stamps = await upsert("passport_stamps", stampRows);
 
   console.log("\n=== MIGRATION COMPLETE ===");
   for (const k of Object.keys(report)) console.log(`${k.padEnd(24)} ${report[k]} rows`);

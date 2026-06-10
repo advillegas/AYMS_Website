@@ -13,7 +13,15 @@ import { getDb, isFirebaseConfigured } from "./firebase";
 import { useSupabaseBackend, getSupabase } from "./supabase";
 import { useAuth, type User } from "./store";
 
-/** Presence heartbeat write to Supabase (upsert into public.users). */
+/**
+ * Presence heartbeat write to Supabase (public.users). A targeted
+ * UPDATE of just the presence columns — never the whole profile, so a
+ * heartbeat can't clobber a concurrent profile edit. Only when no row
+ * exists yet (first heartbeat ever) do we INSERT the base profile, and
+ * even then WITHOUT `role`: the users_role_guard trigger blocks
+ * client-side role writes (notably role='admin' — the admin row is
+ * seeded server-side by /api/auth/login via the service role).
+ */
 async function writePresenceSupabase(
   user: User,
   status: PresenceStatus,
@@ -21,24 +29,30 @@ async function writePresenceSupabase(
 ): Promise<void> {
   const sb = getSupabase();
   if (!sb) return;
+  const presence = {
+    status,
+    manual_override: override !== null,
+    last_active_at: new Date().toISOString(),
+  };
   try {
-    await sb.from("users").upsert(
-      {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        avatar: user.avatar ?? "",
-        bio: user.bio ?? "",
-        location: user.location ?? "",
-        role: user.role,
-        joined_date: user.joinedDate,
-        name_display: user.nameDisplay ?? "full",
-        status,
-        manual_override: override !== null,
-        last_active_at: new Date().toISOString(),
-      },
-      { onConflict: "id" },
-    );
+    const { data, error } = await sb
+      .from("users")
+      .update(presence)
+      .eq("id", user.id)
+      .select("id");
+    if (error) throw error;
+    if (data && data.length > 0) return;
+    await sb.from("users").insert({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      avatar: user.avatar ?? "",
+      bio: user.bio ?? "",
+      location: user.location ?? "",
+      joined_date: user.joinedDate,
+      name_display: user.nameDisplay ?? "full",
+      ...presence,
+    });
   } catch (e) {
     console.warn("[presence:sb] heartbeat failed", e);
   }

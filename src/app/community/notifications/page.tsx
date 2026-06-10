@@ -61,6 +61,7 @@ import {
   type NotifyKind,
 } from "@/lib/notify";
 import { isFirebaseConfigured } from "@/lib/firebase";
+import { useSupabaseBackend } from "@/lib/supabase";
 import { useAuth } from "@/lib/store";
 import { cn, initials } from "@/lib/utils";
 
@@ -364,9 +365,9 @@ export default function NotificationCenterPage() {
               {counts.unread > 0
                 ? `${counts.unread} unread`
                 : "You're all caught up ♡"}
-              {!isFirebaseConfigured && (
+              {!(isFirebaseConfigured || useSupabaseBackend) && (
                 <span className="ml-1 italic">
-                  · local-only (Firebase isn&apos;t configured)
+                  · local-only (no live backend configured)
                 </span>
               )}
             </p>

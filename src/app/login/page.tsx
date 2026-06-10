@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -10,6 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/lib/store";
 import { isFirebaseConfigured } from "@/lib/firebase";
+import { useSupabaseBackend } from "@/lib/supabase";
+import { useAuthHydrated } from "@/lib/use-auth-hydrated";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { GoogleButton } from "@/components/auth/google-button";
@@ -22,7 +24,16 @@ export default function LoginPage() {
   const [errors, setErrors] = useState<{ identifier?: string; password?: string }>({});
   const login = useAuth((s) => s.login);
   const loginWithGoogle = useAuth((s) => s.loginWithGoogle);
+  const isAuthenticated = useAuth((s) => s.isAuthenticated);
+  const hydrated = useAuthHydrated();
   const router = useRouter();
+
+  // Redirect-if-authenticated: covers the Supabase OAuth return leg
+  // (the provider redirects back here and detectSessionInUrl signs the
+  // user in) as well as direct visits while already signed in.
+  useEffect(() => {
+    if (hydrated && isAuthenticated) router.replace("/community");
+  }, [hydrated, isAuthenticated, router]);
 
   function validate() {
     const next: { identifier?: string; password?: string } = {};
@@ -70,6 +81,9 @@ export default function LoginPage() {
     setGoogleLoading(true);
     try {
       const result = await loginWithGoogle();
+      // Supabase OAuth: the browser is navigating to Google — neither
+      // an error nor a success to act on yet.
+      if (result.pending === "oauth-redirect") return;
       if (result.ok) {
         toast.success("Welcome back, amiga! ♡");
         router.push("/community");
@@ -117,7 +131,7 @@ export default function LoginPage() {
             </div>
 
             <div className="space-y-5">
-              {isFirebaseConfigured && (
+              {(isFirebaseConfigured || useSupabaseBackend) && (
                 <>
                   <GoogleButton
                     onClick={handleGoogle}

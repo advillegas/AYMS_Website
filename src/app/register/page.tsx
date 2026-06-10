@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -10,6 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/lib/store";
 import { isFirebaseConfigured } from "@/lib/firebase";
+import { useSupabaseBackend } from "@/lib/supabase";
+import { useAuthHydrated } from "@/lib/use-auth-hydrated";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { GoogleButton } from "@/components/auth/google-button";
@@ -29,10 +31,19 @@ export default function RegisterPage() {
   const [errors, setErrors] = useState<RegisterErrors>({});
   const register = useAuth((s) => s.register);
   const loginWithGoogle = useAuth((s) => s.loginWithGoogle);
+  const isAuthenticated = useAuth((s) => s.isAuthenticated);
+  const hydrated = useAuthHydrated();
   const router = useRouter();
 
   const [submitting, setSubmitting] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+
+  // Redirect-if-authenticated: Supabase OAuth started from this page
+  // returns here (redirectTo = current URL) with the session in the
+  // URL — bounce signed-in users into the community.
+  useEffect(() => {
+    if (hydrated && isAuthenticated) router.replace("/community");
+  }, [hydrated, isAuthenticated, router]);
 
   function clearError(field: keyof RegisterErrors) {
     setErrors((p) => (p[field] ? { ...p, [field]: undefined } : p));
@@ -72,6 +83,15 @@ export default function RegisterPage() {
     setSubmitting(true);
     try {
       const result = await register(name.trim(), email.trim(), password);
+      if (result.pending === "confirm-email") {
+        // Supabase project requires email confirmation: the account
+        // exists but can't sign in until the link is clicked.
+        toast.success(
+          "Almost there! Check your inbox to confirm your email, then sign in.",
+        );
+        router.push("/login");
+        return;
+      }
       if (result.ok) {
         toast.success("Welcome to the family, amiga! ♡");
         router.push("/community");
@@ -95,6 +115,9 @@ export default function RegisterPage() {
       // sign-in as registration automatically and the firestore upsert
       // creates the profile doc.
       const result = await loginWithGoogle();
+      // Supabase OAuth: the browser is navigating to Google — neither
+      // an error nor a success to act on yet.
+      if (result.pending === "oauth-redirect") return;
       if (result.ok) {
         toast.success("Welcome to the family, amiga! ♡");
         router.push("/community");
@@ -142,7 +165,7 @@ export default function RegisterPage() {
             </div>
 
             <div className="space-y-5">
-              {isFirebaseConfigured && (
+              {(isFirebaseConfigured || useSupabaseBackend) && (
                 <>
                   <GoogleButton
                     onClick={handleGoogle}

@@ -1,7 +1,8 @@
 // Copy Firebase Storage objects referenced in migrated rows into the
 // Supabase `media` bucket, then rewrite the rows to point at the new
 // public Supabase URLs. Idempotent: already-migrated (supabase.co) URLs
-// are skipped.
+// are skipped, and rows are only patched when they still hold a
+// firebasestorage URL, so re-running is safe.
 //
 // Env: SB_URL, SB_SERVICE (service-role key)
 
@@ -42,47 +43,79 @@ async function copyOne(srcUrl) {
   return publicUrl;
 }
 
-async function patch(table, id, body) {
-  await fetch(`${REST}/${table}?id=eq.${encodeURIComponent(id)}`, {
-    method: "PATCH",
-    headers: { ...H, "Content-Type": "application/json", Prefer: "return=minimal" },
-    body: JSON.stringify(body),
-  });
+/** True when the value (string or jsonb) embeds a Firebase Storage URL. */
+const hasFb = (v) => v != null && JSON.stringify(v).includes("firebasestorage");
+
+/** Recursively rewrite every firebasestorage URL inside a string/array/object. */
+async function rewriteDeep(v) {
+  if (typeof v === "string") return hasFb(v) ? copyOne(v) : v;
+  if (Array.isArray(v)) {
+    const out = [];
+    for (const x of v) out.push(await rewriteDeep(x));
+    return out;
+  }
+  if (v && typeof v === "object") {
+    const out = {};
+    for (const k of Object.keys(v)) out[k] = await rewriteDeep(v[k]);
+    return out;
+  }
+  return v;
+}
+
+/** Page through every row of a PostgREST query (default max-rows is 1000). */
+const PAGE = 1000;
+async function fetchAll(query) {
+  const out = [];
+  for (let from = 0; ; from += PAGE) {
+    const res = await fetch(`${REST}/${query}`, {
+      headers: { ...H, Range: `${from}-${from + PAGE - 1}` },
+    });
+    if (!res.ok) throw new Error(`fetch ${query} -> ${res.status} ${await res.text()}`);
+    const rows = await res.json();
+    out.push(...rows);
+    if (rows.length < PAGE) break;
+  }
+  return out;
+}
+
+/**
+ * Rewrite the given columns (scalar string or jsonb) on every row of a
+ * table. keyCols defaults to ["id"]; pass the composite key for tables
+ * without an id column (rsvps).
+ */
+async function rewriteTable(table, columns, keyCols = ["id"]) {
+  const select = [...keyCols, ...columns].join(",");
+  const order = keyCols.map((k) => `${k}.asc`).join(",");
+  const rows = await fetchAll(`${table}?select=${select}&order=${order}`);
+  for (const r of rows) {
+    const body = {};
+    for (const c of columns) {
+      if (hasFb(r[c])) body[c] = await rewriteDeep(r[c]);
+    }
+    if (!Object.keys(body).length) continue;
+    const qs = keyCols.map((k) => `${k}=eq.${encodeURIComponent(r[k])}`).join("&");
+    const res = await fetch(`${REST}/${table}?${qs}`, {
+      method: "PATCH",
+      headers: { ...H, "Content-Type": "application/json", Prefer: "return=minimal" },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) console.warn(`  ! patch ${table} failed`, res.status, await res.text());
+    else console.log(`patched ${table}`, keyCols.map((k) => r[k]).join("/"));
+  }
 }
 
 async function main() {
-  // users: avatar, cover_photo, gallery_photos[]
-  const users = await (
-    await fetch(`${REST}/users?select=id,avatar,cover_photo,gallery_photos`, { headers: H })
-  ).json();
-  for (const u of users) {
-    const body = {};
-    if (u.avatar?.includes("firebasestorage")) body.avatar = await copyOne(u.avatar);
-    if (u.cover_photo?.includes("firebasestorage")) body.cover_photo = await copyOne(u.cover_photo);
-    if (Array.isArray(u.gallery_photos) && u.gallery_photos.some((g) => g?.includes("firebasestorage"))) {
-      body.gallery_photos = [];
-      for (const g of u.gallery_photos) body.gallery_photos.push(await copyOne(g));
-    }
-    if (Object.keys(body).length) {
-      await patch("users", u.id, body);
-      console.log("patched user", u.id);
-    }
-  }
-
-  // messages: post_media[] ({url,type,...})
-  const msgs = await (
-    await fetch(`${REST}/messages?select=id,post_media&post_media=not.is.null`, { headers: H })
-  ).json();
-  for (const m of msgs) {
-    if (!Array.isArray(m.post_media)) continue;
-    if (!m.post_media.some((pm) => pm?.url?.includes("firebasestorage"))) continue;
-    const next = [];
-    for (const pm of m.post_media) {
-      next.push({ ...pm, url: await copyOne(pm.url) });
-    }
-    await patch("messages", m.id, { post_media: next });
-    console.log("patched message", m.id);
-  }
+  await rewriteTable("users", ["avatar", "cover_photo", "gallery_photos"]);
+  await rewriteTable("messages", ["user_avatar", "attachments", "post_media"]);
+  await rewriteTable("conversation_messages", ["user_avatar", "attachments"]);
+  await rewriteTable("conversations", ["last_message"]);
+  await rewriteTable("events", ["image"]);
+  await rewriteTable("trips", ["image"]);
+  await rewriteTable("event_comments", ["user_avatar"]);
+  await rewriteTable("meetups", ["host_avatar"]);
+  await rewriteTable("rsvps", ["user_avatar"], ["target_type", "target_id", "user_id"]);
+  await rewriteTable("trip_reservations", ["user_avatar"]);
+  await rewriteTable("notifications", ["actor_avatar"]);
 
   console.log(`\nstorage migration complete — ${copied} object(s) copied`);
 }

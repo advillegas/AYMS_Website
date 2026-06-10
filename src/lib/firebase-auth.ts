@@ -29,6 +29,7 @@ import {
   supabaseSignInWithGoogle,
   supabaseSignOut,
   supabaseSendPasswordReset,
+  type ConfirmEmailSentinel,
 } from "./supabase-auth";
 import type { User } from "./store";
 
@@ -251,7 +252,7 @@ export async function firebaseSignUp(
   name: string,
   email: string,
   password: string,
-): Promise<User | null> {
+): Promise<User | ConfirmEmailSentinel | null> {
   if (useSupabaseBackend) return supabaseSignUp(name, email, password);
   if (!isFirebaseConfigured) return null;
   const auth = getAuthInstance();
@@ -396,7 +397,7 @@ export async function ensureFirebaseAdminSession(
 
   // Already signed in as the admin account — just refresh the profile.
   if (auth.currentUser?.email === ADMIN_EMAIL) {
-    await writeAdminProfile(auth.currentUser.uid);
+    if (!useSupabaseBackend) await writeAdminProfile(auth.currentUser.uid);
     return;
   }
 
@@ -437,8 +438,12 @@ export async function ensureFirebaseAdminSession(
     }
   }
 
+  // Under the Supabase backend the role='admin' users row is seeded
+  // server-side (service role) by /api/auth/login — a client upsert
+  // keyed by the FIREBASE uid would just trip the users_role_guard
+  // trigger and pollute the table with a stray row.
   const u = auth.currentUser;
-  if (u) await writeAdminProfile(u.uid);
+  if (u && !useSupabaseBackend) await writeAdminProfile(u.uid);
 }
 
 /** Seed/refresh the admin's Firestore profile with role 'admin'. */
@@ -458,12 +463,43 @@ async function writeAdminProfile(uid: string): Promise<void> {
 }
 
 /**
- * Translate Firebase Auth error codes into UI-friendly messages.
- * Anything we don't recognise falls through to the raw error message.
+ * Translate Firebase Auth (`auth/*`) and Supabase GoTrue error codes
+ * into UI-friendly messages. Anything we don't recognise falls through
+ * to the raw error message.
  */
 export function friendlyAuthError(err: unknown): string {
   const code = (err as { code?: string })?.code;
   switch (code) {
+    // ---- Supabase GoTrue codes (AuthApiError.code) ----
+    case "invalid_credentials":
+      return "Email or password is incorrect.";
+    case "user_already_exists":
+    case "email_exists":
+      return "An account with that email already exists. Try signing in instead.";
+    case "weak_password":
+      return "Password must be at least 6 characters.";
+    case "email_not_confirmed":
+      return "Confirm your email first — check your inbox for the confirmation link.";
+    case "user_not_found":
+      return "No account found with that email.";
+    case "user_banned":
+      return "This account has been disabled. Contact an admin for help.";
+    case "same_password":
+      return "Your new password must be different from the current one.";
+    case "otp_expired":
+      return "That link has expired. Request a new one and try again.";
+    case "over_email_send_rate_limit":
+      return "We've emailed that address too recently. Wait a few minutes and try again.";
+    case "over_request_rate_limit":
+      return "Too many attempts. Try again in a few minutes.";
+    case "signup_disabled":
+      return "New sign-ups are currently disabled. Contact an admin.";
+    case "session_expired":
+    case "session_not_found":
+      return "Your session has expired. Please sign in again.";
+    case "validation_failed":
+      return "That doesn't look like a valid email address.";
+    // ---- Firebase Auth codes ----
     case "auth/email-already-in-use":
       return "An account with that email already exists. Try signing in instead.";
     case "auth/invalid-email":

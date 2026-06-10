@@ -10,6 +10,7 @@ import { useAuth } from "@/lib/store";
 import { useConversations } from "@/lib/use-conversations";
 import { useIncomingFriendRequestCount } from "@/lib/use-friends";
 import { isFirebaseConfigured } from "@/lib/firebase";
+import { useSupabaseBackend } from "@/lib/supabase";
 import { Loader2, MessageCircle, MessageSquare, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -184,16 +185,17 @@ function MessagesInner() {
       <main
         className={`flex-1 min-w-0 ${effectiveActiveId ? "block" : "hidden md:block"}`}
       >
-        {!isFirebaseConfigured ? (
+        {!(isFirebaseConfigured || useSupabaseBackend) ? (
           <div className="flex h-full items-center justify-center px-6 text-center">
             <div className="max-w-sm space-y-2">
               <MessageCircle className="mx-auto h-10 w-10 text-primary/60" />
               <p className="text-sm font-semibold">
-                Direct messages need Firebase
+                Direct messages need a live backend
               </p>
               <p className="text-xs text-muted-foreground">
                 Add the <code className="font-mono">NEXT_PUBLIC_FIREBASE_*</code>{" "}
-                env vars and reload to enable real-time DMs and group chats.
+                (or Supabase) env vars and reload to enable real-time DMs and
+                group chats.
               </p>
             </div>
           </div>

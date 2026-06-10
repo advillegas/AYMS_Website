@@ -43,6 +43,7 @@ import {
   useMuteEntry,
 } from "@/lib/use-moderation-store";
 import { isFirebaseConfigured } from "@/lib/firebase";
+import { getSupabase, useSupabaseBackend } from "@/lib/supabase";
 import {
   AvatarStatusOverlay,
   statusLabel,
@@ -124,13 +125,13 @@ export default function AdminMembersPage() {
         </div>
       </div>
 
-      {!isFirebaseConfigured && (
+      {!(isFirebaseConfigured || useSupabaseBackend) && (
         <Card className="mb-4 border-amber-500/30 bg-amber-500/5">
           <CardContent className="pt-4 text-sm text-amber-900 dark:text-amber-200">
-            Firebase isn&apos;t configured. The list below shows mock + local
+            No live backend is configured. The list below shows mock + local
             registry users only. Add the{" "}
-            <code className="text-xs">NEXT_PUBLIC_FIREBASE_*</code> env vars to
-            sync registered users across devices.
+            <code className="text-xs">NEXT_PUBLIC_FIREBASE_*</code> (or
+            Supabase) env vars to sync registered users across devices.
           </CardContent>
         </Card>
       )}
@@ -310,22 +311,30 @@ function MemberDetail({ member, onClose }: MemberDetailProps) {
   async function handleHardDelete() {
     if (!member.isLive) {
       toast.error(
-        "This member only exists locally. Nothing to delete from Firebase.",
+        "This member only exists locally. Nothing to delete from the backend.",
       );
       return;
     }
     const confirmed = await confirm({
       title: `Delete ${member.name}'s profile?`,
-      description: `This removes ${member.name}'s Firestore profile (their auth account is unaffected). This can't be undone.`,
+      description: `This removes ${member.name}'s profile from the live backend (their auth account is unaffected). This can't be undone.`,
       confirmText: "Delete profile",
       destructive: true,
     });
     if (!confirmed) return;
-    const db = getDb();
-    if (!db) return;
     try {
-      await deleteDoc(doc(db, "users", member.id));
-      toast.success(`${member.name}'s profile removed from Firestore`);
+      if (useSupabaseBackend) {
+        const sb = getSupabase();
+        if (sb) {
+          const { error } = await sb.from("users").delete().eq("id", member.id);
+          if (error) throw new Error(error.message);
+        }
+      }
+      const db = getDb();
+      if (db) {
+        await deleteDoc(doc(db, "users", member.id));
+      }
+      toast.success(`${member.name}'s profile removed`);
       onClose();
     } catch (e) {
       console.error(e);

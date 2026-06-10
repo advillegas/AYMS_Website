@@ -10,15 +10,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/lib/store";
 import { isFirebaseConfigured } from "@/lib/firebase";
+import { useSupabaseBackend } from "@/lib/supabase";
 import { toast } from "sonner";
 import { Loader2, ArrowLeft, Mail, CheckCircle2 } from "lucide-react";
 
 /**
  * Password-reset request page.
  *
- * Sends a Firebase Auth password-reset email. The link in the email
- * lands on a Firebase-hosted handler page (or a custom action handler
- * if configured in Firebase Console → Authentication → Templates).
+ * Sends a password-reset email via the configured auth backend. With
+ * Firebase, the link lands on a Firebase-hosted handler page (or a
+ * custom action handler configured in Firebase Console →
+ * Authentication → Templates). With Supabase, the link lands on our
+ * /reset-password page, which completes the recovery flow.
  *
  * On success we keep the user on this page with a confirmation banner
  * rather than auto-redirecting; that way they can re-enter the email
@@ -108,9 +111,9 @@ function ForgotPasswordInner() {
           </div>
 
           <div className="space-y-5">
-            {!isFirebaseConfigured && (
+            {!(isFirebaseConfigured || useSupabaseBackend) && (
               <div className="rounded-xl border border-amber-500/40 bg-amber-500/8 px-4 py-3 text-xs text-amber-700 dark:text-amber-300">
-                Firebase Auth isn&apos;t configured on this site, so password
+                Auth isn&apos;t configured on this site, so password
                 reset is unavailable. Contact an admin.
               </div>
             )}
@@ -148,7 +151,7 @@ function ForgotPasswordInner() {
                       setEmail(e.target.value);
                       if (error) setError(null);
                     }}
-                    disabled={submitting || !isFirebaseConfigured}
+                    disabled={submitting || !(isFirebaseConfigured || useSupabaseBackend)}
                     aria-invalid={error ? true : undefined}
                     aria-describedby={error ? "reset-email-error" : undefined}
                     className="h-11 rounded-xl pl-10 border-rosa/30 bg-white/60 focus-visible:ring-primary/30 focus-visible:border-primary/40 backdrop-blur-sm"
@@ -162,7 +165,7 @@ function ForgotPasswordInner() {
               </div>
               <Button
                 type="submit"
-                disabled={submitting || !isFirebaseConfigured}
+                disabled={submitting || !(isFirebaseConfigured || useSupabaseBackend)}
                 className="lift w-full h-12 rounded-full border-0 bg-gradient-to-r from-[#FF0099] via-[#B51760] to-[#FF0099] font-semibold tracking-wide text-white shadow-[0_8px_24px_rgb(255_0_153/0.30)] hover:brightness-110"
               >
                 {submitting ? (

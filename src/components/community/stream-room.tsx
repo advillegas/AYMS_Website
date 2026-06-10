@@ -17,6 +17,7 @@ import "@stream-io/video-react-sdk/dist/css/styles.css";
 
 import { useAuth } from "@/lib/store";
 import { getAuthInstance } from "@/lib/firebase";
+import { getSupabase, useSupabaseBackend } from "@/lib/supabase";
 import type { RichChannel } from "@/lib/use-channels-store";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -111,17 +112,24 @@ export default function StreamRoom({ channel }: StreamRoomProps) {
     setPhase("joining");
     setError(null);
     try {
-      // Attach the Firebase ID token so the server can verify identity
-      // instead of trusting the body. Local/dev (non-Firebase) users have
-      // no token; the server allows that path only when Firebase is off.
+      // Attach the active backend's token so the server can verify
+      // identity instead of trusting the body. Local/dev (no backend)
+      // users have no token; the server allows that path only when no
+      // auth backend is configured.
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
       };
       try {
-        const idToken = await getAuthInstance()?.currentUser?.getIdToken();
-        if (idToken) headers["Authorization"] = `Bearer ${idToken}`;
+        if (useSupabaseBackend) {
+          const accessToken = (await getSupabase()?.auth.getSession())?.data
+            .session?.access_token;
+          if (accessToken) headers["Authorization"] = `Bearer ${accessToken}`;
+        } else {
+          const idToken = await getAuthInstance()?.currentUser?.getIdToken();
+          if (idToken) headers["Authorization"] = `Bearer ${idToken}`;
+        }
       } catch {
-        /* no Firebase session — fall through */
+        /* no session — fall through */
       }
       const tokenResp = await fetch("/api/stream/token", {
         method: "POST",

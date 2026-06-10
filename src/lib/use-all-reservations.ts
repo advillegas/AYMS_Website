@@ -20,6 +20,8 @@ import {
   type QueryDocumentSnapshot,
 } from "firebase/firestore";
 import { getDb, isFirebaseConfigured } from "./firebase";
+import { useSupabaseBackend } from "./supabase";
+import { useAllReservationsSupabase } from "./use-trip-reservations-supabase";
 import {
   type ReservationStatus,
   type TripReservation,
@@ -63,6 +65,16 @@ function docToReservation(
 }
 
 export function useAllReservations(): {
+  reservations: TripReservation[];
+  loading: boolean;
+  error: boolean;
+} {
+  return useSupabaseBackend
+    ? useAllReservationsSupabase()
+    : useAllReservationsFirebase();
+}
+
+function useAllReservationsFirebase(): {
   reservations: TripReservation[];
   loading: boolean;
   error: boolean;

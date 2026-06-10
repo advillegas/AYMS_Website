@@ -7,7 +7,11 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { toast } from "sonner";
 import { getStorageInstance, isStorageConfigured } from "@/lib/firebase";
 import { useSupabaseBackend } from "@/lib/supabase";
-import { uploadToSupabaseStorage } from "@/lib/supabase-storage";
+import {
+  uploadToSupabaseStorage,
+  removeFromSupabaseStorage,
+} from "@/lib/supabase-storage";
+import { useAuth } from "@/lib/store";
 import {
   Dialog,
   DialogContent,
@@ -30,6 +34,7 @@ export function PhotoGallery({
 }: PhotoGalleryProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const confirm = useConfirm();
+  const currentUserId = useAuth((s) => s.user?.id);
   const [uploading, setUploading] = useState(false);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
@@ -38,6 +43,12 @@ export function PhotoGallery({
     const supa = useSupabaseBackend;
     if (!supa && !isStorageConfigured) {
       toast.error("Photo uploads need Firebase Storage to be enabled.");
+      return;
+    }
+    // Storage RLS scopes uploads to gallery/{canonicalUserId}/… — without
+    // a signed-in user there is no valid owner segment.
+    if (supa && !currentUserId) {
+      toast.error("Sign in to upload photos.");
       return;
     }
     const storage = supa ? null : getStorageInstance();
@@ -57,7 +68,10 @@ export function PhotoGallery({
         }
         let url: string | null = null;
         if (supa) {
-          url = await uploadToSupabaseStorage("gallery", file);
+          url = await uploadToSupabaseStorage(
+            `gallery/${currentUserId}`,
+            file,
+          );
         } else if (storage) {
           const storageRef = ref(
             storage,
@@ -89,7 +103,12 @@ export function PhotoGallery({
       destructive: true,
     });
     if (!ok) return;
+    const removedUrl = photos[index];
     onChange(photos.filter((_, i) => i !== index));
+    // Best-effort object cleanup; no-ops for non-media-bucket URLs.
+    if (useSupabaseBackend && removedUrl) {
+      void removeFromSupabaseStorage(removedUrl);
+    }
   }
 
   if (!editable && photos.length === 0) return null;

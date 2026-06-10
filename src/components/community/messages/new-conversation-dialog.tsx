@@ -24,6 +24,7 @@ import {
 import { useFriendIdSet } from "@/lib/use-friends";
 import { formatDisplayName } from "@/lib/name-format";
 import { isFirebaseConfigured } from "@/lib/firebase";
+import { useSupabaseBackend } from "@/lib/supabase";
 import { toast } from "sonner";
 import { Search, X, Check, Users, MessageCircle, Loader2 } from "lucide-react";
 import { cn, initials } from "@/lib/utils";
@@ -97,8 +98,8 @@ export function NewConversationDialog({
       toast.error("Pick at least one person.");
       return;
     }
-    if (!isFirebaseConfigured) {
-      toast.error("Direct messages need Firebase to be configured.");
+    if (!(isFirebaseConfigured || useSupabaseBackend)) {
+      toast.error("Direct messages need a live backend to be configured.");
       return;
     }
 

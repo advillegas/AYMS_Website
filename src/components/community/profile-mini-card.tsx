@@ -40,6 +40,7 @@ import { AvatarStatusOverlay, statusLabel } from "./status-indicator";
 import { cn, initials } from "@/lib/utils";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { isFirebaseConfigured } from "@/lib/firebase";
+import { useSupabaseBackend } from "@/lib/supabase";
 
 interface FriendButtonProps {
   relationship: RelationshipStatus;
@@ -260,9 +261,9 @@ export function ProfileMiniCard({
     if (!currentUser || isSelf) return;
     setOpening(true);
     try {
-      if (!isFirebaseConfigured) {
+      if (!(isFirebaseConfigured || useSupabaseBackend)) {
         toast.error(
-          "Direct messages need Firebase. Add NEXT_PUBLIC_FIREBASE_* env vars and reload.",
+          "Direct messages need a live backend. Configure Firebase or Supabase env vars and reload.",
         );
         return;
       }

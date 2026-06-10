@@ -68,12 +68,17 @@ export function useFirebaseAuthSync(): void {
       return onSupabaseAuthChange((user) => {
         const state = useAuth.getState();
         if (!user) {
-          if (state.user && !isFirebaseUserId(state.user.id)) return;
+          if (state.user && !isBackendUserId(state.user.id)) return;
           if (state.isAuthenticated || state.user) {
             useAuth.setState({ user: null, isAuthenticated: false });
           }
           return;
         }
+        // The server-validated admin keeps its literal "admin" store
+        // identity; the bridge session under admin@ayms.com exists only
+        // to authorise Supabase writes (mirrors the Firebase guard
+        // below — roles key off the literal id "admin").
+        if (state.user?.id === "admin") return;
         if (state.user?.id === user.id && state.isAuthenticated) return;
         useAuth.setState({ user, isAuthenticated: true });
       });
@@ -90,7 +95,7 @@ export function useFirebaseAuthSync(): void {
         // server-side admin login, which has id "admin"). We don't
         // want a "user is null in Firebase" event to log out the
         // admin who never used Firebase Auth in the first place.
-        if (state.user && !isFirebaseUserId(state.user.id)) return;
+        if (state.user && !isBackendUserId(state.user.id)) return;
         if (state.isAuthenticated || state.user) {
           useAuth.setState({ user: null, isAuthenticated: false });
         }
@@ -138,14 +143,18 @@ export function useFirebaseAuthSync(): void {
 }
 
 /**
- * Heuristic: Firebase UIDs are 28-char alphanumeric. The legacy
- * server-side admin login uses literal "admin", and the legacy
- * registry uses "u-<timestamp>". Anything that doesn't look like a
- * Firebase uid we leave alone when Firebase reports "signed out".
+ * Heuristic: backend-issued user ids are Firebase UIDs (28-char
+ * alphanumeric) or Supabase auth UUIDs. The legacy server-side admin
+ * login uses literal "admin", and the legacy registry uses
+ * "u-<timestamp>". Anything that doesn't look like a backend uid we
+ * leave alone when the auth backend reports "signed out".
  */
-function isFirebaseUserId(id: string): boolean {
+function isBackendUserId(id: string): boolean {
   if (!id) return false;
   if (id === "admin") return false;
   if (id.startsWith("u-")) return false;
-  return /^[A-Za-z0-9]{20,}$/.test(id);
+  return (
+    /^[A-Za-z0-9]{20,}$/.test(id) ||
+    /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(id)
+  );
 }

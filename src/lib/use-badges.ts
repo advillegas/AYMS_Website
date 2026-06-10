@@ -35,6 +35,8 @@ import {
 } from "firebase/firestore";
 import { toast } from "sonner";
 import { getDb, isFirebaseConfigured } from "./firebase";
+import { getSupabase, useSupabaseBackend } from "./supabase";
+import { subscribeQuery, nowIso, tsToIso as sbTsToIso } from "./supabase-helpers";
 import { useAuth, type User } from "./store";
 import { pushNotification } from "./notify";
 import { usePassport } from "./use-passport";
@@ -84,6 +86,23 @@ function docToRecord(
   };
 }
 
+/* Supabase mirror: user_badges(user_id, badge_id, earned_at, seen). */
+
+interface BadgeRow {
+  user_id: string;
+  badge_id: string;
+  earned_at: string | null;
+  seen: boolean | null;
+}
+
+function rowToRecord(r: BadgeRow): EarnedBadgeRecord {
+  return {
+    id: r.badge_id,
+    earnedAt: sbTsToIso(r.earned_at),
+    seen: Boolean(r.seen),
+  };
+}
+
 /** A badge def joined with its earned record (if any). */
 export interface BadgeShelfItem extends EvaluatedBadge {
   earnedAt?: string;
@@ -106,14 +125,30 @@ export interface UseBadgesResult {
 export function useBadges(uid: string | null | undefined): UseBadgesResult {
   const [records, setRecords] = useState<EarnedBadgeRecord[]>([]);
   const [loading, setLoading] = useState<boolean>(
-    Boolean(uid) && isFirebaseConfigured,
+    Boolean(uid) && (isFirebaseConfigured || useSupabaseBackend),
   );
 
   useEffect(() => {
-    if (!uid || !isFirebaseConfigured) {
+    if (!uid || !(isFirebaseConfigured || useSupabaseBackend)) {
       setRecords([]);
       setLoading(false);
       return;
+    }
+    if (useSupabaseBackend) {
+      setLoading(true);
+      return subscribeQuery<BadgeRow>(
+        "user_badges",
+        (sb) => sb.from("user_badges").select("*").eq("user_id", uid).limit(200),
+        (rows) => {
+          setRecords(rows.map(rowToRecord));
+          setLoading(false);
+        },
+        (msg) => {
+          console.error("[badges:sb]", msg);
+          setLoading(false);
+        },
+        { column: "user_id", value: uid },
+      );
     }
     const db = getDb();
     if (!db) {
@@ -154,7 +189,7 @@ export function useBadges(uid: string | null | undefined): UseBadgesResult {
     earnedRecords: records,
     earnedCount: records.length,
     loading,
-    isFirebase: isFirebaseConfigured,
+    isFirebase: isFirebaseConfigured || useSupabaseBackend,
   };
 }
 
@@ -186,7 +221,24 @@ export function useBadgeEarner(
   const [existingIds, setExistingIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    if (!uid || !isFirebaseConfigured) return;
+    if (!uid) return;
+    if (useSupabaseBackend) {
+      return subscribeQuery<BadgeRow>(
+        "user_badges",
+        (sb) => sb.from("user_badges").select("*").eq("user_id", uid).limit(200),
+        (rows) => {
+          const ids = new Set(rows.map((r) => r.badge_id));
+          setExistingIds(ids);
+          if (!seededRef.current) {
+            for (const id of ids) persistedRef.current.add(id);
+            seededRef.current = true;
+          }
+        },
+        () => {},
+        { column: "user_id", value: uid },
+      );
+    }
+    if (!isFirebaseConfigured) return;
     const db = getDb();
     if (!db) return;
     const unsub = onSnapshot(
@@ -205,10 +257,10 @@ export function useBadgeEarner(
   }, [uid]);
 
   useEffect(() => {
-    if (!ready || !uid || !isFirebaseConfigured) return;
+    if (!ready || !uid || !(isFirebaseConfigured || useSupabaseBackend)) return;
     if (!seededRef.current) return; // wait until we know existing badges
-    const db = getDb();
-    if (!db) return;
+    const db = useSupabaseBackend ? null : getDb();
+    if (!useSupabaseBackend && !db) return;
 
     const earnedNow = earnedBadgeIds(ctx);
     const fresh = earnedNow.filter(
@@ -223,20 +275,42 @@ export function useBadgeEarner(
 
       void (async () => {
         try {
-          await setDoc(
-            doc(db, "users", uid, "badges", id),
-            { earnedAt: serverTimestamp(), seen: false },
-            { merge: true },
-          );
+          if (useSupabaseBackend) {
+            const sb = getSupabase();
+            if (!sb) throw new Error("Supabase unavailable");
+            const { error } = await sb.from("user_badges").upsert({
+              user_id: uid,
+              badge_id: id,
+              earned_at: nowIso(),
+              seen: false,
+            });
+            if (error) throw new Error(error.message);
+          } else if (db) {
+            await setDoc(
+              doc(db, "users", uid, "badges", id),
+              { earnedAt: serverTimestamp(), seen: false },
+              { merge: true },
+            );
+          }
           // Celebratory, one-time.
           toast.success(`${def.emoji} Badge earned: ${def.title}`, {
             description: def.description,
             duration: 6000,
           });
           // Mark seen now that we've shown the toast this session.
-          void updateDoc(doc(db, "users", uid, "badges", id), {
-            seen: true,
-          }).catch(() => {});
+          if (useSupabaseBackend) {
+            const sb = getSupabase();
+            void sb
+              ?.from("user_badges")
+              .update({ seen: true })
+              .eq("user_id", uid)
+              .eq("badge_id", id)
+              .then(() => {});
+          } else if (db) {
+            void updateDoc(doc(db, "users", uid, "badges", id), {
+              seen: true,
+            }).catch(() => {});
+          }
           // Persistent in-app notification to self.
           void pushNotification(uid, {
             kind: "badge",

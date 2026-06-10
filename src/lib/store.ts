@@ -13,6 +13,7 @@ import {
 } from "./firebase-auth";
 import { isFirebaseConfigured } from "./firebase";
 import { useSupabaseBackend } from "./supabase";
+import { CONFIRM_EMAIL, ensureSupabaseAdminSession } from "./supabase-auth";
 import type { NameDisplay } from "./name-format";
 
 // Re-exported so existing consumers (UI components) can keep importing
@@ -101,6 +102,15 @@ export interface Channel {
 export interface AuthResult {
   ok: boolean;
   error?: string;
+  /**
+   * Out-of-band continuation — no error, but the caller should neither
+   * navigate nor toast success yet:
+   *  - "oauth-redirect": the browser is navigating to the OAuth
+   *    provider; the session is applied on return.
+   *  - "confirm-email": the Supabase project requires email
+   *    confirmation before the first sign-in.
+   */
+  pending?: "oauth-redirect" | "confirm-email";
 }
 
 interface RegisteredUser extends User {
@@ -318,6 +328,10 @@ export const useAuth = create<AuthState>()(
             // testimonials, config) pass the Firestore isAdmin() rules.
             // Best-effort; the UI identity stays the legacy "admin".
             void ensureFirebaseAdminSession(password);
+            // Same bridge for Supabase (dual-run): /api/auth/login has
+            // already provisioned admin@ayms.com server-side; this
+            // signs in so admin writes carry a JWT RLS can see.
+            if (useSupabaseBackend) void ensureSupabaseAdminSession(password);
             return { ok: true };
           }
           if (!data.fallback && data.error) {
@@ -327,8 +341,9 @@ export const useAuth = create<AuthState>()(
           // Network error - fall through to other auth paths.
         }
 
-        // 2. Try Firebase Auth (the canonical path for new accounts).
-        if (isFirebaseConfigured && id.includes("@")) {
+        // 2. Try the configured auth backend (Firebase, or Supabase
+        //    when the migration flag is on) — the canonical path.
+        if ((isFirebaseConfigured || useSupabaseBackend) && id.includes("@")) {
           try {
             const fbUser = await firebaseSignIn(id, password);
             if (fbUser) {
@@ -337,11 +352,17 @@ export const useAuth = create<AuthState>()(
             }
           } catch (e) {
             // Distinguish "wrong password" from a generic config issue.
-            // If it looks like an auth-specific error, surface the
-            // message and stop. Otherwise fall through to the legacy
-            // registry so dev/offline environments still work.
-            const code = (e as { code?: string })?.code ?? "";
-            if (code.startsWith("auth/")) {
+            // Firebase auth errors carry `auth/*` codes; Supabase
+            // GoTrue throws AuthApiError with an HTTP status. Surface
+            // either; under the Supabase backend surface EVERYTHING —
+            // falling through to the legacy registry would mask a real
+            // auth failure as "No account found with that email".
+            const err = e as { code?: string; name?: string; status?: number };
+            const isAuthError =
+              (err?.code ?? "").startsWith("auth/") ||
+              err?.name === "AuthApiError" ||
+              typeof err?.status === "number";
+            if (useSupabaseBackend || isAuthError) {
               return { ok: false, error: friendlyAuthError(e) };
             }
           }
@@ -349,7 +370,17 @@ export const useAuth = create<AuthState>()(
 
         // 3. Legacy local registry fallback (only used when Firebase
         //    isn't configured, or for accounts created before Firebase
-        //    Auth was wired in).
+        //    Auth was wired in). Hard-disabled under the Supabase
+        //    backend: stale localStorage accounts must never shadow
+        //    real auth results.
+        if (useSupabaseBackend) {
+          return {
+            ok: false,
+            error: id.includes("@")
+              ? "Email or password is incorrect."
+              : "Sign in with your email address.",
+          };
+        }
         const lower = id.toLowerCase();
         const registered = get().registry.find(
           (u) => u.email.toLowerCase() === lower,
@@ -383,17 +414,35 @@ export const useAuth = create<AuthState>()(
           return { ok: false, error: "That email address is reserved" };
         }
 
-        // Preferred path: Firebase Auth. Creates an authenticated
-        // user, sets displayName, and upserts the Firestore profile.
-        if (isFirebaseConfigured) {
+        // Preferred path: the configured auth backend (Firebase, or
+        // Supabase when the migration flag is on). Creates an
+        // authenticated user and upserts the profile row/doc.
+        if (isFirebaseConfigured || useSupabaseBackend) {
           try {
             const fbUser = await firebaseSignUp(trimmedName, trimmedEmail, password);
+            if (fbUser === CONFIRM_EMAIL) {
+              // Confirm-email Supabase projects return no session from
+              // signUp. Don't fake an authenticated state — hand the
+              // page a pending result so it can show "check your
+              // inbox"; the users row is seeded on the first real
+              // sign-in after confirmation.
+              return { ok: true, pending: "confirm-email" };
+            }
             if (fbUser) {
               set({ user: fbUser, isAuthenticated: true });
               return { ok: true };
             }
           } catch (e) {
             return { ok: false, error: friendlyAuthError(e) };
+          }
+          // Hard-stop under the Supabase backend: never fall through
+          // to the localStorage registry (it would "succeed" locally
+          // while no real account exists).
+          if (useSupabaseBackend) {
+            return {
+              ok: false,
+              error: "Could not create the account. Please try again.",
+            };
           }
         }
 
@@ -444,6 +493,12 @@ export const useAuth = create<AuthState>()(
         try {
           const fbUser = await firebaseSignInWithGoogle();
           if (!fbUser) {
+            if (useSupabaseBackend) {
+              // Supabase OAuth is a full-page redirect: null means the
+              // browser is about to navigate away, not a failure. The
+              // session is applied on return by onSupabaseAuthChange.
+              return { ok: true, pending: "oauth-redirect" };
+            }
             return {
               ok: false,
               error: "Couldn't complete Google sign-in. Try again.",

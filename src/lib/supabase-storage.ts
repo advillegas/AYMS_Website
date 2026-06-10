@@ -11,6 +11,10 @@ import { getSupabase } from "./supabase";
 /**
  * Upload a file to the `media` bucket under `<folder>/<unique-name>`
  * and return its public URL, or null on failure.
+ *
+ * Callers pass owner-scoped folders (`avatars/{userId}`, `posts/{userId}`,
+ * `covers/{userId}`, `gallery/{userId}`) so storage RLS can verify the
+ * second path segment against the canonical app user id.
  */
 export async function uploadToSupabaseStorage(
   folder: string,
@@ -37,5 +41,46 @@ export async function uploadToSupabaseStorage(
   } catch (e) {
     console.error("[supabase-storage] upload threw", e);
     return null;
+  }
+}
+
+/**
+ * Derive the bucket-relative object path from a `media` bucket public
+ * URL (`…/storage/v1/object/public/media/<path>`). Returns null for
+ * anything else (Firebase Storage URLs, GIPHY, other buckets) so
+ * callers can safely feed it any stored URL.
+ */
+export function pathFromPublicUrl(publicUrl: string): string | null {
+  const marker = "/storage/v1/object/public/media/";
+  const idx = publicUrl.indexOf(marker);
+  if (idx === -1) return null;
+  const path = publicUrl.slice(idx + marker.length).split(/[?#]/)[0];
+  if (!path) return null;
+  try {
+    return decodeURIComponent(path);
+  } catch {
+    return path;
+  }
+}
+
+/**
+ * Best-effort removal of a previously-uploaded object by its public
+ * URL. Failures are warn-swallowed — cleanup must never block or fail
+ * the user-facing action that triggered it.
+ */
+export async function removeFromSupabaseStorage(
+  publicUrl: string,
+): Promise<void> {
+  const sb = getSupabase();
+  if (!sb) return;
+  const path = pathFromPublicUrl(publicUrl);
+  if (!path) return;
+  try {
+    const { error } = await sb.storage.from("media").remove([path]);
+    if (error) {
+      console.warn("[supabase-storage] remove failed", error.message);
+    }
+  } catch (e) {
+    console.warn("[supabase-storage] remove threw", e);
   }
 }

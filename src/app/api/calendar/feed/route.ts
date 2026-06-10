@@ -1,19 +1,65 @@
 import { NextResponse } from "next/server";
 import { COMMUNITY_EVENTS, type CalendarEvent } from "@/lib/events-data";
 import { buildIcsFeed } from "@/lib/calendar-export";
+import { useSupabaseBackend } from "@/lib/supabase";
+import { getAnonServerClient } from "@/lib/supabase-server";
 
 /**
  * GET /api/calendar/feed
  *
- * Public iCalendar feed of all AYMS community events. Reads from
+ * Public iCalendar feed of all AYMS community events. Under the
+ * Supabase backend it reads the `events` table with the anon key
+ * (public-select RLS — it's a public feed); otherwise it reads
  * Firestore via the REST API (not the client SDK, which can't
  * establish a WebSocket from a serverless function). Falls back to
- * the static COMMUNITY_EVENTS seed when Firestore is unreachable.
+ * the static COMMUNITY_EVENTS seed when the backend is unreachable.
  */
 export const runtime = "nodejs";
 export const revalidate = 3600;
 
 const PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ?? "";
+
+interface EventFeedRow {
+  id: string;
+  title: string | null;
+  description: string | null;
+  date: string | null;
+  end_date: string | null;
+  start_time: string | null;
+  end_time: string | null;
+  type: string | null;
+  location: string | null;
+}
+
+async function loadEventsFromSupabase(): Promise<CalendarEvent[] | null> {
+  const sb = getAnonServerClient();
+  if (!sb) return null;
+  try {
+    const { data, error } = await sb
+      .from("events")
+      .select(
+        "id, title, description, date, end_date, start_time, end_time, type, location",
+      )
+      .limit(500);
+    if (error || !data || data.length === 0) return null;
+    return (data as EventFeedRow[])
+      .map((r) => ({
+        id: r.id,
+        title: r.title ?? "",
+        description: r.description ?? "",
+        date: r.date ?? "",
+        endDate: r.end_date || undefined,
+        startTime: r.start_time || undefined,
+        endTime: r.end_time || undefined,
+        type: (r.type ?? "social") as CalendarEvent["type"],
+        location: r.location ?? "",
+      }))
+      .filter((e) => e.date);
+  } catch (err) {
+    console.warn("[calendar-feed] Supabase load failed", err);
+    return null;
+  }
+}
 
 async function loadEventsFromFirestore(): Promise<CalendarEvent[] | null> {
   if (!PROJECT_ID) return null;
@@ -68,7 +114,9 @@ export async function OPTIONS() {
 }
 
 export async function GET(request: Request) {
-  const events = (await loadEventsFromFirestore()) ?? COMMUNITY_EVENTS;
+  const events = useSupabaseBackend
+    ? ((await loadEventsFromSupabase()) ?? COMMUNITY_EVENTS)
+    : ((await loadEventsFromFirestore()) ?? COMMUNITY_EVENTS);
   const ics = buildIcsFeed(events, {
     name: "AYMS Community Events",
     description:

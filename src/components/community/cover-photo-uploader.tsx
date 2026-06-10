@@ -7,7 +7,11 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { toast } from "sonner";
 import { getStorageInstance, isStorageConfigured } from "@/lib/firebase";
 import { useSupabaseBackend } from "@/lib/supabase";
-import { uploadToSupabaseStorage } from "@/lib/supabase-storage";
+import {
+  uploadToSupabaseStorage,
+  removeFromSupabaseStorage,
+} from "@/lib/supabase-storage";
+import { useAuth } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
 interface CoverPhotoUploaderProps {
@@ -24,6 +28,7 @@ export function CoverPhotoUploader({
   className,
 }: CoverPhotoUploaderProps) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const currentUserId = useAuth((s) => s.user?.id);
   const [uploading, setUploading] = useState(false);
 
   async function handleFile(file: File) {
@@ -38,9 +43,24 @@ export function CoverPhotoUploader({
     setUploading(true);
     try {
       if (useSupabaseBackend) {
-        const url = await uploadToSupabaseStorage("covers", file);
-        if (url) {
-          onChange(url);
+        // Storage RLS scopes uploads to covers/{canonicalUserId}/… —
+        // without a signed-in user there is no valid owner segment.
+        if (!currentUserId) {
+          toast.error("Sign in to upload a cover photo.");
+          return;
+        }
+        const previousUrl = url;
+        const uploadedUrl = await uploadToSupabaseStorage(
+          `covers/${currentUserId}`,
+          file,
+        );
+        if (uploadedUrl) {
+          onChange(uploadedUrl);
+          // Best-effort cleanup of the replaced cover; no-ops for
+          // non-media-bucket URLs.
+          if (previousUrl && previousUrl !== uploadedUrl) {
+            void removeFromSupabaseStorage(previousUrl);
+          }
           toast.success("Cover photo updated!");
         } else {
           toast.error("Couldn't upload that cover photo. Please try again.");

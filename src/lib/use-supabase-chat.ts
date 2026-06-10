@@ -17,6 +17,12 @@ import { subscribeQuery } from "./supabase-helpers";
 import { getUserCoords, haversineDistance, isWithinRadius } from "./geo";
 import { useAuth } from "./store";
 import { useChannels, type RichChannel } from "./use-channels-store";
+import {
+  useModeration,
+  useModerationSync,
+  isMuteActive,
+} from "./use-moderation-store";
+import { toast } from "sonner";
 import type {
   RichMessage,
   PollData,
@@ -131,6 +137,15 @@ function passesGeoFilter(m: RichMessage, channel: RichChannel | undefined): bool
 export function useChannelChatSupabase(channelId: string): UseChannelChatResult {
   const user = useAuth((s) => s.user);
   const channels = useChannels((s) => s.channels);
+
+  // Moderation: keep the ban/mute config live here, mirroring
+  // use-firebase-chat.ts — the chat surface is mounted everywhere
+  // enforcement matters (the module-level guard makes a second mount
+  // from the shell a no-op). Client-side defense-in-depth only; RLS
+  // is the real server-side backstop.
+  useModerationSync();
+  const bans = useModeration((s) => s.bans);
+  const mutes = useModeration((s) => s.mutes);
   const channel = useMemo(
     () => channels.find((c) => c.id === channelId),
     [channels, channelId],
@@ -174,10 +189,15 @@ export function useChannelChatSupabase(channelId: string): UseChannelChatResult 
   }, [channelId]);
 
   const mergedMessages = useMemo(() => {
-    const confirmed = fbMessages.filter((m) => passesGeoFilter(m, channel));
+    // Hide messages authored by banned members alongside the geo
+    // filter — the read-side half of enforcement (the write-side
+    // early-return lives in sendMessage below).
+    const confirmed = fbMessages.filter(
+      (m) => !bans[m.userId] && passesGeoFilter(m, channel),
+    );
     if (pendingMessages.length === 0) return confirmed;
     return [...confirmed, ...pendingMessages];
-  }, [fbMessages, pendingMessages, channel]);
+  }, [fbMessages, pendingMessages, channel, bans]);
 
   const sendMessage = useCallback(
     async (content: string, opts: SendOptions = {}): Promise<string | null> => {
@@ -187,6 +207,25 @@ export function useChannelChatSupabase(channelId: string): UseChannelChatResult 
       const hasPost = !!opts.post;
       if (!text && !hasAttachments && !hasPoll && !hasPost) return null;
       if (!user) return null;
+
+      // Enforcement: a banned or actively-muted author can't post.
+      // Early-return BEFORE the optimistic insert so nothing flashes
+      // on screen, and surface a toast explaining why. (RLS remains
+      // the real server-side backstop.)
+      if (bans[user.id]) {
+        toast.error("You're banned from posting in the community.");
+        return null;
+      }
+      if (isMuteActive(mutes[user.id])) {
+        const until = mutes[user.id]?.until;
+        toast.error(
+          until
+            ? `You're muted until ${new Date(until).toLocaleString()}.`
+            : "You're muted and can't post right now.",
+        );
+        return null;
+      }
+
       const sb = getSupabase();
       if (!sb) return null;
 
@@ -266,7 +305,7 @@ export function useChannelChatSupabase(channelId: string): UseChannelChatResult 
       }
       return id;
     },
-    [channelId, user, channel, fbMessages],
+    [channelId, user, channel, fbMessages, bans, mutes],
   );
 
   const toggleReaction = useCallback(

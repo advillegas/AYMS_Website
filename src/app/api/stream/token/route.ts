@@ -5,6 +5,12 @@ import {
   verifyFirebaseIdToken,
   readBearerToken,
 } from "@/lib/firebase-verify";
+import { useSupabaseBackend } from "@/lib/supabase";
+import { getServiceClient } from "@/lib/supabase-server";
+import {
+  verifySupabaseToken,
+  resolveCanonicalUserIdByEmail,
+} from "@/lib/supabase-verify";
 
 /**
  * Mints a short-lived JWT for the requesting user so the Stream Video
@@ -17,10 +23,17 @@ import {
  *    JWT. NEVER expose it client-side or via a NEXT_PUBLIC_ env.
  *  - Tokens carry the user_id claim and an exp claim 1 hour out, so a
  *    leaked token can only impersonate one user for a bounded window.
- *  - When Firebase auth is configured the caller MUST send a valid
- *    Firebase ID token (Authorization: Bearer <token>); the verified
- *    uid becomes the Stream user id and any body id is ignored. With
- *    Firebase unconfigured (local dev) it falls back to the body id.
+ *  - Under the Supabase backend the caller MUST send a valid Supabase
+ *    access token; the verified email resolves to the canonical
+ *    users.id, which becomes the Stream user id. NEVER the Supabase
+ *    auth uuid — migrated members' canonical ids are their original
+ *    Firebase UIDs, and minting for the uuid would fork their Stream
+ *    identity.
+ *  - Otherwise, when Firebase auth is configured the caller MUST send
+ *    a valid Firebase ID token (Authorization: Bearer <token>); the
+ *    verified uid becomes the Stream user id and any body id is
+ *    ignored. With no auth backend (local dev) it falls back to the
+ *    body id.
  */
 
 interface TokenPayload {
@@ -54,20 +67,60 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Malformed request body" }, { status: 400 });
   }
 
-  // The body-id fallback exists for LOCAL DEV ONLY (Firebase unconfigured).
+  // The body-id fallback exists for LOCAL DEV ONLY (no auth backend).
   // In production an unauthenticated caller could otherwise mint a token
   // for any user id and join calls as them — refuse outright instead.
-  if (!FIREBASE_AUTH_ENABLED && process.env.NODE_ENV === "production") {
+  if (
+    !FIREBASE_AUTH_ENABLED &&
+    !useSupabaseBackend &&
+    process.env.NODE_ENV === "production"
+  ) {
     return NextResponse.json(
-      { error: "Video calls require Firebase auth to be configured." },
+      { error: "Video calls require an auth backend to be configured." },
       { status: 503 },
     );
   }
 
-  // Resolve the *trusted* identity. With Firebase live we ignore the
-  // body id entirely and trust only the verified token uid.
+  // Resolve the *trusted* identity. With an auth backend live we ignore
+  // the body id entirely and trust only the verified token identity.
   let trustedId = (body.userId ?? "").trim();
-  if (FIREBASE_AUTH_ENABLED) {
+  if (useSupabaseBackend) {
+    const accessToken = readBearerToken(request);
+    if (!accessToken) {
+      return NextResponse.json(
+        { error: "Authentication required to join the room." },
+        { status: 401 },
+      );
+    }
+    const verified = await verifySupabaseToken(accessToken);
+    if (!verified) {
+      return NextResponse.json(
+        { error: "Your session has expired. Please sign in again." },
+        { status: 401 },
+      );
+    }
+    if (!getServiceClient()) {
+      return NextResponse.json(
+        {
+          error:
+            "Video calls require server Supabase credentials. Set SUPABASE_SERVICE_ROLE_KEY.",
+        },
+        { status: 503 },
+      );
+    }
+    // Stream identity continuity: mint for the canonical users.id
+    // (original Firebase UID for migrated members), never the auth uuid.
+    const canonicalId = verified.email
+      ? await resolveCanonicalUserIdByEmail(verified.email)
+      : null;
+    if (!canonicalId) {
+      return NextResponse.json(
+        { error: "Couldn't resolve your member profile. Please sign in again." },
+        { status: 403 },
+      );
+    }
+    trustedId = canonicalId;
+  } else if (FIREBASE_AUTH_ENABLED) {
     const idToken = readBearerToken(request);
     if (!idToken) {
       return NextResponse.json(

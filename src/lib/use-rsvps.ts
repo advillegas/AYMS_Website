@@ -30,6 +30,8 @@ import {
   type Timestamp,
 } from "firebase/firestore";
 import { getCurrentUid, getDb, isFirebaseConfigured } from "./firebase";
+import { useSupabaseBackend } from "./supabase";
+import { useMyRsvpRefsSupabase, useRsvpsSupabase } from "./use-rsvps-supabase";
 import { useAuth } from "./store";
 
 /* ------------------------------------------------------------------ */
@@ -106,6 +108,15 @@ export interface UseRsvpsResult {
 }
 
 export function useRsvps(
+  targetType: RsvpTargetType,
+  targetId: string | null | undefined,
+): UseRsvpsResult {
+  return useSupabaseBackend
+    ? useRsvpsSupabase(targetType, targetId)
+    : useRsvpsFirebase(targetType, targetId);
+}
+
+function useRsvpsFirebase(
   targetType: RsvpTargetType,
   targetId: string | null | undefined,
 ): UseRsvpsResult {
@@ -241,6 +252,14 @@ export interface MyRsvpRef {
  * extra security rule is required.
  */
 export function useMyRsvpRefs(
+  targets: Array<{ type: RsvpTargetType; id: string }>,
+): { refs: MyRsvpRef[]; loading: boolean } {
+  return useSupabaseBackend
+    ? useMyRsvpRefsSupabase(targets)
+    : useMyRsvpRefsFirebase(targets);
+}
+
+function useMyRsvpRefsFirebase(
   targets: Array<{ type: RsvpTargetType; id: string }>,
 ): { refs: MyRsvpRef[]; loading: boolean } {
   // Effective uid (Firebase uid for the bridged admin, store id otherwise)

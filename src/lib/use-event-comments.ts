@@ -22,6 +22,12 @@ import {
   type Timestamp,
 } from "firebase/firestore";
 import { getDb, isFirebaseConfigured } from "./firebase";
+import { getSupabase, useSupabaseBackend } from "./supabase";
+import {
+  subscribeQuery,
+  nowIso,
+  tsToIso as isoToIso,
+} from "./supabase-helpers";
 import { useAuth } from "./store";
 
 export interface EventComment {
@@ -83,6 +89,14 @@ interface UseEventCommentsResult {
  * for the marketing site / local dev without Firebase).
  */
 export function useEventComments(
+  eventId: string | null,
+): UseEventCommentsResult {
+  return useSupabaseBackend
+    ? useEventCommentsSupabase(eventId)
+    : useEventCommentsFirebase(eventId);
+}
+
+function useEventCommentsFirebase(
   eventId: string | null,
 ): UseEventCommentsResult {
   const user = useAuth((s) => s.user);
@@ -185,5 +199,127 @@ export function useEventComments(
     addComment,
     deleteComment,
     isFirebase: isFirebaseConfigured,
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/* Supabase branch (event_comments table, realtime via subscribeQuery) */
+/* ------------------------------------------------------------------ */
+
+interface EventCommentRow {
+  id: string;
+  event_id: string;
+  user_id: string;
+  user_name: string | null;
+  user_avatar: string | null;
+  content: string | null;
+  created_at: string | null;
+}
+
+function rowToComment(r: EventCommentRow): EventComment {
+  return {
+    id: r.id,
+    eventId: r.event_id,
+    userId: r.user_id,
+    userName: r.user_name ?? "",
+    userAvatar: r.user_avatar ?? undefined,
+    content: r.content ?? "",
+    createdAt: isoToIso(r.created_at),
+  };
+}
+
+function useEventCommentsSupabase(
+  eventId: string | null,
+): UseEventCommentsResult {
+  const user = useAuth((s) => s.user);
+  const [comments, setComments] = useState<EventComment[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!eventId) {
+      setComments([]);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    const unsub = subscribeQuery<EventCommentRow>(
+      "event_comments",
+      (sb) => sb.from("event_comments").select("*").eq("event_id", eventId),
+      (rows) => {
+        setComments(
+          rows
+            .map(rowToComment)
+            .sort((a, b) =>
+              (a.createdAt || "￿").localeCompare(b.createdAt || "￿"),
+            ),
+        );
+        setLoading(false);
+      },
+      (msg) => {
+        console.error("[event-comments:sb]", msg);
+        setError(msg);
+        setLoading(false);
+      },
+      { column: "event_id", value: eventId },
+    );
+    return unsub;
+  }, [eventId]);
+
+  const addComment = useCallback(
+    async (content: string): Promise<boolean> => {
+      const trimmed = content.trim();
+      if (!trimmed || !eventId || !user) return false;
+      const sb = getSupabase();
+      if (!sb) return false;
+      // user_id carries the canonical users.id (store id) — RLS maps
+      // the JWT to it, mirroring the Firestore write.
+      const id = `ec-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+      const { error: err } = await sb.from("event_comments").insert({
+        id,
+        event_id: eventId,
+        user_id: user.id,
+        user_name: user.name,
+        user_avatar: user.avatar ?? "",
+        content: trimmed,
+        created_at: nowIso(),
+      });
+      if (err) {
+        console.error("[event-comments:sb] add failed", err.message);
+        setError(err.message);
+        return false;
+      }
+      return true;
+    },
+    [eventId, user],
+  );
+
+  const deleteComment = useCallback(
+    async (commentId: string): Promise<boolean> => {
+      if (!eventId || !user) return false;
+      const sb = getSupabase();
+      if (!sb) return false;
+      const { error: err } = await sb
+        .from("event_comments")
+        .delete()
+        .eq("id", commentId);
+      if (err) {
+        console.error("[event-comments:sb] delete failed", err.message);
+        return false;
+      }
+      return true;
+    },
+    [eventId, user],
+  );
+
+  return {
+    comments,
+    loading,
+    error,
+    addComment,
+    deleteComment,
+    isFirebase: true,
   };
 }

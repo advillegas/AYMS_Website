@@ -31,6 +31,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useAuth } from "@/lib/store";
 import { getDb, isFirebaseConfigured } from "@/lib/firebase";
+import { getSupabase, useSupabaseBackend } from "@/lib/supabase";
+import { nowIso } from "@/lib/supabase-helpers";
 import { getOrCreateDM } from "@/lib/use-conversations";
 import { useFriendIdSet } from "@/lib/use-friends";
 import { useNewMembers } from "@/lib/use-new-members";
@@ -42,15 +44,63 @@ import type { MemberWithStatus } from "@/lib/use-community-members";
 
 /**
  * Post a first DM message into an existing conversation. Mirrors the
- * shape `useConversationMessages.sendMessage` writes (message doc +
- * conversation lastMessage/updatedAt bump) so the thread and the
- * Messages sidebar render it immediately.
+ * shape `useConversationMessages.sendMessage` writes on each backend
+ * (message doc/row + conversation lastMessage/updatedAt bump) so the
+ * thread and the Messages sidebar render it immediately.
  */
 async function sendFirstMessage(
   conversationId: string,
   sender: { id: string; name: string; avatar?: string },
   content: string,
 ): Promise<boolean> {
+  if (useSupabaseBackend) {
+    const sb = getSupabase();
+    if (!sb) return false;
+    const id = `dmsg-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+    const ts = nowIso();
+    const { error } = await sb.from("conversation_messages").insert({
+      id,
+      conversation_id: conversationId,
+      user_id: sender.id,
+      user_name: sender.name,
+      user_avatar: sender.avatar ?? "",
+      content,
+      attachments: [],
+      reactions: {},
+      thread_parent_id: null,
+      thread_count: 0,
+      created_at: ts,
+    });
+    if (error) {
+      console.error("[welcome-wagon] first message failed", error.message);
+      return false;
+    }
+    // read_at is a JSONB map — merge against the current row so we
+    // don't clobber the other participant's read state on a reused DM.
+    const { data: conv } = await sb
+      .from("conversations")
+      .select("read_at")
+      .eq("id", conversationId)
+      .maybeSingle();
+    const readAt = {
+      ...((conv?.read_at as Record<string, string> | null) ?? {}),
+      [sender.id]: ts,
+    };
+    await sb
+      .from("conversations")
+      .update({
+        updated_at: ts,
+        last_message: {
+          content,
+          userId: sender.id,
+          userName: sender.name,
+          createdAt: ts,
+        },
+        read_at: readAt,
+      })
+      .eq("id", conversationId);
+    return true;
+  }
   const db = getDb();
   if (!db) return false;
   try {
@@ -93,9 +143,9 @@ function WelcomeRow({ member }: { member: MemberWithStatus }) {
 
   async function handleSayHi() {
     if (!currentUser || busy) return;
-    if (!isFirebaseConfigured) {
+    if (!(isFirebaseConfigured || useSupabaseBackend)) {
       toast.error(
-        "Saying hi needs Firebase. Add NEXT_PUBLIC_FIREBASE_* env vars and reload.",
+        "Saying hi needs a live backend. Configure Firebase or Supabase env vars and reload.",
       );
       return;
     }

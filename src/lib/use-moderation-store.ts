@@ -20,6 +20,11 @@
  * collections) when Firestore isn't configured so the site still
  * works in local development, matching the rest of the data layer.
  *
+ * When `useSupabaseBackend` is on, every persistence path dispatches
+ * to use-moderation-supabase.ts instead (moderation_config singleton
+ * row / reports / mod_actions tables, identical shapes), keeping the
+ * store's external API unchanged.
+ *
  * IMPORTANT — enforcement is defense-in-depth, not a fortress. The
  * client filters muted/banned authors and disables their composer,
  * but the REAL backstop is Firestore security rules: a banned member
@@ -49,6 +54,17 @@ import {
   type Timestamp,
 } from "firebase/firestore";
 import { getDb, isFirebaseConfigured } from "./firebase";
+import { useSupabaseBackend } from "./supabase";
+import {
+  deleteUserProfileSupabase,
+  logModActionToSupabase,
+  resolveReportInSupabase,
+  submitReportToSupabase,
+  useModActionsSupabase,
+  useModerationSyncSupabase,
+  useReportsSupabase,
+  writeModerationConfigToSupabase,
+} from "./use-moderation-supabase";
 import { pushNotification } from "./notify";
 
 /* ------------------------------------------------------------------ */
@@ -196,6 +212,10 @@ interface ModerationState {
 /* ------------------------------------------------------------------ */
 
 async function writeModerationConfig(cfg: ModerationConfig): Promise<void> {
+  if (useSupabaseBackend) {
+    await writeModerationConfigToSupabase(cfg);
+    return;
+  }
   if (!isFirebaseConfigured) return;
   const db = getDb();
   if (!db) return;
@@ -233,6 +253,7 @@ export const useModeration = create<ModerationState>()(
       _synced: false,
 
       logModAction: async (action) => {
+        if (useSupabaseBackend) return logModActionToSupabase(action);
         if (!isFirebaseConfigured) return null;
         const db = getDb();
         if (!db) return null;
@@ -395,6 +416,12 @@ export const useModeration = create<ModerationState>()(
           actorId: actor.id,
           actorName: actor.name,
         });
+        if (useSupabaseBackend) {
+          // Same soft-kick semantics: drop the profile row so they
+          // leave the directory; their auth account is unaffected.
+          await deleteUserProfileSupabase(uid);
+          return;
+        }
         if (!isFirebaseConfigured) return;
         const db = getDb();
         if (!db) return;
@@ -409,6 +436,7 @@ export const useModeration = create<ModerationState>()(
       },
 
       submitReport: async (input) => {
+        if (useSupabaseBackend) return submitReportToSupabase(input);
         if (!isFirebaseConfigured) return null;
         const db = getDb();
         if (!db) return null;
@@ -436,19 +464,24 @@ export const useModeration = create<ModerationState>()(
       },
 
       resolveReport: async (report, actor, status) => {
-        if (!isFirebaseConfigured) return;
-        const db = getDb();
-        if (!db) return;
-        try {
-          await updateDoc(doc(db, "reports", report.id), {
-            status,
-            resolvedBy: actor.id,
-            resolvedByName: actor.name,
-            resolvedAt: serverTimestamp(),
-          });
-        } catch (err) {
-          console.warn("[moderation] resolveReport failed", err);
-          return;
+        if (useSupabaseBackend) {
+          const ok = await resolveReportInSupabase(report.id, status, actor);
+          if (!ok) return;
+        } else {
+          if (!isFirebaseConfigured) return;
+          const db = getDb();
+          if (!db) return;
+          try {
+            await updateDoc(doc(db, "reports", report.id), {
+              status,
+              resolvedBy: actor.id,
+              resolvedByName: actor.name,
+              resolvedAt: serverTimestamp(),
+            });
+          } catch (err) {
+            console.warn("[moderation] resolveReport failed", err);
+            return;
+          }
         }
         void get().logModAction({
           action: status === "resolved" ? "resolve-report" : "dismiss-report",
@@ -493,6 +526,12 @@ export const useModeration = create<ModerationState>()(
 
 let listenerStarted = false;
 
+const setModerationStore = (partial: {
+  bans?: Record<string, BanEntry>;
+  mutes?: Record<string, MuteEntry>;
+  _synced?: boolean;
+}) => useModeration.setState(partial);
+
 /**
  * Mounts the `config/moderation` onSnapshot listener exactly once.
  *
@@ -505,6 +544,12 @@ let listenerStarted = false;
  * shell — recommended for parity with the other config syncs.
  */
 export function useModerationSync(): void {
+  return useSupabaseBackend
+    ? useModerationSyncSupabase(setModerationStore)
+    : useModerationSyncFirebase();
+}
+
+function useModerationSyncFirebase(): void {
   useEffect(() => {
     if (!isFirebaseConfigured || listenerStarted) return;
     listenerStarted = true;
@@ -611,6 +656,10 @@ function docToModAction(
  * pattern). Returns [] gracefully when Firebase isn't configured.
  */
 export function useReports(): { reports: ModReport[]; loading: boolean } {
+  return useSupabaseBackend ? useReportsSupabase() : useReportsFirebase();
+}
+
+function useReportsFirebase(): { reports: ModReport[]; loading: boolean } {
   const [reports, setReports] = useState<ModReport[]>([]);
   const [loading, setLoading] = useState(isFirebaseConfigured);
   useEffect(() => {
@@ -648,6 +697,10 @@ export function useReports(): { reports: ModReport[]; loading: boolean } {
  * Live subscription to the append-only audit log. Newest-first.
  */
 export function useModActions(): { actions: ModAction[]; loading: boolean } {
+  return useSupabaseBackend ? useModActionsSupabase() : useModActionsFirebase();
+}
+
+function useModActionsFirebase(): { actions: ModAction[]; loading: boolean } {
   const [actions, setActions] = useState<ModAction[]>([]);
   const [loading, setLoading] = useState(isFirebaseConfigured);
   useEffect(() => {

@@ -1,14 +1,18 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { useSupabaseBackend } from "@/lib/supabase";
+import { getServiceClient } from "@/lib/supabase-server";
 
 /**
  * POST /api/calendar/sync
  *
  * Fetches every enabled iCal feed, parses the events, upserts them
- * into Firestore, and deletes orphans.
+ * into the backing store, and deletes orphans.
  *
- * Uses the Firestore REST API (not the client SDK) because the
- * client SDK requires a persistent WebSocket which can't be
- * established from a short-lived serverless function.
+ * Under the Supabase backend this uses a service-role server client
+ * (RLS denies anon event writes). Otherwise it uses the Firestore
+ * REST API (not the client SDK) because the client SDK requires a
+ * persistent WebSocket which can't be established from a short-lived
+ * serverless function.
  */
 
 const PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ?? "";
@@ -233,6 +237,222 @@ function icalDateToTime(raw: string): string {
 }
 
 /* ------------------------------------------------------------------ */
+/* Feed URL validation (SSRF guard)                                    */
+/* ------------------------------------------------------------------ */
+
+/**
+ * SSRF guard: feed URLs are admin-configured, but defense-in-depth —
+ * never fetch private/loopback/metadata hosts (same blocklist as
+ * /api/og). A compromised admin account or poisoned config must not
+ * be able to pivot this server into the internal network.
+ */
+function checkFeedUrl(icalUrl: string): { url: URL } | { error: string } {
+  let feedUrl: URL;
+  try {
+    feedUrl = new URL(icalUrl);
+  } catch {
+    return { error: "Invalid iCal URL" };
+  }
+  const feedHost = feedUrl.hostname.toLowerCase();
+  if (
+    (feedUrl.protocol !== "http:" && feedUrl.protocol !== "https:") ||
+    feedHost === "localhost" ||
+    feedHost === "127.0.0.1" ||
+    feedHost === "::1" ||
+    feedHost.endsWith(".local") ||
+    feedHost.startsWith("10.") ||
+    feedHost.startsWith("192.168.") ||
+    feedHost.startsWith("169.254.") ||
+    /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(feedHost)
+  ) {
+    return { error: "iCal host not allowed" };
+  }
+  return { url: feedUrl };
+}
+
+/* ------------------------------------------------------------------ */
+/* Supabase sync (service role)                                        */
+/* ------------------------------------------------------------------ */
+
+interface SyncConfigRow {
+  id: string;
+  name: string | null;
+  ical_url: string | null;
+  enabled: boolean | null;
+}
+
+interface SyncResult {
+  configId: string;
+  name: string;
+  upserted: number;
+  deleted: number;
+  error?: string;
+}
+
+async function syncViaSupabase(): Promise<NextResponse> {
+  const svc = getServiceClient();
+  if (!svc) {
+    return NextResponse.json(
+      { error: "SUPABASE_SERVICE_ROLE_KEY not set" },
+      { status: 500 },
+    );
+  }
+
+  try {
+    // 1. Read all sync configs
+    const { data: configRows, error: configErr } = await svc
+      .from("calendar_sync_configs")
+      .select("id, name, ical_url, enabled");
+    if (configErr) throw new Error(configErr.message);
+    const configs = (configRows ?? []) as SyncConfigRow[];
+    console.debug("[calendar-sync] found", configs.length, "config rows");
+
+    if (configs.length === 0) {
+      return NextResponse.json({ synced: 0, message: "No feeds configured" });
+    }
+
+    const results: SyncResult[] = [];
+
+    for (const config of configs) {
+      const configId = config.id;
+      const configName = config.name ?? "";
+      const icalUrl = config.ical_url ?? "";
+
+      if (!config.enabled) {
+        console.debug("[calendar-sync] skipping disabled:", configName);
+        continue;
+      }
+      if (!icalUrl) {
+        results.push({ configId, name: configName, upserted: 0, deleted: 0, error: "No iCal URL" });
+        continue;
+      }
+
+      const checked = checkFeedUrl(icalUrl);
+      if ("error" in checked) {
+        results.push({ configId, name: configName, upserted: 0, deleted: 0, error: checked.error });
+        continue;
+      }
+
+      try {
+        // 2. Fetch + parse iCal
+        console.debug("[calendar-sync]", configName, "fetching:", icalUrl.slice(0, 80));
+        const response = await fetch(checked.url.toString(), {
+          signal: AbortSignal.timeout(15_000),
+        });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const text = await response.text();
+        console.debug("[calendar-sync]", configName, "length:", text.length, "starts:", text.slice(0, 30));
+        const parsed = parseICalText(text);
+        console.debug("[calendar-sync]", configName, "parsed:", parsed.length, "events");
+
+        // 3. Map to event rows (snake_case, matching use-events-supabase)
+        const feedEvents = parsed
+          .map((ev) => ({
+            uid: ev.uid,
+            title: ev.summary,
+            description: ev.description,
+            date: icalDateToYMD(ev.dtstart),
+            endDate: icalDateToYMD(ev.dtend),
+            startTime: icalDateToTime(ev.dtstart),
+            endTime: icalDateToTime(ev.dtend),
+            location: ev.location,
+          }))
+          .filter((e) => e.date);
+
+        const nowIso = new Date().toISOString();
+        const feedUids = new Set<string>();
+        // Keyed by id: uids that sanitize to the same id must collapse to
+        // one row (a batch upsert can't touch the same row twice), matching
+        // the sequential last-write-wins of the Firestore branch.
+        const rowById = new Map<string, Record<string, unknown>>();
+        for (const fe of feedEvents) {
+          feedUids.add(fe.uid);
+          const eventId = `sync-${configId}-${fe.uid.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 80)}`;
+          rowById.set(eventId, {
+            id: eventId,
+            title: fe.title,
+            description: fe.description,
+            date: fe.date,
+            end_date: fe.endDate || null,
+            start_time: fe.startTime || null,
+            end_time: fe.endTime || null,
+            type: "synced",
+            location: fe.location,
+            source_calendar_id: configId,
+            source_uid: fe.uid,
+            synced_at: nowIso,
+            updated_at: nowIso,
+          });
+        }
+
+        // 4. Upsert events (one batch per feed)
+        const rows = [...rowById.values()];
+        if (rows.length > 0) {
+          const { error: upsertErr } = await svc
+            .from("events")
+            .upsert(rows, { onConflict: "id" });
+          if (upsertErr) throw new Error(upsertErr.message);
+        }
+        const upserted = rows.length;
+
+        // 5. Delete orphans — only rows this feed wrote (source_uid set;
+        // manual events are untouchable)
+        const { data: existingRows, error: existingErr } = await svc
+          .from("events")
+          .select("id, source_uid")
+          .eq("source_calendar_id", configId)
+          .not("source_uid", "is", null);
+        if (existingErr) throw new Error(existingErr.message);
+        const orphanIds = ((existingRows ?? []) as Array<{ id: string; source_uid: string | null }>)
+          .filter((r) => r.source_uid && !feedUids.has(r.source_uid))
+          .map((r) => r.id);
+        let deleted = 0;
+        for (let i = 0; i < orphanIds.length; i += 100) {
+          const chunk = orphanIds.slice(i, i + 100);
+          const { error: delErr } = await svc.from("events").delete().in("id", chunk);
+          if (delErr) throw new Error(delErr.message);
+          deleted += chunk.length;
+        }
+
+        // 6. Update config status
+        const { error: statusErr } = await svc
+          .from("calendar_sync_configs")
+          .update({
+            last_sync_at: new Date().toISOString(),
+            last_sync_error: null,
+            last_sync_count: feedEvents.length,
+          })
+          .eq("id", configId);
+        if (statusErr) throw new Error(statusErr.message);
+
+        results.push({ configId, name: configName, upserted, deleted });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Unknown error";
+        console.error(`[calendar-sync] ${configName} failed:`, err);
+        try {
+          await svc
+            .from("calendar_sync_configs")
+            .update({
+              last_sync_at: new Date().toISOString(),
+              last_sync_error: msg,
+            })
+            .eq("id", configId);
+        } catch { /* ignore */ }
+        results.push({ configId, name: configName, upserted: 0, deleted: 0, error: msg });
+      }
+    }
+
+    return NextResponse.json({ synced: results.length, results });
+  } catch (err) {
+    console.error("[calendar-sync] top-level:", err);
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Sync failed" },
+      { status: 500 },
+    );
+  }
+}
+
+/* ------------------------------------------------------------------ */
 /* Route handler                                                       */
 /* ------------------------------------------------------------------ */
 
@@ -251,6 +471,10 @@ export async function POST(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
   if (authHeader !== `Bearer ${secret}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (useSupabaseBackend) {
+    return syncViaSupabase();
   }
 
   if (!PROJECT_ID) {
@@ -294,32 +518,12 @@ export async function POST(request: NextRequest) {
         continue;
       }
 
-      // SSRF guard: feed URLs are admin-configured, but defense-in-depth —
-      // never fetch private/loopback/metadata hosts (same blocklist as
-      // /api/og). A compromised admin account or poisoned config must not
-      // be able to pivot this server into the internal network.
-      let feedUrl: URL;
-      try {
-        feedUrl = new URL(icalUrl);
-      } catch {
-        results.push({ configId, name: configName, upserted: 0, deleted: 0, error: "Invalid iCal URL" });
+      const checked = checkFeedUrl(icalUrl);
+      if ("error" in checked) {
+        results.push({ configId, name: configName, upserted: 0, deleted: 0, error: checked.error });
         continue;
       }
-      const feedHost = feedUrl.hostname.toLowerCase();
-      if (
-        (feedUrl.protocol !== "http:" && feedUrl.protocol !== "https:") ||
-        feedHost === "localhost" ||
-        feedHost === "127.0.0.1" ||
-        feedHost === "::1" ||
-        feedHost.endsWith(".local") ||
-        feedHost.startsWith("10.") ||
-        feedHost.startsWith("192.168.") ||
-        feedHost.startsWith("169.254.") ||
-        /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(feedHost)
-      ) {
-        results.push({ configId, name: configName, upserted: 0, deleted: 0, error: "iCal host not allowed" });
-        continue;
-      }
+      const feedUrl = checked.url;
 
       try {
         // 2. Fetch + parse iCal

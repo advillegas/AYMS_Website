@@ -35,6 +35,11 @@ import {
   type Timestamp,
 } from "firebase/firestore";
 import { getDb, isFirebaseConfigured } from "./firebase";
+import { useSupabaseBackend } from "./supabase";
+import {
+  useMyTripReservationsSupabase,
+  useTripReservationsSupabase,
+} from "./use-trip-reservations-supabase";
 import { useAuth } from "./store";
 import { pushNotification } from "./notify";
 import { getTripById } from "./trips-data";
@@ -127,6 +132,15 @@ export interface UseTripReservationsResult {
 }
 
 export function useTripReservations(
+  tripId: string | null | undefined,
+  totalSpots: number,
+): UseTripReservationsResult {
+  return useSupabaseBackend
+    ? useTripReservationsSupabase(tripId, totalSpots)
+    : useTripReservationsFirebase(tripId, totalSpots);
+}
+
+function useTripReservationsFirebase(
   tripId: string | null | undefined,
   totalSpots: number,
 ): UseTripReservationsResult {
@@ -291,6 +305,15 @@ export function useTripReservations(
  * cancelled rows are dropped client-side.
  */
 export function useMyTripReservations(): {
+  reservations: TripReservation[];
+  loading: boolean;
+} {
+  return useSupabaseBackend
+    ? useMyTripReservationsSupabase()
+    : useMyTripReservationsFirebase();
+}
+
+function useMyTripReservationsFirebase(): {
   reservations: TripReservation[];
   loading: boolean;
 } {

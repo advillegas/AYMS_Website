@@ -28,6 +28,7 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { getStorageInstance, isStorageConfigured } from "@/lib/firebase";
 import { useSupabaseBackend } from "@/lib/supabase";
 import { uploadToSupabaseStorage } from "@/lib/supabase-storage";
+import { useAuth } from "@/lib/store";
 import { toast } from "sonner";
 import type { PostMedia } from "@/lib/use-firebase-chat";
 
@@ -71,6 +72,7 @@ export function PostComposer({
   initialValues,
 }: PostComposerProps) {
   const isEdit = !!initialValues;
+  const currentUserId = useAuth((s) => s.user?.id);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const titleRef = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState("");
@@ -102,6 +104,12 @@ export function PostComposer({
       toast.error("Media uploads aren't enabled — text posts only for now.");
       return;
     }
+    // Storage RLS scopes uploads to posts/{canonicalUserId}/… — without
+    // a signed-in user there is no valid owner segment.
+    if (supa && !currentUserId) {
+      toast.error("Sign in to upload media.");
+      return;
+    }
     const storage = supa ? null : getStorageInstance();
     if (!supa && !storage) return;
     setUploading(true);
@@ -114,7 +122,7 @@ export function PostComposer({
         if (!isVideo && !isImage) continue;
         let url: string | null = null;
         if (supa) {
-          url = await uploadToSupabaseStorage("posts", file);
+          url = await uploadToSupabaseStorage(`posts/${currentUserId}`, file);
         } else if (storage) {
           const safeName = file.name.replace(/[^a-zA-Z0-9.]/g, "_");
           const storageRef = ref(storage, `posts/${Date.now()}-${safeName}`);

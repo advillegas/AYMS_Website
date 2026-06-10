@@ -10,7 +10,11 @@ import {
 } from "firebase/storage";
 import { getStorageInstance, isStorageConfigured } from "./firebase";
 import { useSupabaseBackend, isSupabaseConfigured } from "./supabase";
-import { uploadToSupabaseStorage } from "./supabase-storage";
+import {
+  uploadToSupabaseStorage,
+  removeFromSupabaseStorage,
+} from "./supabase-storage";
+import { useAuth } from "./store";
 
 const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
 const ALLOWED = ["image/jpeg", "image/png", "image/webp", "image/gif"];
@@ -59,10 +63,20 @@ export function useAvatarUpload(): UseAvatarUploadResult {
       if (useSupabaseBackend) {
         setUploading(true);
         setProgress(20);
+        // Capture the outgoing avatar before callers overwrite it in the
+        // store so the old media-bucket object can be cleaned up.
+        const me = useAuth.getState().user;
+        const prevAvatar = me && me.id === userId ? me.avatar : "";
         const url = await uploadToSupabaseStorage(`avatars/${userId}`, file);
         setProgress(100);
         setUploading(false);
-        if (!url) setError("Upload failed. Try again.");
+        if (!url) {
+          setError("Upload failed. Try again.");
+          return null;
+        }
+        if (prevAvatar && prevAvatar !== url) {
+          void removeFromSupabaseStorage(prevAvatar);
+        }
         return url;
       }
 

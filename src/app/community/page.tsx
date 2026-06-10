@@ -45,6 +45,7 @@ import {
 } from "@/lib/use-firebase-chat";
 import { VoiceChannelView } from "@/components/community/voice-channel-view";
 import { isFirebaseConfigured } from "@/lib/firebase";
+import { useSupabaseBackend } from "@/lib/supabase";
 import { useCommunityUI } from "@/lib/community-ui-store";
 import {
   useNotificationPrefs,
@@ -953,7 +954,7 @@ export default function ChatPage() {
             </DropdownMenuContent>
           </DropdownMenu>
           <span className="text-[10px] uppercase tracking-wider text-muted-foreground/60 hidden md:inline">
-            {!isFirebaseConfigured
+            {!(isFirebaseConfigured || useSupabaseBackend)
               ? "Local mode"
               : isFirebase
                 ? "Live · Realtime"

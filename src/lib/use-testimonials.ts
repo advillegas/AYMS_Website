@@ -28,6 +28,8 @@ import {
   type QueryDocumentSnapshot,
 } from "firebase/firestore";
 import { getDb, isFirebaseConfigured } from "./firebase";
+import { getSupabase, useSupabaseBackend } from "./supabase";
+import { subscribeQuery } from "./supabase-helpers";
 
 /* ------------------------------------------------------------------ */
 /* Schema                                                              */
@@ -171,6 +173,68 @@ function docToTestimonial(
 }
 
 /* ------------------------------------------------------------------ */
+/* Supabase mirror (testimonials table)                                */
+/* ------------------------------------------------------------------ */
+
+interface TestimonialRow {
+  id: string;
+  name: string | null;
+  location: string | null;
+  trip: string | null;
+  en: string | null;
+  es: string | null;
+  initials: string | null;
+  gradient: string | null;
+  featured: boolean | null;
+  created_at: string | null;
+}
+
+function rowToTestimonial(r: TestimonialRow): Testimonial {
+  return {
+    id: r.id,
+    name: r.name ?? "",
+    location: r.location ?? "",
+    trip: r.trip ?? "",
+    en: r.en ?? "",
+    es: r.es ?? "",
+    initials: r.initials ?? "",
+    gradient: r.gradient ?? "from-[#FF0099] to-[#B51760]",
+    featured: r.featured ?? false,
+  };
+}
+
+let sbSeeded = false;
+
+async function seedSupabaseIfEmpty(): Promise<void> {
+  if (sbSeeded) return;
+  const sb = getSupabase();
+  if (!sb) return;
+  sbSeeded = true;
+  try {
+    const { count } = await sb
+      .from("testimonials")
+      .select("id", { count: "exact", head: true });
+    if ((count ?? 0) > 0) return;
+    const rows = TESTIMONIALS_SEED.map((t) => ({
+      id: t.id,
+      name: t.name,
+      location: t.location,
+      trip: t.trip,
+      en: t.en,
+      es: t.es,
+      initials: t.initials,
+      gradient: t.gradient,
+      featured: t.featured,
+    }));
+    await sb.from("testimonials").upsert(rows);
+    console.debug("[testimonials:sb] seeded with TESTIMONIALS_SEED");
+  } catch (err) {
+    console.warn("[testimonials:sb] seed failed", err);
+    sbSeeded = false;
+  }
+}
+
+/* ------------------------------------------------------------------ */
 /* Seed migration                                                      */
 /* ------------------------------------------------------------------ */
 
@@ -220,10 +284,38 @@ export function useTestimonials(): UseTestimonialsResult {
     // the snapshot replaces it once Firestore responds.
     TESTIMONIALS_SEED,
   );
-  const [loading, setLoading] = useState<boolean>(isFirebaseConfigured);
-  const isFirestore = isFirebaseConfigured;
+  const [loading, setLoading] = useState<boolean>(
+    isFirebaseConfigured || useSupabaseBackend,
+  );
+  const isFirestore = isFirebaseConfigured || useSupabaseBackend;
 
   useEffect(() => {
+    if (useSupabaseBackend) {
+      void seedSupabaseIfEmpty();
+      return subscribeQuery<TestimonialRow>(
+        "testimonials",
+        (sb) => sb.from("testimonials").select("*").limit(200),
+        (rows) => {
+          if (rows.length === 0) {
+            // Seed may still be in-flight — keep the static content visible.
+            setTestimonials(TESTIMONIALS_SEED);
+          } else {
+            setTestimonials(
+              rows
+                .map(rowToTestimonial)
+                .filter((t) => t.en)
+                .sort((a, b) => a.name.localeCompare(b.name)),
+            );
+          }
+          setLoading(false);
+        },
+        (msg) => {
+          console.warn("[testimonials:sb] query failed", msg);
+          setTestimonials(TESTIMONIALS_SEED);
+          setLoading(false);
+        },
+      );
+    }
     if (!isFirebaseConfigured) {
       setTestimonials(TESTIMONIALS_SEED);
       setLoading(false);

@@ -33,6 +33,8 @@ import {
   type Timestamp,
 } from "firebase/firestore";
 import { getDb, isFirebaseConfigured } from "./firebase";
+import { getSupabase, useSupabaseBackend } from "./supabase";
+import { subscribeQuery, nowIso, tsToIso as sbTsToIso } from "./supabase-helpers";
 import type { PassportStamp } from "./game-data";
 
 interface FirestorePassportDoc {
@@ -74,6 +76,37 @@ function docToStamp(
   };
 }
 
+/* Supabase mirror: passport_stamps rows keyed by user_id. */
+
+interface StampRow {
+  id: string;
+  user_id: string;
+  trip_id: string | null;
+  country: string | null;
+  city: string | null;
+  label: string | null;
+  emoji: string | null;
+  year: number | null;
+  note: string | null;
+  photo_url: string | null;
+  added_at: string | null;
+}
+
+function rowToStamp(r: StampRow): PassportStamp {
+  return {
+    id: r.id,
+    tripId: r.trip_id ?? undefined,
+    country: r.country ?? "",
+    city: r.city ?? undefined,
+    label: r.label ?? r.country ?? "Somewhere wonderful",
+    emoji: r.emoji ?? "🌍",
+    year: typeof r.year === "number" ? r.year : new Date().getFullYear(),
+    note: r.note ?? undefined,
+    photoUrl: r.photo_url ?? undefined,
+    addedAt: sbTsToIso(r.added_at),
+  };
+}
+
 /** A new stamp without server-managed fields. */
 export type NewStamp = Omit<PassportStamp, "id" | "addedAt">;
 
@@ -98,16 +131,40 @@ export interface UsePassportResult {
 export function usePassport(uid: string | null | undefined): UsePassportResult {
   const [stamps, setStamps] = useState<PassportStamp[]>([]);
   const [loading, setLoading] = useState<boolean>(
-    Boolean(uid) && isFirebaseConfigured,
+    Boolean(uid) && (isFirebaseConfigured || useSupabaseBackend),
   );
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!uid || !isFirebaseConfigured) {
+    if (!uid || !(isFirebaseConfigured || useSupabaseBackend)) {
       setStamps([]);
       setLoading(false);
       setError(null);
       return;
+    }
+    if (useSupabaseBackend) {
+      setLoading(true);
+      setError(null);
+      return subscribeQuery<StampRow>(
+        "passport_stamps",
+        (sb) =>
+          sb.from("passport_stamps").select("*").eq("user_id", uid).limit(200),
+        (rows) => {
+          const list = rows.map(rowToStamp).sort((a, b) => {
+            // Newest year first; within a year, most-recently-added first.
+            if (b.year !== a.year) return b.year - a.year;
+            return (b.addedAt || "").localeCompare(a.addedAt || "");
+          });
+          setStamps(list);
+          setLoading(false);
+        },
+        (msg) => {
+          console.error("[passport:sb]", msg);
+          setError(msg);
+          setLoading(false);
+        },
+        { column: "user_id", value: uid },
+      );
     }
     const db = getDb();
     if (!db) {
@@ -149,13 +206,37 @@ export function usePassport(uid: string | null | undefined): UsePassportResult {
 
   const addStamp = useCallback(
     async (stamp: NewStamp): Promise<string | null> => {
-      if (!uid || !isFirebaseConfigured) return null;
-      const db = getDb();
-      if (!db) return null;
+      if (!uid || !(isFirebaseConfigured || useSupabaseBackend)) return null;
       // Validate at the boundary: a stamp must name a place.
       const country = stamp.country?.trim();
       const label = stamp.label?.trim();
       if (!country && !label) return null;
+      if (useSupabaseBackend) {
+        const sb = getSupabase();
+        if (!sb) return null;
+        const id = `stamp-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+        const { error: e } = await sb.from("passport_stamps").insert({
+          id,
+          user_id: uid,
+          trip_id: stamp.tripId ?? null,
+          country: country ?? "",
+          city: stamp.city?.trim() || null,
+          label: label || country || "Somewhere wonderful",
+          emoji: stamp.emoji || "🌍",
+          year: stamp.year ?? new Date().getFullYear(),
+          note: stamp.note?.trim() || null,
+          photo_url: stamp.photoUrl?.trim() || null,
+          added_at: nowIso(),
+        });
+        if (e) {
+          console.error("[passport:sb] add failed", e.message);
+          setError(e.message);
+          return null;
+        }
+        return id;
+      }
+      const db = getDb();
+      if (!db) return null;
       try {
         const ref = await addDoc(collection(db, "users", uid, "passport"), {
           tripId: stamp.tripId ?? null,
@@ -180,7 +261,22 @@ export function usePassport(uid: string | null | undefined): UsePassportResult {
 
   const removeStamp = useCallback(
     async (stampId: string): Promise<boolean> => {
-      if (!uid || !isFirebaseConfigured || !stampId) return false;
+      if (!uid || !(isFirebaseConfigured || useSupabaseBackend) || !stampId)
+        return false;
+      if (useSupabaseBackend) {
+        const sb = getSupabase();
+        if (!sb) return false;
+        const { error: e } = await sb
+          .from("passport_stamps")
+          .delete()
+          .eq("id", stampId)
+          .eq("user_id", uid);
+        if (e) {
+          console.error("[passport:sb] remove failed", e.message);
+          return false;
+        }
+        return true;
+      }
       const db = getDb();
       if (!db) return false;
       try {
@@ -199,7 +295,7 @@ export function usePassport(uid: string | null | undefined): UsePassportResult {
     countries,
     loading,
     error,
-    isFirebase: isFirebaseConfigured,
+    isFirebase: isFirebaseConfigured || useSupabaseBackend,
     addStamp,
     removeStamp,
   };

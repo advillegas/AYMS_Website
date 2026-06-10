@@ -35,6 +35,8 @@ import {
   type Timestamp,
 } from "firebase/firestore";
 import { getDb, isFirebaseConfigured } from "./firebase";
+import { useSupabaseBackend } from "./supabase";
+import { subscribeQuery } from "./supabase-helpers";
 import { useChannels } from "./use-channels-store";
 
 /* ------------------------------------------------------------------ */
@@ -130,8 +132,14 @@ function parseDate(raw: string | undefined | null): Date | null {
   return Number.isNaN(dt.getTime()) ? null : dt;
 }
 
-function tsToDate(t: Timestamp | undefined | null): Date | null {
-  if (!t || typeof t.toDate !== "function") return null;
+/** Accepts a Firestore Timestamp or a Postgres ISO string. */
+function tsToDate(t: Timestamp | string | undefined | null): Date | null {
+  if (!t) return null;
+  if (typeof t === "string") {
+    const d = new Date(t);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+  if (typeof t.toDate !== "function") return null;
   try {
     return t.toDate();
   } catch {
@@ -149,7 +157,7 @@ interface UserRow {
 
 interface MessageRow {
   channelId?: string;
-  createdAt?: Timestamp;
+  createdAt?: Timestamp | string;
 }
 
 interface EventRow {
@@ -171,11 +179,29 @@ function useCollection<T>(
   name: string,
   cap: number,
   map: (d: QueryDocumentSnapshot<DocumentData>) => T,
+  /** Supabase row mapper (snake_case row → T) for the same table name. */
+  mapRow: (r: Record<string, unknown>) => T,
 ): { rows: T[]; loading: boolean } {
   const [rows, setRows] = useState<T[]>([]);
-  const [loading, setLoading] = useState(isFirebaseConfigured);
+  const [loading, setLoading] = useState(
+    isFirebaseConfigured || useSupabaseBackend,
+  );
 
   useEffect(() => {
+    if (useSupabaseBackend) {
+      return subscribeQuery<Record<string, unknown>>(
+        name,
+        (sb) => sb.from(name).select("*").limit(cap),
+        (sbRows) => {
+          setRows(sbRows.map(mapRow));
+          setLoading(false);
+        },
+        (msg) => {
+          console.warn(`[metrics:sb] ${name} query failed`, msg);
+          setLoading(false);
+        },
+      );
+    }
     if (!isFirebaseConfigured) {
       setRows([]);
       setLoading(false);
@@ -199,8 +225,9 @@ function useCollection<T>(
       },
     );
     return () => unsub();
-    // `map` is recreated each render but identity doesn't matter — we
-    // intentionally only (re)subscribe on collection/cap change.
+    // `map`/`mapRow` are recreated each render but identity doesn't
+    // matter — we intentionally only (re)subscribe on collection/cap
+    // change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [name, cap]);
 
@@ -221,6 +248,7 @@ export function useAdminMetrics(): AdminMetrics {
       const data = d.data() as UserRow;
       return { joinedDate: data.joinedDate };
     },
+    (r) => ({ joinedDate: (r.joined_date as string | null) ?? undefined }),
   );
 
   const { rows: messages, loading: msgLoading } = useCollection<MessageRow>(
@@ -230,6 +258,10 @@ export function useAdminMetrics(): AdminMetrics {
       const data = d.data() as MessageRow;
       return { channelId: data.channelId, createdAt: data.createdAt };
     },
+    (r) => ({
+      channelId: (r.channel_id as string | null) ?? undefined,
+      createdAt: (r.created_at as string | null) ?? undefined,
+    }),
   );
 
   const { rows: events, loading: evLoading } = useCollection<EventRow & { id: string }>(
@@ -245,6 +277,13 @@ export function useAdminMetrics(): AdminMetrics {
         location: data.location,
       };
     },
+    (r) => ({
+      id: String(r.id ?? ""),
+      title: (r.title as string | null) ?? undefined,
+      date: (r.date as string | null) ?? undefined,
+      type: (r.type as string | null) ?? undefined,
+      location: (r.location as string | null) ?? undefined,
+    }),
   );
 
   const channelNameById = useMemo(() => {
@@ -365,7 +404,7 @@ export function useAdminMetrics(): AdminMetrics {
 
     return {
       loading,
-      isLive: isFirebaseConfigured,
+      isLive: isFirebaseConfigured || useSupabaseBackend,
       totalMembers,
       newThisMonth,
       messages30d,

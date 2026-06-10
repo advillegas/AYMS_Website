@@ -32,6 +32,8 @@ import {
   type Timestamp,
 } from "firebase/firestore";
 import { getDb, isFirebaseConfigured } from "./firebase";
+import { useSupabaseBackend } from "./supabase";
+import { subscribeQuery, tsToIso } from "./supabase-helpers";
 
 /* ------------------------------------------------------------------ */
 /* Types                                                               */
@@ -80,6 +82,34 @@ function docToActivity(
   };
 }
 
+/* Supabase mirror: same `messages` data, snake_case row shape. */
+
+interface MessageRow {
+  id: string;
+  channel_id: string | null;
+  user_id: string | null;
+  user_name: string | null;
+  user_avatar: string | null;
+  content: string | null;
+  thread_parent_id: string | null;
+  created_at: string | null;
+}
+
+function rowToActivity(r: MessageRow): ActivityItem | null {
+  const createdAt = tsToIso(r.created_at);
+  if (!createdAt) return null;
+  return {
+    id: r.id,
+    channelId: r.channel_id ?? "general",
+    userId: r.user_id ?? "",
+    userName: r.user_name ?? "Someone",
+    userAvatar: r.user_avatar ?? "",
+    content: r.content ?? "",
+    createdAt,
+    isThreadReply: Boolean(r.thread_parent_id),
+  };
+}
+
 /* ------------------------------------------------------------------ */
 /* Public hook                                                         */
 /* ------------------------------------------------------------------ */
@@ -101,9 +131,37 @@ export interface UseActivityFeedResult {
  */
 export function useActivityFeed(max = 12): UseActivityFeedResult {
   const [items, setItems] = useState<ActivityItem[]>([]);
-  const [loading, setLoading] = useState<boolean>(isFirebaseConfigured);
+  const [loading, setLoading] = useState<boolean>(
+    isFirebaseConfigured || useSupabaseBackend,
+  );
 
   useEffect(() => {
+    if (useSupabaseBackend) {
+      return subscribeQuery<MessageRow>(
+        "messages",
+        (sb) =>
+          sb
+            .from("messages")
+            .select("*")
+            .order("created_at", { ascending: false })
+            .limit(FEED_LIMIT),
+        (rows) => {
+          const next: ActivityItem[] = [];
+          for (const r of rows) {
+            const item = rowToActivity(r);
+            if (item) next.push(item);
+          }
+          next.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+          setItems(next);
+          setLoading(false);
+        },
+        (msg) => {
+          console.warn("[activity-feed:sb] query failed", msg);
+          setItems([]);
+          setLoading(false);
+        },
+      );
+    }
     // Unconfigured Firebase: initial state already reflects the empty,
     // not-loading case (items=[], loading=isFirebaseConfigured=false),
     // so there's nothing to synchronise here — bail before subscribing.
@@ -153,6 +211,6 @@ export function useActivityFeed(max = 12): UseActivityFeedResult {
   return {
     items: headline,
     loading,
-    isFirebase: isFirebaseConfigured,
+    isFirebase: isFirebaseConfigured || useSupabaseBackend,
   };
 }

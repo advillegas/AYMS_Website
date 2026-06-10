@@ -515,10 +515,14 @@ begin
 end $$;
 
 -- The helpers are for policies (authenticated) and the link RPC — anon
--- never needs them (no anon-facing policy references them).
-revoke execute on function public.current_app_user_id() from anon;
-revoke execute on function public.is_app_admin() from anon;
-revoke execute on function public.link_auth_identity() from anon;
+-- never needs them (no anon-facing policy references them). EXECUTE is
+-- granted to PUBLIC by default, so revoke there, then grant back narrowly.
+revoke execute on function public.current_app_user_id() from public, anon;
+revoke execute on function public.is_app_admin() from public, anon;
+revoke execute on function public.link_auth_identity() from public, anon;
+grant execute on function public.current_app_user_id() to authenticated, service_role;
+grant execute on function public.is_app_admin() to authenticated, service_role;
+grant execute on function public.link_auth_identity() to authenticated, service_role;
 
 -- ============================================================
 -- Row Level Security — enabled on every table here; the hardened

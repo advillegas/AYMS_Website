@@ -751,3 +751,59 @@ end $$;
 
 revoke execute on function public.get_or_create_conversation(text, text[], text, text) from public, anon;
 grant execute on function public.get_or_create_conversation(text, text[], text, text) to authenticated, service_role;
+
+-- ============================================================
+-- Realtime Broadcast for chat/DMs — sub-200ms delivery
+--
+-- postgres_changes (enable-realtime.sql) stays as the reliable backstop,
+-- but it floors around ~300-500ms. For the high-frequency message tables
+-- a trigger broadcasts each change to a per-room topic, and the client
+-- subscribes to that private topic for ~150ms delivery. Receive access is
+-- gated by Realtime Authorization (RLS on realtime.messages) so DM topics
+-- stay participant-only — same privacy boundary as the table's own RLS.
+-- ============================================================
+
+create or replace function public.broadcast_channel_message()
+returns trigger language plpgsql security definer set search_path = public, realtime as $$
+begin
+  perform realtime.broadcast_changes(
+    'channel:' || coalesce(new.channel_id, old.channel_id),
+    tg_op, tg_op, tg_table_name, tg_table_schema, new, old
+  );
+  return null;
+end $$;
+drop trigger if exists messages_broadcast on public.messages;
+create trigger messages_broadcast
+  after insert or update or delete on public.messages
+  for each row execute function public.broadcast_channel_message();
+
+create or replace function public.broadcast_conversation_message()
+returns trigger language plpgsql security definer set search_path = public, realtime as $$
+begin
+  perform realtime.broadcast_changes(
+    'conversation:' || coalesce(new.conversation_id, old.conversation_id),
+    tg_op, tg_op, tg_table_name, tg_table_schema, new, old
+  );
+  return null;
+end $$;
+drop trigger if exists conv_messages_broadcast on public.conversation_messages;
+create trigger conv_messages_broadcast
+  after insert or update or delete on public.conversation_messages
+  for each row execute function public.broadcast_conversation_message();
+
+-- Who may RECEIVE on a private topic:
+--   channel:*       → any signed-in member (mirrors messages SELECT RLS)
+--   conversation:*  → only participants (mirrors conversation_messages RLS)
+drop policy if exists "ayms_broadcast_receive" on realtime.messages;
+create policy "ayms_broadcast_receive" on realtime.messages
+  for select to authenticated using (
+    realtime.topic() like 'channel:%'
+    or (
+      realtime.topic() like 'conversation:%'
+      and exists (
+        select 1 from public.conversations c
+        where c.id = substring(realtime.topic() from '^conversation:(.*)$')
+          and public.current_app_user_id() = any(c.participant_ids)
+      )
+    )
+  );

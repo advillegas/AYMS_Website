@@ -149,6 +149,15 @@ export function subscribeQuery<T>(
   onData: (rows: T[]) => void,
   onError?: (msg: string) => void,
   filter?: RealtimeFilter,
+  /**
+   * Optional private Broadcast topic for sub-200ms delivery (e.g.
+   * "channel:general", "conversation:dm_a_b"). A DB trigger broadcasts
+   * each row change to this topic; the payload is applied via the same
+   * delta path. postgres_changes + the poll remain as backstops, and the
+   * delta dedupes by id, so whichever arrives first wins. Receive access
+   * is gated by Realtime Authorization RLS on realtime.messages.
+   */
+  broadcastTopic?: string,
 ): () => void {
   const sb = getSupabase();
   if (!sb) {
@@ -160,6 +169,7 @@ export function subscribeQuery<T>(
   let refetchTimer: ReturnType<typeof setTimeout> | null = null;
   let lastAuthUid: string | null | undefined;
   let offRealtime: (() => void) | null = null;
+  let broadcastChannel: RealtimeChannel | null = null;
   // Local mirror so realtime events apply as deltas (instant) rather than
   // forcing a full re-query.
   let lastRows: T[] = [];
@@ -237,6 +247,40 @@ export function subscribeQuery<T>(
     if (!applyDelta(payload)) scheduleRefetch();
   };
 
+  const teardownBroadcast = () => {
+    if (broadcastChannel) {
+      void sb.removeChannel(broadcastChannel);
+      broadcastChannel = null;
+    }
+  };
+
+  // Private Broadcast fast-path: a DB trigger broadcasts each row change
+  // to broadcastTopic; receive access is RLS-gated (DM topics are
+  // participant-only). Normalize the broadcast payload into the same
+  // delta shape and route it through onEvent, so it dedupes by id against
+  // the postgres_changes/poll paths.
+  const joinBroadcast = () => {
+    if (!broadcastTopic || disposed) return;
+    teardownBroadcast();
+    broadcastChannel = sb
+      .channel(broadcastTopic, { config: { private: true } })
+      .on("broadcast", { event: "*" }, (msg) => {
+        const p = (msg?.payload ?? {}) as {
+          operation?: string;
+          record?: unknown;
+          old_record?: unknown;
+        };
+        const op = (p.operation ?? "").toUpperCase();
+        if (op !== "INSERT" && op !== "UPDATE" && op !== "DELETE") return;
+        onEvent({
+          eventType: op,
+          new: p.record ?? {},
+          old: p.old_record ?? {},
+        } as unknown as ChangePayload);
+      })
+      .subscribe();
+  };
+
   // Begin only once the auth snapshot is known (token already applied to
   // the socket globally), so the shared channel joins authenticated.
   const start = () => {
@@ -244,6 +288,7 @@ export function subscribeQuery<T>(
     lastAuthUid = snap.uid;
     void fetchNow();
     offRealtime = registerRealtime(table, onEvent);
+    joinBroadcast();
   };
 
   if (getAuthSnapshot().known) start();
@@ -256,8 +301,10 @@ export function subscribeQuery<T>(
     }
     if (snap.uid !== lastAuthUid) {
       lastAuthUid = snap.uid;
-      // Identity changed — the shared channel re-subscribes itself; just
+      // Identity changed — the shared channel re-subscribes itself; rejoin
+      // the private broadcast topic so its receive-RLS re-evaluates, and
       // re-fetch the baseline under the new identity.
+      joinBroadcast();
       scheduleRefetch();
     }
   });
@@ -277,6 +324,7 @@ export function subscribeQuery<T>(
     clearInterval(pollTimer);
     offAuth();
     offRealtime?.();
+    teardownBroadcast();
   };
 }
 

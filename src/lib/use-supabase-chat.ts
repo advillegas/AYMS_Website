@@ -184,6 +184,7 @@ export function useChannelChatSupabase(channelId: string): UseChannelChatResult 
         setLoading(false);
       },
       { column: "channel_id", value: channelId },
+      `channel:${channelId}`,
     );
     return unsub;
   }, [channelId]);

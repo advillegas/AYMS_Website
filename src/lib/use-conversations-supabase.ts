@@ -203,6 +203,7 @@ export function useConversationMessagesSupabase(
         setLoading(false);
       },
       { column: "conversation_id", value: conversationId },
+      `conversation:${conversationId}`,
     );
     return unsub;
   }, [conversationId]);

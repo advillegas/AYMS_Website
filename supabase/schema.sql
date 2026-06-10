@@ -228,15 +228,22 @@ create table if not exists public.trips (
 create index if not exists trips_order_idx on public.trips (sort_order);
 
 -- ---------- event_comments (events/{id}/comments subcollection) ----------
+-- event_id is a plain text column on purpose (NO foreign key to events):
+-- the community calendar renders comments on entries that are not rows in
+-- public.events — member-hosted meetups and other merged calendar sources
+-- keep their own ids. Firestore allowed this (parentless subcollections),
+-- so an FK here would 23503 every comment on a meetup.
 create table if not exists public.event_comments (
   id           text primary key,
-  event_id     text not null references public.events (id) on delete cascade,
+  event_id     text not null,
   user_id      text not null,
   user_name    text not null default '',
   user_avatar  text,
   content      text not null default '',
   created_at   timestamptz not null default now()
 );
+-- Idempotent patch for databases provisioned before the FK was removed.
+alter table public.event_comments drop constraint if exists event_comments_event_id_fkey;
 create index if not exists event_comments_event_created_idx on public.event_comments (event_id, created_at);
 
 -- ---------- calendar_sync_configs ----------

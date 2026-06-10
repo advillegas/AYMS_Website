@@ -27,7 +27,7 @@ import {
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { getDb, isFirebaseConfigured } from "@/lib/firebase";
 import { useSupabaseBackend } from "@/lib/supabase";
-import { getServiceClient } from "@/lib/supabase-server";
+import { getAnonServerClient, getServiceClient } from "@/lib/supabase-server";
 // Type-only import (erased at runtime) — keeps this server route off the
 // client module boundary while reusing the canonical result shape.
 import type { SubscribeResult } from "@/lib/use-newsletter";
@@ -86,14 +86,18 @@ export async function POST(request: NextRequest) {
   const { email, name, source, tripId, locale } = parsed.data;
 
   if (useSupabaseBackend) {
-    // RLS denies anon access to newsletter_signups (emails are private),
-    // so the write goes through the service-role client. The unique index
-    // on lower(email) is the de-dupe: an insert that violates it (23505)
-    // means the address is already on the list. (zod lowercased the email
-    // above, so lower(email) matches route-written and migrated rows.)
-    const svc = getServiceClient();
-    if (!svc) {
-      // Service key unconfigured: accept gracefully so the UI still works.
+    // RLS denies anon READS of newsletter_signups (emails are private)
+    // but deliberately permits validated anon inserts for this public
+    // form, so when the service key is unconfigured we fall back to the
+    // anon server client rather than dropping the signup. Either way the
+    // unique index on lower(email) is the de-dupe: an insert that
+    // violates it (23505) means the address is already on the list —
+    // insert-and-catch, never select-first (anon can't select). (zod
+    // lowercased the email above, so lower(email) matches route-written
+    // and migrated rows.)
+    const sb = getServiceClient() ?? getAnonServerClient();
+    if (!sb) {
+      // No Supabase client buildable: accept gracefully so the UI still works.
       const result: SubscribeResult = {
         status: "local",
         message: "You're on the list! ♡",
@@ -101,7 +105,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(result, { status: 200 });
     }
     try {
-      const { error } = await svc.from("newsletter_signups").insert({
+      const { error } = await sb.from("newsletter_signups").insert({
         email,
         name: name?.trim() || null,
         source,

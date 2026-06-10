@@ -83,7 +83,38 @@ async function resolveCanonicalUser(
           .eq("id", existing.id);
         return existing;
       }
-      // No row at this email. Before seeding a fresh row (= identity
+      // No row at this email — but the lookup above is case-SENSITIVE
+      // while migrated rows keep their original Firestore casing
+      // ("Maria@gmail.com" misses here). link_auth_identity() matches
+      // lower(email) server-side, backfills users.auth_id for this JWT
+      // and returns the canonical users.id, so ask it before concluding
+      // this is a new member. Best-effort: tolerate the function not
+      // existing yet, and skip when there's no session to match against.
+      const { data: sessionData } = await sb.auth.getSession();
+      if (sessionData.session) {
+        const { data: canonicalId, error: linkErr } =
+          await sb.rpc("link_auth_identity");
+        if (linkErr) {
+          console.warn("[supabase-auth] link_auth_identity failed", linkErr);
+        } else if (typeof canonicalId === "string" && canonicalId) {
+          const { data: linked } = await sb
+            .from("users")
+            .select("*")
+            .eq("id", canonicalId)
+            .limit(1)
+            .maybeSingle();
+          if (linked) {
+            const existing = mapUserRowToUser(linked as SupabaseUserRow);
+            // Touch last_active_at so they show online immediately.
+            await sb
+              .from("users")
+              .update({ last_active_at: new Date().toISOString() })
+              .eq("id", existing.id);
+            return existing;
+          }
+        }
+      }
+      // Still no row. Before seeding a fresh row (= identity
       // fork), check whether this auth uid is already linked to a
       // canonical row — happens when the user changed their auth email
       // or OAuthed with a different Google address. If so, follow the

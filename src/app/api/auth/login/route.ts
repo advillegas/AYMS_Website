@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { timingSafeEqual, createHash } from "node:crypto";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { useSupabaseBackend } from "@/lib/supabase";
 import { getServiceClient } from "@/lib/supabase-server";
@@ -27,6 +28,31 @@ function safeEqual(a: string, b: string): boolean {
   const ah = createHash("sha256").update(a).digest();
   const bh = createHash("sha256").update(b).digest();
   return timingSafeEqual(ah, bh);
+}
+
+/**
+ * Neutralize legacy Firebase-era admin profile rows. Every Firebase
+ * admin login wrote a Firestore users/{firebaseUid} doc with email
+ * admin@ayms.com (writeAdminProfile), and the migration imports it
+ * verbatim — so the canonical {id:'admin'} seed below would violate the
+ * unique lower(email) index (and users_auth_id_key, once
+ * link_auth_identity has bound the admin JWT to the legacy row). Blank
+ * both columns on any such row instead of insisting the seed wins the
+ * index: the shell row keeps its id harmlessly (admin content was
+ * always keyed by the literal store id 'admin', so nothing references
+ * the Firebase uid). Idempotent — matches zero rows once reconciled.
+ */
+async function reconcileLegacyAdminRows(svc: SupabaseClient): Promise<void> {
+  // ADMIN_EMAIL contains no ilike metacharacters, so this is an exact
+  // case-insensitive match — same semantics as lower(email) = '...'.
+  const { error } = await svc
+    .from("users")
+    .update({ email: "", auth_id: null })
+    .neq("id", "admin")
+    .ilike("email", ADMIN_EMAIL);
+  if (error) {
+    console.warn("[auth/login] legacy admin row reconcile failed", error);
+  }
 }
 
 /**
@@ -78,20 +104,39 @@ async function provisionSupabaseAdmin(password: string): Promise<boolean> {
       authUserId = created.user?.id ?? null;
     }
 
-    const { error: upsertErr } = await svc.from("users").upsert(
-      {
-        id: "admin",
-        name: "AYMS Admin",
-        email: ADMIN_EMAIL,
-        role: "admin",
-        ...(authUserId ? { auth_id: authUserId } : {}),
-      },
-      { onConflict: "id" },
-    );
+    const seedAdminRow = () =>
+      svc.from("users").upsert(
+        {
+          id: "admin",
+          name: "AYMS Admin",
+          email: ADMIN_EMAIL,
+          role: "admin",
+          ...(authUserId ? { auth_id: authUserId } : {}),
+        },
+        { onConflict: "id" },
+      );
+
+    await reconcileLegacyAdminRows(svc);
+    let { error: upsertErr } = await seedAdminRow();
+    if (upsertErr && upsertErr.code === "23505") {
+      // A colliding row slipped past (or appeared after) the reconcile —
+      // clear it and retry once rather than failing the bridge.
+      await reconcileLegacyAdminRows(svc);
+      ({ error: upsertErr } = await seedAdminRow());
+    }
     if (upsertErr) throw upsertErr;
     return true;
   } catch (err) {
-    console.warn("[auth/login] Supabase admin bridge failed", err);
+    // Log unique-index collisions distinctly so a 23505 isn't
+    // misdiagnosed as a missing SUPABASE_SERVICE_ROLE_KEY (the usual
+    // cause of adminBridge:'unavailable' per MIGRATION.md).
+    const code = (err as { code?: unknown } | null)?.code;
+    console.warn(
+      code === "23505"
+        ? "[auth/login] Supabase admin bridge failed: users unique-index collision (23505) on the admin email — legacy row could not be reconciled"
+        : "[auth/login] Supabase admin bridge failed",
+      err,
+    );
     return false;
   }
 }

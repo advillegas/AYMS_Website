@@ -113,11 +113,17 @@ create policy conversations_insert on public.conversations
   for insert to authenticated
   with check ((select public.current_app_user_id()) = any(participant_ids));
 
+-- Update gates membership on the OLD row only (USING). The explicit
+-- `with check (true)` is load-bearing: leaving a group chat removes
+-- yourself from participant_ids, so the NEW row no longer contains you —
+-- checking membership there (or omitting the clause, which defaults
+-- WITH CHECK to the USING expression) would deny every group leave.
+-- Matches firestore.rules, which checked resource.data.participantIds.
 drop policy if exists conversations_update on public.conversations;
 create policy conversations_update on public.conversations
   for update to authenticated
   using ((select public.current_app_user_id()) = any(participant_ids))
-  with check ((select public.current_app_user_id()) = any(participant_ids));
+  with check (true);
 
 drop policy if exists conversations_delete on public.conversations;
 create policy conversations_delete on public.conversations

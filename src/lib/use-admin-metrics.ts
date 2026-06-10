@@ -13,11 +13,13 @@
  *   - daily message volume(messages per day, last 14 days)
  *   - upcoming events      (count + the next few, from events.date)
  *
- * No `orderBy` on the queries (so no composite indexes) — everything
- * is sorted/aggregated in memory, matching the house pattern in
- * `use-events.ts` / `use-community-members.ts`. Each query is capped
+ * No `orderBy` on the Firestore queries (so no composite indexes) —
+ * everything is sorted/aggregated in memory, matching the house pattern
+ * in `use-events.ts` / `use-community-members.ts`. Each query is capped
  * with `limit()` so a large space can't blow up the tab; the caps are
- * generous enough for the dashboards we render.
+ * generous enough for the dashboards we render. The Supabase mirror DOES
+ * order server-side (newest first) so the cap keeps recent rows — see
+ * `useCollection`.
  *
  * Falls back to empty series (loading=false) when Firebase isn't
  * configured so the analytics page still renders its empty states.
@@ -181,6 +183,15 @@ function useCollection<T>(
   map: (d: QueryDocumentSnapshot<DocumentData>) => T,
   /** Supabase row mapper (snake_case row → T) for the same table name. */
   mapRow: (r: Record<string, unknown>) => T,
+  /**
+   * Column to ORDER BY (descending, nulls last) in the Supabase branch
+   * so the row cap keeps the NEWEST rows. Postgres `LIMIT` without
+   * `ORDER BY` returns an arbitrary (in practice mostly oldest-first)
+   * slice, which would starve the 30-day windows once a table outgrows
+   * its cap. Firestore needs no equivalent: its random auto-IDs make
+   * the capped read an approximately uniform time sample.
+   */
+  orderColumn: string,
 ): { rows: T[]; loading: boolean } {
   const [rows, setRows] = useState<T[]>([]);
   const [loading, setLoading] = useState(
@@ -191,7 +202,12 @@ function useCollection<T>(
     if (useSupabaseBackend) {
       return subscribeQuery<Record<string, unknown>>(
         name,
-        (sb) => sb.from(name).select("*").limit(cap),
+        (sb) =>
+          sb
+            .from(name)
+            .select("*")
+            .order(orderColumn, { ascending: false, nullsFirst: false })
+            .limit(cap),
         (sbRows) => {
           setRows(sbRows.map(mapRow));
           setLoading(false);
@@ -226,10 +242,10 @@ function useCollection<T>(
     );
     return () => unsub();
     // `map`/`mapRow` are recreated each render but identity doesn't
-    // matter — we intentionally only (re)subscribe on collection/cap
-    // change.
+    // matter — we intentionally only (re)subscribe on collection/cap/
+    // order change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [name, cap]);
+  }, [name, cap, orderColumn]);
 
   return { rows, loading };
 }
@@ -249,6 +265,9 @@ export function useAdminMetrics(): AdminMetrics {
       return { joinedDate: data.joinedDate };
     },
     (r) => ({ joinedDate: (r.joined_date as string | null) ?? undefined }),
+    // joined_date, not created_at: migrated users all share a created_at
+    // of the migration run, while joined_date is what growth aggregates.
+    "joined_date",
   );
 
   const { rows: messages, loading: msgLoading } = useCollection<MessageRow>(
@@ -262,6 +281,7 @@ export function useAdminMetrics(): AdminMetrics {
       channelId: (r.channel_id as string | null) ?? undefined,
       createdAt: (r.created_at as string | null) ?? undefined,
     }),
+    "created_at",
   );
 
   const { rows: events, loading: evLoading } = useCollection<EventRow & { id: string }>(
@@ -284,6 +304,8 @@ export function useAdminMetrics(): AdminMetrics {
       type: (r.type as string | null) ?? undefined,
       location: (r.location as string | null) ?? undefined,
     }),
+    // Latest-dated first, so a capped read keeps every upcoming event.
+    "date",
   );
 
   const channelNameById = useMemo(() => {

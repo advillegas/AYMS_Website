@@ -66,10 +66,37 @@ modActions, testimonials, newsletterSignups, calendarSyncConfigs,
 config/{roles,channels,userRoles,moderation}, and the per-user subcollections
 notifications/{uid}/items, users/{uid}/badges, users/{uid}/passport.
 
-Idempotent (merge on primary key) — safe to re-run; run it again right before
-the flag flip to pick up writes that happened since the first pass.
-`users.auth_id` is never written: it is linked at each member's first Supabase
-login.
+The users pass normalizes emails to lowercase and keeps the batch clear of the
+unique `lower(email)` index: duplicate emails collapse onto the most recently
+active row (losers keep their row and id — content stays linked — with email
+blanked), and any doc carrying `admin@ayms.com` is remapped onto the canonical
+`admin` id that step 5 seeds. Every remap and collapse is logged for audit.
+
+After the users upsert the script provisions a confirmed Supabase auth user
+(random throwaway password) for every migrated non-empty email except
+`admin@ayms.com` (step 5 provisions that one), so "Forgot password" actually
+delivers email on a migrated member's first login. Already-registered emails
+count as success; created/skipped counts are logged.
+
+Idempotent (merge on primary key; the newsletter pass additionally tolerates
+emails already present under a different id) — safe to re-run; run it again
+right before the flag flip to pick up writes that happened since the first
+pass. `users.auth_id` is never written: it is linked at each member's first
+Supabase login.
+
+**Data migrated with an earlier script version?** Emails were copied with
+their original Firestore casing, which the case-sensitive client lookup
+misses. Normalize once with `service_role` (SQL editor or `apply-sql.mjs`),
+after de-duplicating any case-insensitive collisions — if two rows share an
+email modulo case, keep the most recently active one and set `email = ''` on
+the others first, or the update trips `users_email_lower_idx`:
+
+```sql
+update public.users set email = lower(email) where email <> lower(email);
+```
+
+Re-running the migration script afterwards is safe and re-applies the
+normalized, de-duplicated rows.
 
 ## 3. Migrate storage objects
 
@@ -102,7 +129,10 @@ seeds the `users` row `{id: 'admin', role: 'admin'}` (idempotent; requires
 Supabase session for the admin, which RLS admin checks and the "Sync now"
 button depend on. If the service key is missing, login still succeeds but
 reports `adminBridge: 'unavailable'` and admin features that need RLS
-privileges will not work.
+privileges will not work. (Step 2 remaps any migrated `admin@ayms.com`
+profile onto the `admin` id, so this seed cannot collide with migrated data;
+if `adminBridge` still reports `'unavailable'` with the key set, check the
+server logs for the underlying database error.)
 
 ## 6. Seeding note (fresh projects only)
 
@@ -114,8 +144,9 @@ projects skip this (the data arrives in step 2).
 ## 7. Verification checklist
 
 - **Auth:** new-member sign-up; migrated member resets password ("forgot
-  password") and signs in; profile resolves to the original member id (posts,
-  friends, badges intact).
+  password" — the reset email sends because step 2 provisioned their auth
+  user) and signs in, or registers again with the same email; profile resolves
+  to the original member id (posts, friends, badges intact).
 - **Profiles/storage:** avatar, cover, gallery, post-image uploads land in
   `media` and render; migrated avatars render (no `firebasestorage` URLs in
   the UI).
@@ -156,9 +187,11 @@ before flipping forward again.
 ## Known limitations
 
 - **Passwords are not portable.** Firebase password hashes are not migrated;
-  every existing member must use "Forgot password" once on the Supabase login
-  to set a password (their email keys the account link — `users.auth_id` is
-  backfilled on that first login).
+  step 2 instead provisions a confirmed Supabase auth user with a random
+  throwaway password per migrated email. Every existing member uses "Forgot
+  password" once on the Supabase login to set their own password, or registers
+  again ("Sign up") with the same email — either path links the account by
+  email (`users.auth_id` is backfilled on that first login).
 - Meetups (and their RSVPs) are included in schema, policies, realtime, and
   migration — previously a parity gap; verify them explicitly in step 7.
 - `users.raw` keeps the original Firestore document, including stale

@@ -10,7 +10,9 @@
 //   SUPABASE_REF  = project ref
 //   SUPABASE_KEY  = service_role key
 //
-// Idempotent: every upsert merges on the primary key, so re-running is safe.
+// Idempotent: upserts merge on the primary key, the newsletter pass tolerates
+// emails already present under a different id, and auth-user provisioning
+// treats already-registered emails as success — re-running is safe.
 
 import fs from "fs";
 import crypto from "crypto";
@@ -125,15 +127,44 @@ async function upsert(table, rows) {
   return done;
 }
 
+// Per-row upsert that tolerates unique violations (23505) on secondary
+// indexes — e.g. an email already present under a different primary key after
+// a post-cutover signup. Skipped rows are logged, never fatal, so re-runs
+// stay idempotent.
+async function upsertTolerant(table, rows) {
+  let done = 0;
+  let skipped = 0;
+  for (const row of rows) {
+    const res = await fetch(`${SB_BASE}/${table}`, {
+      method: "POST",
+      headers: {
+        apikey: SVC,
+        Authorization: `Bearer ${SVC}`,
+        "Content-Type": "application/json",
+        Prefer: "resolution=merge-duplicates,return=minimal",
+      },
+      body: JSON.stringify([row]),
+    });
+    if (res.ok) { done++; continue; }
+    const text = await res.text();
+    if (res.status === 409 && text.includes("23505")) { skipped++; continue; }
+    throw new Error(`upsert ${table} -> ${res.status} ${text}`);
+  }
+  if (skipped) console.log(`${table}: skipped ${skipped} row(s) already present under a different id`);
+  return done;
+}
+
 const iso = (v) => (v ? v : null);
 
 /* ---------------- Per-collection transforms ---------------- */
-// users.auth_id is intentionally never written here: Firebase UIDs have no
-// Supabase auth identity until first login, when link_auth_identity() (RLS
-// helper) backfills it from the verified JWT.
+// users.auth_id is intentionally never written here: the auth users this
+// script provisions are matched to rows by email at first login, when
+// link_auth_identity() (RLS helper) backfills auth_id from the verified JWT.
+// Email is normalized to lowercase so the client's canonical lookup and the
+// unique lower(email) index agree.
 function rowUser(id, d) {
   return {
-    id, name: d.name ?? "", email: d.email ?? "", avatar: d.avatar ?? "",
+    id, name: d.name ?? "", email: (d.email ?? "").trim().toLowerCase(), avatar: d.avatar ?? "",
     bio: d.bio ?? "", location: d.location ?? "", joined_date: d.joinedDate ?? null,
     role: d.role ?? "amiga", name_display: d.nameDisplay ?? null, dm_privacy: d.dmPrivacy ?? null,
     pronouns: d.pronouns ?? null, headline: d.headline ?? null, cover_photo: d.coverPhoto ?? null,
@@ -342,9 +373,79 @@ async function main() {
   TOKEN = await getAccessToken();
   console.log("admin token minted ✓");
 
-  // users
+  // users — the table enforces unique lower(email) (users_email_lower_idx),
+  // so the batch must arrive collision-free:
+  //  - docs carrying admin@ayms.com collapse onto the canonical 'admin' id
+  //    that /api/auth/login seeds (the upsert then merges with that row)
+  //  - duplicate emails keep the most recently active row; the losers keep
+  //    their row and id (content references survive) with email blanked,
+  //    which the partial index ignores
+  const ADMIN_EMAIL = "admin@ayms.com";
+  const moreActive = (a, b) => {
+    if ((a.last_active_at ?? "") !== (b.last_active_at ?? "")) {
+      return (a.last_active_at ?? "") > (b.last_active_at ?? "") ? a : b;
+    }
+    return (a.created_at ?? "") <= (b.created_at ?? "") ? a : b; // tie: oldest row wins
+  };
   const users = await fsList("users");
-  report.users = await upsert("users", users.map((u) => rowUser(u.id, u.data)));
+  let userRows = users.map((u) => rowUser(u.id, u.data));
+  const adminRows = userRows.filter((r) => r.email === ADMIN_EMAIL);
+  if (adminRows.length > 0) {
+    const keep = adminRows.find((r) => r.id === "admin") ?? adminRows.reduce(moreActive);
+    if (keep.id !== "admin") {
+      console.log(`users: remapped ${ADMIN_EMAIL} doc ${keep.id} -> 'admin'`);
+      keep.id = "admin";
+    }
+    userRows = userRows.filter((r) => {
+      if (r === keep) return true;
+      if (r.email !== ADMIN_EMAIL && r.id !== "admin") return true;
+      console.log(`users: dropped doc ${r.id} (${r.email || "no email"}) — collapsed onto 'admin'`);
+      return false;
+    });
+  }
+  const byUserEmail = new Map();
+  for (const r of userRows) {
+    if (!r.email) continue;
+    const prev = byUserEmail.get(r.email);
+    if (!prev) { byUserEmail.set(r.email, r); continue; }
+    const keep = moreActive(prev, r);
+    const lose = keep === prev ? r : prev;
+    byUserEmail.set(keep.email, keep);
+    console.log(`users: duplicate email ${keep.email} — kept ${keep.id}, blanked ${lose.id}`);
+    lose.email = "";
+  }
+  report.users = await upsert("users", userRows);
+
+  // Supabase auth users for migrated members. Without an auth.users entry the
+  // documented "forgot password once" first login silently sends nothing
+  // (GoTrue's /recover answers 200 for unknown emails). Provision a confirmed
+  // auth user with a random throwaway password per migrated email; members
+  // set a real password via the recovery flow (or register with the same
+  // email). admin@ayms.com is provisioned by /api/auth/login. Idempotent:
+  // already-registered emails count as already present.
+  let authCreated = 0;
+  let authPresent = 0;
+  let authSkipped = 0;
+  for (const r of userRows) {
+    if (!r.email || r.email === ADMIN_EMAIL) { authSkipped++; continue; }
+    const res = await fetch(`https://${REF}.supabase.co/auth/v1/admin/users`, {
+      method: "POST",
+      headers: { apikey: SVC, Authorization: `Bearer ${SVC}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: r.email,
+        email_confirm: true,
+        password: crypto.randomBytes(24).toString("base64url"),
+      }),
+    });
+    if (res.ok) { authCreated++; continue; }
+    const text = await res.text();
+    if ((res.status === 422 || res.status === 400) && /email_exists|already.{0,20}registered/i.test(text)) {
+      authPresent++;
+      continue;
+    }
+    throw new Error(`auth user ${r.email} -> ${res.status} ${text}`);
+  }
+  console.log(`auth users: ${authCreated} created, ${authPresent} already present, ${authSkipped} skipped (no email / admin)`);
 
   // messages (channel chat)
   const messages = await fsList("messages");
@@ -415,7 +516,9 @@ async function main() {
   report.testimonials = await upsert("testimonials", testimonials.map((t) => rowTestimonial(t.id, t.data)));
 
   // newsletterSignups — the table enforces unique lower(email); Firestore's
-  // dedupe was best-effort, so collapse duplicates here (keep the oldest)
+  // dedupe was best-effort, so collapse duplicates here (keep the oldest).
+  // Tolerant per-row upsert: a re-run can meet the same email under a
+  // different id (post-cutover signups get UUID ids) and must not abort.
   const signups = await fsList("newsletterSignups");
   const byEmail = new Map();
   for (const s of signups.map((s) => rowNewsletterSignup(s.id, s.data))) {
@@ -423,7 +526,7 @@ async function main() {
     const prev = byEmail.get(key);
     if (!prev || s.created_at < prev.created_at) byEmail.set(key, s);
   }
-  report.newsletter_signups = await upsert("newsletter_signups", [...byEmail.values()]);
+  report.newsletter_signups = await upsertTolerant("newsletter_signups", [...byEmail.values()]);
 
   // calendarSyncConfigs
   const syncs = await fsList("calendarSyncConfigs");

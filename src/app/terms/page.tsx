@@ -83,10 +83,13 @@ export default function TermsOfServicePage() {
                 Welcome to Amigas Y Más Social (&ldquo;AYMS,&rdquo;
                 &ldquo;we,&rdquo; &ldquo;us,&rdquo; or &ldquo;our&rdquo;). These
                 Terms of Service (&ldquo;Terms&rdquo;) govern your access to and
-                use of{" "}
-                <span className="text-ink font-medium">amigasymassocial.com</span>,
-                our community platform, and the trips and events we offer
-                (together, the &ldquo;Services&rdquo;). By creating an account
+                use of our websites at{" "}
+                <span className="text-ink font-medium">amigasymassocial.com</span>{" "}
+                and{" "}
+                <span className="text-ink font-medium">amigasymas.com</span>, our
+                community platform, and the trips and events we offer (these
+                sites share one community and backend; together, the
+                &ldquo;Services&rdquo;). By creating an account
                 or using the Services, you agree to these Terms and to our{" "}
                 <Link
                   href="/privacy"
@@ -98,14 +101,24 @@ export default function TermsOfServicePage() {
               </p>
             </div>
 
-            <Section id="eligibility" title="Eligibility">
+            <Section id="eligibility" title="Eligibility &amp; membership">
               <p>
-                You must be at least 18 years old to create an account and use
-                the community platform. Our group trips are designed for women
-                21 and older; specific trips may have their own age or other
-                requirements described at booking. By using the Services, you
-                confirm you meet these requirements and that the information you
-                provide is accurate.
+                Amigas Y Más Social is a private community by and for Latina
+                women. To create an account and take part, you must be a woman
+                who is part of the Latina community and at least 18 years old.
+                Our group trips are for women 21 and older; individual trips may
+                set additional age or other requirements at booking.
+              </p>
+              <p>
+                This is a women&rsquo;s space. Men are not eligible for
+                membership and may not create accounts, join the community, or
+                attend members-only trips and events. We may decline, suspend,
+                or remove any account that does not meet these membership
+                criteria, at our discretion.
+              </p>
+              <p>
+                By using the Services, you confirm that you meet these
+                requirements and that the information you provide is accurate.
               </p>
             </Section>
 
@@ -150,6 +163,21 @@ export default function TermsOfServicePage() {
                 We may moderate, remove content, mute, suspend, or terminate
                 accounts that violate these Terms or harm the community, at our
                 discretion.
+              </p>
+            </Section>
+
+            <Section id="no-promotion" title="No promotion or solicitation">
+              <p>
+                The community is a personal, social space for amigas — not a
+                marketing channel. Without our prior written permission, you may
+                not use the Services (including chat, direct messages, meetups,
+                your profile, or the member directory) to advertise, promote, or
+                sell products, services, businesses, or events; to recruit for
+                any business, multi-level-marketing program, or other
+                organization; or to solicit, spam, or send unsolicited
+                commercial messages to other members. We may remove promotional
+                content and suspend or remove accounts that use the community to
+                promote.
               </p>
             </Section>
 

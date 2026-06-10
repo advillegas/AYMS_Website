@@ -81,10 +81,13 @@ export default function PrivacyPolicyPage() {
                 Amigas Y Más Social (&ldquo;AYMS,&rdquo; &ldquo;we,&rdquo;
                 &ldquo;us,&rdquo; or &ldquo;our&rdquo;) is a Latina travel
                 community. This Privacy Policy explains what information we
-                collect when you visit{" "}
+                collect when you visit our websites at{" "}
                 <span className="text-ink font-medium">amigasymassocial.com</span>{" "}
-                or use our community platform (together, the
-                &ldquo;Services&rdquo;), how we use it, who we share it with,
+                and{" "}
+                <span className="text-ink font-medium">amigasymas.com</span>, or
+                use our community platform (these sites share one community and
+                backend; together, the &ldquo;Services&rdquo;), how we use it,
+                who we share it with,
                 and the choices you have. By using the Services, you agree to
                 this policy.
               </p>

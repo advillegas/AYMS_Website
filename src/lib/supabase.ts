@@ -43,20 +43,33 @@ export function getSupabase(): SupabaseClient | null {
     },
     realtime: { params: { eventsPerSecond: 10 } },
   });
-  // ONE auth listener for the whole app (subscriptions must not each
-  // register their own — auth-js awaits every callback under its internal
-  // lock during the restore-time INITIAL_SESSION emission, and a listener
-  // storm there freezes the data layer). It keeps the realtime socket's
-  // claims current — without setAuth, channels negotiate with the anon
-  // key and RLS silently filters every postgres_changes event on
-  // authenticated-only tables (chat messages "send" but never confirm) —
-  // and feeds the auth registry that subscribeQuery reads synchronously.
+  // ONE auth listener for the whole app, and the ONLY place that calls
+  // realtime.setAuth. This matters twice over:
+  //  • auth-js awaits every onAuthStateChange callback under its internal
+  //    lock, so a per-subscription listener storm freezes the data layer.
+  //  • realtime.setAuth re-pushes the token to EVERY open channel, so
+  //    calling it per-subscription (as each of ~15 channels mounts) churns
+  //    the whole socket and drops postgres_changes events — the cause of
+  //    laggy/missed live updates. Applying it once keeps delivery instant.
+  // The snapshot is marked `known` only AFTER the socket token is set, so
+  // subscriptions (which gate on `known`) always join authenticated and
+  // pass RLS on postgres_changes. Deferred off auth-js's lock.
   client.auth.onAuthStateChange((_event, session) => {
-    authState.token = session?.access_token ?? null;
-    authState.uid = session?.user?.id ?? null;
-    authState.known = true;
-    client?.realtime.setAuth(authState.token);
-    for (const fn of authListeners) fn();
+    const token = session?.access_token ?? null;
+    const uid = session?.user?.id ?? null;
+    setTimeout(() => {
+      void (async () => {
+        try {
+          await client?.realtime.setAuth(token);
+        } catch {
+          /* socket keeps its prior token; the visible-tab poll still converges */
+        }
+        authState.token = token;
+        authState.uid = uid;
+        authState.known = true;
+        for (const fn of authListeners) fn();
+      })();
+    }, 0);
   });
   return client;
 }

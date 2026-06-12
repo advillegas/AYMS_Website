@@ -15,6 +15,7 @@ import {
   Sparkles,
   ArrowRight,
 } from "lucide-react";
+import { FlipCard } from "@/components/ui/flip-card";
 
 const CHECKOUT_FULL = "https://buy.stripe.com/cNi7sM4nsdRp2Ga6s88IU0C";
 const CHECKOUT_SPLIT = "https://buy.stripe.com/aFa14o2fkcNl1C6g2I8IU0F";
@@ -28,23 +29,51 @@ const FACTS = [
 const FEATURES = [
   {
     icon: "/camp/icon-nostalgia.png",
-    title: "Camp Nostalgia",
-    desc: "Cabins, bunk beds, ice breakers, and classic camp vibes — re-imagined for Latinas.",
+    en: {
+      title: "Camp Nostalgia",
+      desc: "Cabins, bunk beds, ice breakers, and classic camp vibes — re-imagined for Latinas.",
+    },
+    es: {
+      title: "Nostalgia de Campamento",
+      desc: "Cabañas, literas, dinámicas para romper el hielo y el clásico ambiente de campamento — reimaginado para Latinas.",
+    },
+    gradientBack: "from-[#FF0099] to-[#B51760]",
   },
   {
     icon: "/camp/icon-play.png",
-    title: "Play, Laughter, Fun",
-    desc: "Group games, pool time, movie nights, and carefree moments that feel like true sisterhood.",
+    en: {
+      title: "Play, Laughter, Fun",
+      desc: "Group games, pool time, movie nights, and carefree moments that feel like true sisterhood.",
+    },
+    es: {
+      title: "Juego, Risas, Diversión",
+      desc: "Juegos en grupo, piscina, noches de película y momentos sin preocupaciones que se sienten como verdadera hermandad.",
+    },
+    gradientBack: "from-[#FF7F50] to-[#FF0099]",
   },
   {
     icon: "/camp/icon-connection.png",
-    title: "Connection & Reflection",
-    desc: "Intentional connections and space to reconnect with yourself and other Latinas.",
+    en: {
+      title: "Connection & Reflection",
+      desc: "Intentional connections and space to reconnect with yourself and other Latinas.",
+    },
+    es: {
+      title: "Conexión y Reflexión",
+      desc: "Conexiones intencionales y espacio para reconectar contigo misma y con otras Latinas.",
+    },
+    gradientBack: "from-[#9B2C8A] to-[#FF0099]",
   },
   {
     icon: "/camp/icon-community.png",
-    title: "True Community",
-    desc: "You'll arrive solo but you won't leave alone. These are amigas that extend beyond the weekend.",
+    en: {
+      title: "True Community",
+      desc: "You'll arrive solo but you won't leave alone. These are amigas that extend beyond the weekend.",
+    },
+    es: {
+      title: "Comunidad Verdadera",
+      desc: "Llegarás sola pero no te irás sola. Son amigas que trascienden el fin de semana.",
+    },
+    gradientBack: "from-[#B51760] to-[#FF7F50]",
   },
 ];
 
@@ -100,7 +129,7 @@ const CTA_PHOTOS = ["/camp/cta-1.png", "/camp/cta-2.png", "/camp/cta-3.png", "/c
 
 function CheckoutButtons({ className = "" }: { className?: string }) {
   return (
-    <div className={`flex flex-col items-center justify-center gap-3 sm:flex-row ${className}`}>
+    <div className={`flex flex-col gap-3 sm:flex-row ${className}`}>
       <a
         href={CHECKOUT_FULL}
         target="_blank"
@@ -137,32 +166,27 @@ export default function CampPage() {
     <CmsPageWrapper slug="camp">
       <Navbar />
       <main className="min-h-screen pt-[88px]">
-        {/* Hero */}
-        <section className="canvas-editorial grain relative overflow-hidden py-24 sm:py-28">
+        {/* Hero — split: content + large cabin photo */}
+        <section className="canvas-editorial grain relative overflow-hidden py-20 sm:py-24">
           <div className="mesh-warm" />
-          <div className="relative mx-auto max-w-4xl px-4 text-center sm:px-6 lg:px-8">
-            <motion.div
-              initial={reduceMotion ? false : { scale: 0.85, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ duration: 0.6, ease: [0.34, 1.56, 0.64, 1] }}
-              className="mx-auto mb-6 w-44 sm:w-52"
-            >
-              <Image
-                src="/camp/hero-graphic.png"
-                alt="Amigas Summer Camp"
-                width={300}
-                height={300}
-                priority
-                unoptimized
-                className="mx-auto h-auto w-full drop-shadow-[0_8px_24px_rgb(255_0_153/0.18)]"
-              />
-            </motion.div>
+          <div className="relative mx-auto grid max-w-7xl items-center gap-10 px-4 text-center sm:px-6 lg:grid-cols-2 lg:gap-14 lg:px-8 lg:text-left">
             <motion.div
               initial={reduceMotion ? false : { opacity: 0, y: 32 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
             >
-              <div className="pill-glass mx-auto mb-6 flex w-fit items-center gap-2.5 px-4 py-1.5">
+              <div className="mx-auto mb-5 w-24 sm:w-28 lg:mx-0">
+                <Image
+                  src="/camp/hero-graphic.png"
+                  alt="Amigas Summer Camp"
+                  width={300}
+                  height={300}
+                  priority
+                  unoptimized
+                  className="h-auto w-full drop-shadow-[0_8px_24px_rgb(255_0_153/0.18)]"
+                />
+              </div>
+              <div className="pill-glass mx-auto mb-6 flex w-fit items-center gap-2.5 px-4 py-1.5 lg:mx-0">
                 <Flame className="h-4 w-4 text-[#FF7F50]" aria-hidden="true" />
                 <span className="eyebrow text-[#B51760]">All-Inclusive · Aug 28–30, 2026</span>
               </div>
@@ -172,12 +196,12 @@ export default function CampPage() {
                   but make it Amigas
                 </span>
               </h1>
-              <p className="text-lead font-[family-name:var(--font-sans)] mx-auto mt-6 max-w-2xl text-ink-soft">
+              <p className="text-lead font-[family-name:var(--font-sans)] mx-auto mt-6 max-w-xl text-ink-soft lg:mx-0">
                 An <strong className="font-semibold text-ink">all-inclusive</strong> nostalgic
                 weekend designed for Latina women craving connection, laughter, and the kind of
                 friendships that feel like home.
               </p>
-              <div className="mt-7 flex flex-wrap items-center justify-center gap-x-6 gap-y-3">
+              <div className="mt-7 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 lg:justify-start">
                 {FACTS.map((f) => (
                   <span key={f.label} className="flex items-center gap-2 text-sm font-medium text-ink-soft">
                     <f.icon className="h-4 w-4 text-[#FF7F50]" aria-hidden="true" />
@@ -185,7 +209,27 @@ export default function CampPage() {
                   </span>
                 ))}
               </div>
-              <CheckoutButtons className="mt-9" />
+              <CheckoutButtons className="mt-9 items-center justify-center lg:items-start lg:justify-start" />
+            </motion.div>
+
+            <motion.div
+              initial={reduceMotion ? false : { opacity: 0, scale: 0.94 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+              className="relative mx-auto w-full max-w-md lg:max-w-none"
+            >
+              <div className="relative aspect-[3/4] w-full overflow-hidden rounded-[2rem] elevate-4 ring-1 ring-white/60">
+                <Image
+                  src="/camp/hero-photo.jpg"
+                  alt="Amigas laughing together at Summer Camp"
+                  fill
+                  priority
+                  unoptimized
+                  sizes="(max-width: 1024px) 90vw, 45vw"
+                  className="object-cover"
+                />
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#221019]/15 via-transparent to-transparent" aria-hidden="true" />
+              </div>
             </motion.div>
           </div>
         </section>
@@ -242,24 +286,51 @@ export default function CampPage() {
           </div>
         </section>
 
-        {/* Feature cards */}
-        <section className="canvas-editorial relative py-20 sm:py-24">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        {/* Feature cards — flip to Spanish, over the pink bokeh background */}
+        <section className="relative overflow-hidden py-20 sm:py-24">
+          <Image
+            src="/camp/texture.webp"
+            alt=""
+            fill
+            unoptimized
+            sizes="100vw"
+            className="object-cover"
+          />
+          <div className="absolute inset-0 bg-white/25" aria-hidden="true" />
+          <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <motion.p {...reveal} className="eyebrow mb-8 text-center text-[#B51760]">
+              Hover or tap to flip · Pasa el cursor o toca para voltear
+            </motion.p>
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
               {FEATURES.map((f, i) => (
                 <motion.div
-                  key={f.title}
+                  key={f.en.title}
                   initial={reduceMotion ? false : { opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
-                  transition={{ delay: reduceMotion ? 0 : i * 0.08, ease: [0.16, 1, 0.3, 1] }}
-                  className="lift flex flex-col items-center rounded-2xl border border-[#221019]/8 bg-white p-7 text-center elevate-2"
+                  transition={{ delay: reduceMotion ? 0 : i * 0.08, ease: EASE }}
                 >
-                  <div className="mb-4 h-20 w-20">
-                    <Image src={f.icon} alt="" width={80} height={80} unoptimized className="h-full w-full object-contain" />
-                  </div>
-                  <h3 className="font-display text-lg text-ink">{f.title}</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-ink-soft">{f.desc}</p>
+                  <FlipCard
+                    className="h-64 cursor-pointer rounded-2xl"
+                    front={
+                      <div className="flex h-full flex-col items-center justify-center rounded-2xl border border-[#221019]/8 bg-white p-7 text-center elevate-2">
+                        <div className="mb-4 h-16 w-16">
+                          <Image src={f.icon} alt="" width={64} height={64} unoptimized className="h-full w-full object-contain" />
+                        </div>
+                        <h3 className="font-display text-lg text-ink">{f.en.title}</h3>
+                        <p className="mt-2 text-sm leading-relaxed text-ink-soft">{f.en.desc}</p>
+                      </div>
+                    }
+                    back={
+                      <div className={`flex h-full flex-col items-center justify-center rounded-2xl bg-gradient-to-br ${f.gradientBack} p-7 text-center text-white`}>
+                        <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/90 p-2.5">
+                          <Image src={f.icon} alt="" width={48} height={48} unoptimized className="h-full w-full object-contain" />
+                        </div>
+                        <h3 className="font-display text-lg">{f.es.title}</h3>
+                        <p className="mt-2 text-sm leading-relaxed text-white/90">{f.es.desc}</p>
+                      </div>
+                    }
+                  />
                 </motion.div>
               ))}
             </div>
@@ -382,7 +453,7 @@ export default function CampPage() {
                 Spots are limited and these weekends fill fast. Lock in your bunk and we&apos;ll
                 handle the rest.
               </p>
-              <CheckoutButtons className="mt-8" />
+              <CheckoutButtons className="mt-8 items-center justify-center" />
             </motion.div>
             <motion.div {...reveal} className="mt-14 grid grid-cols-2 gap-4 sm:grid-cols-4">
               {CTA_PHOTOS.map((src) => (

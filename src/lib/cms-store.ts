@@ -48,6 +48,7 @@ export interface NavLink {
 const DEFAULT_NAV: NavLink[] = [
   { id: "nav-home", label: "Home", href: "/", isVisible: true },
   { id: "nav-trips", label: "Trips", href: "/trips", isVisible: true },
+  { id: "nav-camp", label: "Camp", href: "/camp", isVisible: true },
   { id: "nav-events", label: "Events", href: "/events", isVisible: true },
   { id: "nav-gallery", label: "Gallery", href: "/gallery", isVisible: true },
   { id: "nav-faq", label: "FAQ", href: "/faq", isVisible: true },
@@ -56,6 +57,7 @@ const DEFAULT_NAV: NavLink[] = [
 const SYSTEM_PAGES = [
   { slug: "home", title: "Home", href: "/" },
   { slug: "trips", title: "Trips", href: "/trips" },
+  { slug: "camp", title: "Camp", href: "/camp" },
   { slug: "events", title: "Events", href: "/events" },
   { slug: "gallery", title: "Gallery", href: "/gallery" },
   { slug: "faq", title: "FAQ", href: "/faq" },

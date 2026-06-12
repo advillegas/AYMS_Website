@@ -1,10 +1,142 @@
 import { anthropic } from "@ai-sdk/anthropic";
 import { streamText, convertToModelMessages, type UIMessage } from "ai";
+import { createClient } from "@supabase/supabase-js";
 import { buildSystemPrompt } from "@/lib/chatbot-system-prompt";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
+
+/* ------------------------------------------------------------------ */
+/* Live site data — grounds the bot in the current Supabase content   */
+/* (published trips + the events calendar, incl. Google-Calendar      */
+/* synced events) so it never serves stale prices/dates/availability. */
+/* ------------------------------------------------------------------ */
+
+interface TripRow {
+  title: string | null;
+  destination: string | null;
+  dates: string | null;
+  duration: string | null;
+  price: number | null;
+  deposit: number | null;
+  status: string | null;
+  spots_left: number | null;
+  published: boolean | null;
+  sort_order: number | null;
+}
+
+interface EventRow {
+  title: string | null;
+  date: string | null;
+  end_date: string | null;
+  start_time: string | null;
+  location: string | null;
+  type: string | null;
+  published: boolean | null;
+}
+
+function prettyDate(iso: string): string {
+  // Build at noon UTC so the calendar day never shifts across timezones.
+  const d = new Date(`${iso.slice(0, 10)}T12:00:00Z`);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+}
+
+function statusLabel(status: string | null, spotsLeft: number | null): string {
+  switch (status) {
+    case "sold-out":
+      return "SOLD OUT";
+    case "waitlist":
+      return "Waitlist only";
+    case "coming-soon":
+      return "Coming soon";
+    default:
+      return typeof spotsLeft === "number" && spotsLeft > 0 && spotsLeft <= 8
+        ? `Only ${spotsLeft} spots left`
+        : "Booking open";
+  }
+}
+
+/** Returns { liveTrips, liveEvents } markdown blocks, or empty strings. */
+async function fetchLiveContext(): Promise<{
+  liveTrips: string;
+  liveEvents: string;
+}> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !key) return { liveTrips: "", liveEvents: "" };
+
+  try {
+    const sb = createClient(url, key, { auth: { persistSession: false } });
+    const todayIso = new Date().toISOString().slice(0, 10);
+
+    const [tripsRes, eventsRes] = await Promise.all([
+      sb
+        .from("trips")
+        .select(
+          "title,destination,dates,duration,price,deposit,status,spots_left,published,sort_order",
+        )
+        .limit(100),
+      sb
+        .from("events")
+        .select("title,date,end_date,start_time,location,type,published")
+        .gte("date", todayIso)
+        .order("date", { ascending: true })
+        .limit(30),
+    ]);
+
+    let liveTrips = "";
+    if (!tripsRes.error && Array.isArray(tripsRes.data)) {
+      const rows = (tripsRes.data as TripRow[])
+        .filter((t) => t.published !== false && t.title)
+        .sort((a, b) => (a.sort_order ?? 999) - (b.sort_order ?? 999));
+      if (rows.length > 0) {
+        const lines = rows.map((t) => {
+          const price = typeof t.price === "number" ? `$${t.price.toLocaleString()}` : "—";
+          const deposit = typeof t.deposit === "number" ? `$${t.deposit.toLocaleString()}` : "—";
+          return `| **${t.title}** | ${t.destination ?? ""} | ${t.dates ?? "TBA"} | ${t.duration ?? ""} | **${price}** | ${deposit} | ${statusLabel(t.status, t.spots_left)} |`;
+        });
+        liveTrips = `## Live trips (current source of truth)\n| Trip | Destination | Dates | Length | Price | Deposit | Status |\n|---|---|---|---|---|---|---|\n${lines.join("\n")}`;
+      }
+    }
+
+    let liveEvents = "";
+    if (!eventsRes.error && Array.isArray(eventsRes.data)) {
+      const rows = (eventsRes.data as EventRow[]).filter(
+        (e) =>
+          e.published !== false &&
+          e.title &&
+          e.date &&
+          // Camp has its own authoritative section + /camp page; drop any
+          // (sometimes stale/duplicate) calendar entries so the bot can't
+          // contradict the canonical Aug 28–30 dates.
+          !/summer\s*camp/i.test(e.title),
+      );
+      if (rows.length > 0) {
+        const lines = rows.map((e) => {
+          const when = e.end_date && e.end_date !== e.date
+            ? `${prettyDate(e.date as string)}–${prettyDate(e.end_date)}`
+            : prettyDate(e.date as string);
+          const where = e.location ? ` — ${e.location}` : "";
+          const time = e.start_time ? ` (${e.start_time})` : "";
+          return `- **${when}** — ${e.title}${where}${time}`;
+        });
+        liveEvents = `## Live events (current calendar — includes Google-Calendar synced events)\n${lines.join("\n")}`;
+      }
+    }
+
+    return { liveTrips, liveEvents };
+  } catch (err) {
+    console.warn("[chat] live context fetch failed", err);
+    return { liveTrips: "", liveEvents: "" };
+  }
+}
 
 /**
  * Chat completion endpoint backing the floating AYMS chatbot.
@@ -77,9 +209,13 @@ export async function POST(req: Request) {
 
   const modelMessages = await convertToModelMessages(messages);
 
+  // Ground the bot in current site data (published trips + upcoming
+  // calendar events). Falls back to the static baseline on any failure.
+  const { liveTrips, liveEvents } = await fetchLiveContext();
+
   const result = streamText({
     model: anthropic("claude-haiku-4-5"),
-    system: buildSystemPrompt(),
+    system: buildSystemPrompt({ liveTrips, liveEvents }),
     messages: modelMessages,
     temperature: 0.5,
     maxOutputTokens: 800,

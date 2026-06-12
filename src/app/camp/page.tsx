@@ -167,7 +167,7 @@ export default function CampPage() {
       <Navbar />
       <main className="min-h-screen pt-[88px]">
         {/* Hero — centered, with a large photo showcase beneath */}
-        <section className="canvas-editorial grain relative overflow-hidden py-24 sm:py-28">
+        <section className="canvas-editorial grain relative overflow-hidden pb-14 pt-6 sm:pb-16 sm:pt-8">
           <div className="mesh-warm" />
           <div className="relative mx-auto max-w-4xl px-4 text-center sm:px-6 lg:px-8">
             <motion.div

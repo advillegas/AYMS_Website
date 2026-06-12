@@ -13,10 +13,14 @@ import { Testimonials } from "@/components/landing/testimonials";
 import { CommunityPreview } from "@/components/landing/community-preview";
 import { Contact } from "@/components/landing/contact";
 import { Footer } from "@/components/landing/footer";
+import { CmsPageWrapper } from "@/components/admin/cms-page-wrapper";
 
 export default function Home() {
+  // Wrapped so the site editor can override / inline-edit this page.
+  // Renders the real landing below by default; only swaps in a CMS
+  // version once an admin publishes one.
   return (
-    <>
+    <CmsPageWrapper slug="home">
       <Navbar />
       <main className="flex-1">
         <Hero />
@@ -32,6 +36,6 @@ export default function Home() {
         <Contact />
       </main>
       <Footer />
-    </>
+    </CmsPageWrapper>
   );
 }

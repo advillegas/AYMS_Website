@@ -6,6 +6,7 @@ import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { PAST_TRIPS } from "@/lib/trips-data";
 import { Navbar } from "@/components/landing/navbar";
 import { Footer } from "@/components/landing/footer";
+import { CmsPageWrapper } from "@/components/admin/cms-page-wrapper";
 import { MapPin, Users, Calendar, Images, Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -29,7 +30,7 @@ export default function GalleryPage() {
   );
 
   return (
-    <>
+    <CmsPageWrapper slug="gallery">
       <Navbar />
       <main className="canvas-editorial min-h-screen pt-[88px]">
         {/* Hero — light editorial */}
@@ -221,6 +222,6 @@ export default function GalleryPage() {
         </section>
       </main>
       <Footer />
-    </>
+    </CmsPageWrapper>
   );
 }

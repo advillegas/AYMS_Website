@@ -3,7 +3,8 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useCms } from "@/lib/cms-store";
 import {
   Menu,
   X,
@@ -49,7 +50,20 @@ export function Navbar() {
     router.push("/");
   }
 
-  const links = FALLBACK_LINKS;
+  // Navigation is editable from the site editor (Admin → site editor →
+  // Nav). Subscribe so published changes appear live; fall back to the
+  // hardcoded links until the CMS nav has loaded.
+  const cmsNav = useCms((s) => s.navLinks);
+  useEffect(() => {
+    const unsub = useCms.getState().subscribe();
+    return unsub;
+  }, []);
+  const links = useMemo(() => {
+    const visible = (cmsNav ?? [])
+      .filter((l) => l.isVisible)
+      .map((l) => ({ label: l.label, href: l.href }));
+    return visible.length > 0 ? visible : FALLBACK_LINKS;
+  }, [cmsNav]);
 
   return (
     <>

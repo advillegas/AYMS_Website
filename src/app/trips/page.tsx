@@ -17,6 +17,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Navbar } from "@/components/landing/navbar";
 import { Footer } from "@/components/landing/footer";
+import { CmsPageWrapper } from "@/components/admin/cms-page-wrapper";
 import {
   Calendar,
   Clock,
@@ -75,7 +76,7 @@ export default function TripsPage() {
   });
 
   return (
-    <>
+    <CmsPageWrapper slug="trips">
       <Navbar />
       <main className="min-h-screen pt-[88px]">
         {/* Hero banner — light editorial, coral accent allowed on trips */}
@@ -366,7 +367,7 @@ export default function TripsPage() {
           {selected && <TripDetail trip={selected} />}
         </DialogContent>
       </Dialog>
-    </>
+    </CmsPageWrapper>
   );
 }
 

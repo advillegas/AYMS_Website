@@ -4,6 +4,7 @@ import { useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { Navbar } from "@/components/landing/navbar";
 import { Footer } from "@/components/landing/footer";
+import { CmsPageWrapper } from "@/components/admin/cms-page-wrapper";
 import { Input } from "@/components/ui/input";
 import {
   Accordion,
@@ -72,7 +73,7 @@ export default function FAQPage() {
   const totalResults = filteredCategories.reduce((s, c) => s + c.items.length, 0);
 
   return (
-    <>
+    <CmsPageWrapper slug="faq">
       <Navbar />
       <main className="canvas-editorial min-h-screen pt-[88px]">
         {/* Hero — light editorial */}
@@ -240,6 +241,6 @@ export default function FAQPage() {
         </section>
       </main>
       <Footer />
-    </>
+    </CmsPageWrapper>
   );
 }

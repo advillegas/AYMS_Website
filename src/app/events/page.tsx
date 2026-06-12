@@ -5,6 +5,7 @@ import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { useEvents, type CalendarEvent } from "@/lib/use-events";
 import { Navbar } from "@/components/landing/navbar";
 import { Footer } from "@/components/landing/footer";
+import { CmsPageWrapper } from "@/components/admin/cms-page-wrapper";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -73,7 +74,7 @@ export default function EventsPage() {
     .sort((a, b) => a.date.localeCompare(b.date));
 
   return (
-    <>
+    <CmsPageWrapper slug="events">
       <Navbar />
       <main className="min-h-screen pt-[88px]">
         {/* Hero — light editorial */}
@@ -363,6 +364,6 @@ export default function EventsPage() {
           )}
         </DialogContent>
       </Dialog>
-    </>
+    </CmsPageWrapper>
   );
 }

@@ -4,6 +4,7 @@ import { useRef, useState, useEffect } from "react";
 import type { BuilderElement } from "@/lib/builder-store";
 import { cn } from "@/lib/utils";
 import { RevealWrap } from "@/components/builder/reveal-wrap";
+import { uploadCmsMedia, toVideoEmbedUrl } from "@/lib/supabase-storage";
 
 const NOISE_BG =
   "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E\")";
@@ -73,6 +74,7 @@ interface Props {
 export function ElementRenderer({ element, editable, onUpdate, onClick, isSelected }: Props) {
   const { type, props: p } = element;
   const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
 
   const wrapper = cn(
     "relative group/el transition-all",
@@ -93,12 +95,25 @@ export function ElementRenderer({ element, editable, onUpdate, onClick, isSelect
     onClick?.();
   }
 
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>, key: string) {
+  async function handleFileChange(
+    e: React.ChangeEvent<HTMLInputElement>,
+    key: string,
+  ) {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => onUpdate?.({ [key]: reader.result as string });
-    reader.readAsDataURL(file);
+    // Reset the input so re-picking the same file fires onChange again.
+    e.target.value = "";
+    setUploading(true);
+    try {
+      // Uploads to Supabase Storage and stores the URL (never a base64
+      // blob — these elements persist as JSONB + stream over realtime).
+      const url = await uploadCmsMedia(file);
+      onUpdate?.({ [key]: url });
+    } catch (err) {
+      console.error("[builder] media upload failed", err);
+    } finally {
+      setUploading(false);
+    }
   }
 
   switch (type) {
@@ -153,7 +168,7 @@ export function ElementRenderer({ element, editable, onUpdate, onClick, isSelect
         <div className={wrapper} onClick={handleClick}>
           {rv(
             <>
-          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleFileChange(e, "src")} />
+          <input ref={fileRef} type="file" accept="image/*,image/gif" className="hidden" onChange={(e) => handleFileChange(e, "src")} />
           {(p.src as string) ? (
             <div className={cn("relative group/img", !!(p.ambientFloat as boolean) && !editable && "animate-float")}>
               <img
@@ -167,7 +182,7 @@ export function ElementRenderer({ element, editable, onUpdate, onClick, isSelect
                   onClick={(e) => { e.stopPropagation(); fileRef.current?.click(); }}
                   className="absolute inset-0 flex items-center justify-center bg-[#221019]/45 backdrop-blur-[1px] opacity-0 group-hover/img:opacity-100 transition-opacity rounded-xl text-white text-sm font-semibold"
                 >
-                  Click to replace image
+                  {uploading ? "Uploading…" : "Click to replace image / GIF"}
                 </button>
               )}
             </div>
@@ -178,8 +193,8 @@ export function ElementRenderer({ element, editable, onUpdate, onClick, isSelect
               style={{ borderRadius: `${p.borderRadius}px` }}
             >
               <div className="text-center">
-                <span className="text-3xl block mb-2">📷</span>
-                <span className="text-sm font-medium">Click to upload image</span>
+                <span className="text-3xl block mb-2">{uploading ? "⏳" : "📷"}</span>
+                <span className="text-sm font-medium">{uploading ? "Uploading…" : "Click to upload image or GIF"}</span>
               </div>
             </button>
           )}
@@ -196,7 +211,24 @@ export function ElementRenderer({ element, editable, onUpdate, onClick, isSelect
           <input ref={fileRef} type="file" accept="video/*" className="hidden" onChange={(e) => handleFileChange(e, "src")} />
           {(p.src as string) ? (
             <div className="relative group/vid">
-              <video src={p.src as string} poster={p.poster as string} controls className="mx-auto w-full rounded-xl" autoPlay={p.autoplay as boolean} muted />
+              {toVideoEmbedUrl(p.src as string) ? (
+                // YouTube / Vimeo embed
+                <div className="relative w-full overflow-hidden rounded-xl" style={{ aspectRatio: "16 / 9" }}>
+                  <iframe
+                    src={toVideoEmbedUrl(p.src as string) as string}
+                    title={(p.alt as string) || "Embedded video"}
+                    className="absolute inset-0 h-full w-full"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowFullScreen
+                    // In the editor, don't let the iframe swallow clicks meant
+                    // to select the element.
+                    style={editable ? { pointerEvents: "none" } : undefined}
+                  />
+                </div>
+              ) : (
+                // Direct video file (mp4 / webm / Supabase upload)
+                <video src={p.src as string} poster={p.poster as string} controls className="mx-auto w-full rounded-xl" autoPlay={p.autoplay as boolean} muted />
+              )}
               {editable && (
                 <button
                   onClick={(e) => { e.stopPropagation(); fileRef.current?.click(); }}
@@ -212,8 +244,9 @@ export function ElementRenderer({ element, editable, onUpdate, onClick, isSelect
               className="flex h-48 w-full items-center justify-center rounded-xl border-2 border-dashed border-[#FF0099]/30 bg-[#FF0099]/5 text-[#FF0099]/60 hover:bg-[#FF0099]/10 hover:border-[#FF0099]/50 transition-colors cursor-pointer"
             >
               <div className="text-center">
-                <span className="text-3xl block mb-2">🎬</span>
-                <span className="text-sm font-medium">Click to upload video</span>
+                <span className="text-3xl block mb-2">{uploading ? "⏳" : "🎬"}</span>
+                <span className="text-sm font-medium">{uploading ? "Uploading…" : "Click to upload video"}</span>
+                {!uploading && <span className="mt-1 block text-xs opacity-70">or paste a YouTube / Vimeo link in the panel</span>}
               </div>
             </button>
           )}
@@ -685,16 +718,21 @@ export function ElementRenderer({ element, editable, onUpdate, onClick, isSelect
                   accept="image/*"
                   className="hidden"
                   id={`gallery-${element.id}-${i}`}
-                  onChange={(e) => {
+                  onChange={async (e) => {
                     const file = e.target.files?.[0];
                     if (!file) return;
-                    const reader = new FileReader();
-                    reader.onload = () => {
+                    e.target.value = "";
+                    setUploading(true);
+                    try {
+                      const url = await uploadCmsMedia(file);
                       const imgs = [...(p.images as string[])];
-                      imgs[i] = reader.result as string;
+                      imgs[i] = url;
                       onUpdate?.({ images: imgs });
-                    };
-                    reader.readAsDataURL(file);
+                    } catch (err) {
+                      console.error("[builder] gallery upload failed", err);
+                    } finally {
+                      setUploading(false);
+                    }
                   }}
                 />
                 {src ? (

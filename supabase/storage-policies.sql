@@ -19,19 +19,22 @@
 -- collapse to one 10MB bucket-level cap.
 -- ============================================================
 
--- Bucket provisioning (idempotent).
+-- Bucket provisioning (idempotent). 50MB cap accommodates short site-editor
+-- video clips; large videos should be embedded via YouTube/Vimeo URLs.
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values (
-  'media', 'media', true, 10485760,
-  array['image/jpeg','image/png','image/webp','image/gif']
+  'media', 'media', true, 52428800,
+  array['image/jpeg','image/png','image/webp','image/gif',
+        'video/mp4','video/webm','video/quicktime']
 )
 on conflict (id) do nothing;
 
 -- Enforce the caps on buckets provisioned before this file existed.
 update storage.buckets
    set public = true,
-       file_size_limit = 10485760,
-       allowed_mime_types = array['image/jpeg','image/png','image/webp','image/gif']
+       file_size_limit = 52428800,
+       allowed_mime_types = array['image/jpeg','image/png','image/webp','image/gif',
+                                  'video/mp4','video/webm','video/quicktime']
  where id = 'media';
 
 -- Drop the old wide-open policies (and prior versions of the new ones).
@@ -47,11 +50,15 @@ drop policy if exists "media_owner_delete" on storage.objects;
 -- storage list API stays blocked, so clients cannot enumerate the bucket.
 -- (The app never calls storage list; it stores full URLs in rows.)
 
--- Members upload only into their own folder of the four app prefixes.
+-- Members upload only into their own folder of the app prefixes. `cms`
+-- carries site-editor media (photos / GIFs / short videos); like the other
+-- prefixes it is owner-scoped so the uploader can only write under their own
+-- canonical id. (Publishing the page itself stays gated by the cms_pages
+-- table RLS / the manageContent permission in the app.)
 create policy "media_member_insert" on storage.objects
   for insert to authenticated with check (
     bucket_id = 'media'
-    and (storage.foldername(name))[1] in ('avatars','posts','covers','gallery')
+    and (storage.foldername(name))[1] in ('avatars','posts','covers','gallery','cms')
     and (storage.foldername(name))[2] = (select public.current_app_user_id())
   );
 

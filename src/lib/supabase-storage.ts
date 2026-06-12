@@ -7,6 +7,7 @@
  */
 
 import { getSupabase } from "./supabase";
+import { useAuth } from "./store";
 
 /**
  * Upload a file to the `media` bucket under `<folder>/<unique-name>`
@@ -42,6 +43,78 @@ export async function uploadToSupabaseStorage(
     console.error("[supabase-storage] upload threw", e);
     return null;
   }
+}
+
+/**
+ * Upload media for the site editor (CMS) and return a durable URL.
+ *
+ * Uploads to the owner-scoped `media/cms/{canonicalUserId}` folder so the
+ * hardened storage RLS (which checks the 2nd path segment against
+ * current_app_user_id()) accepts it, and returns the public URL —
+ * critically NOT a base64 data URL: CMS pages persist their elements as
+ * JSONB and stream over realtime, so inlining an image (or worse, a
+ * video) would bloat or overflow the row.
+ *
+ * Fallback: only a SMALL image falls back to a data URL when Storage is
+ * unavailable (e.g. local dev without Supabase). Video never inlines —
+ * a base64 video would be catastrophic for the row, so the caller is
+ * told to use a YouTube/Vimeo embed URL instead.
+ */
+export async function uploadCmsMedia(file: File): Promise<string> {
+  const uid = useAuth.getState().user?.id;
+  const folder = uid ? `cms/${uid}` : "cms";
+  const url = await uploadToSupabaseStorage(folder, file);
+  if (url) return url;
+
+  const isImage = file.type.startsWith("image/");
+  if (isImage && file.size <= 2 * 1024 * 1024) {
+    return await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(new Error("file read failed"));
+      reader.readAsDataURL(file);
+    });
+  }
+  throw new Error(
+    "Storage upload failed. For video, paste a YouTube or Vimeo link instead.",
+  );
+}
+
+/**
+ * Convert a YouTube / Vimeo watch URL into an embeddable iframe URL.
+ * Returns null for anything that isn't a recognized embeddable video
+ * host (so callers fall back to a direct <video> tag).
+ */
+export function toVideoEmbedUrl(raw: string): string | null {
+  if (!raw) return null;
+  let u: URL;
+  try {
+    u = new URL(raw.trim());
+  } catch {
+    return null;
+  }
+  const host = u.hostname.replace(/^www\./, "").toLowerCase();
+  // YouTube: youtu.be/<id>, youtube.com/watch?v=<id>, /embed/<id>, /shorts/<id>
+  if (host === "youtu.be") {
+    const id = u.pathname.slice(1).split("/")[0];
+    return id ? `https://www.youtube.com/embed/${id}` : null;
+  }
+  if (host === "youtube.com" || host === "m.youtube.com") {
+    if (u.pathname === "/watch") {
+      const id = u.searchParams.get("v");
+      return id ? `https://www.youtube.com/embed/${id}` : null;
+    }
+    const m = u.pathname.match(/^\/(embed|shorts)\/([^/]+)/);
+    if (m) return `https://www.youtube.com/embed/${m[2]}`;
+    return null;
+  }
+  // Vimeo: vimeo.com/<id>
+  if (host === "vimeo.com") {
+    const id = u.pathname.split("/").filter(Boolean)[0];
+    return id && /^\d+$/.test(id) ? `https://player.vimeo.com/video/${id}` : null;
+  }
+  if (host === "player.vimeo.com") return u.toString();
+  return null;
 }
 
 /**

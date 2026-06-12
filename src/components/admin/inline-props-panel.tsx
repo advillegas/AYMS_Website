@@ -1,15 +1,16 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { useEditMode } from "@/lib/edit-mode";
 import { useBuilder, type BuilderElement } from "@/lib/builder-store";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { X, Trash2, Copy } from "lucide-react";
+import { X, Trash2, Copy, Loader2 } from "lucide-react";
 import { v4 as uuid } from "uuid";
 import { cn } from "@/lib/utils";
+import { uploadCmsMedia } from "@/lib/supabase-storage";
 
 export function InlinePropsPanel() {
   const selectedElementId = useEditMode((s) => s.selectedElementId);
@@ -33,6 +34,7 @@ export function InlinePropsPanel() {
 
 function PanelContent({ element, onClose }: { element: BuilderElement; onClose: () => void }) {
   const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
   const p = element.props;
 
   function update(props: Record<string, unknown>) {
@@ -61,12 +63,23 @@ function PanelContent({ element, onClose }: { element: BuilderElement; onClose: 
     });
   }
 
-  function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>, key: string) {
+  async function handleFileUpload(
+    e: React.ChangeEvent<HTMLInputElement>,
+    key: string,
+  ) {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => update({ [key]: reader.result as string });
-    reader.readAsDataURL(file);
+    e.target.value = "";
+    setUploading(true);
+    try {
+      // Real Storage upload → durable URL (not a base64 blob in JSONB).
+      const url = await uploadCmsMedia(file);
+      update({ [key]: url });
+    } catch (err) {
+      console.error("[builder] media upload failed", err);
+    } finally {
+      setUploading(false);
+    }
   }
 
   const inputCls = "bg-white/5 border-white/10 text-white text-xs h-8 focus-visible:ring-[#FF0099]/30";
@@ -132,14 +145,16 @@ function PanelContent({ element, onClose }: { element: BuilderElement; onClose: 
 
           {element.type === "image" && (
             <>
-              <Field label="Image">
-                <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleFileUpload(e, "src")} />
-                <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()} className="w-full text-[10px] border-white/10 text-white/50 hover:text-white hover:bg-white/5 h-7">
-                  {(p.src as string) ? "Change Image" : "Upload Image"}
+              <Field label="Image / GIF">
+                <input ref={fileRef} type="file" accept="image/*,image/gif" className="hidden" onChange={(e) => handleFileUpload(e, "src")} />
+                <Button variant="outline" size="sm" disabled={uploading} onClick={() => fileRef.current?.click()} className="w-full text-[10px] border-white/10 text-white/50 hover:text-white hover:bg-white/5 h-7">
+                  {uploading ? (
+                    <><Loader2 className="h-3 w-3 mr-1 animate-spin" aria-hidden="true" /> Uploading…</>
+                  ) : (p.src as string) ? "Change Image / GIF" : "Upload Image / GIF"}
                 </Button>
                 {(p.src as string) && <img src={p.src as string} alt="" className="mt-2 w-full rounded-lg" />}
               </Field>
-              <Field label="Or paste URL"><Input value={p.src as string} onChange={(e) => update({ src: e.target.value })} placeholder="https://..." className={inputCls} /></Field>
+              <Field label="Or paste URL"><Input value={p.src as string} onChange={(e) => update({ src: e.target.value })} placeholder="https://… (jpg, png, .gif, GIPHY)" className={inputCls} /></Field>
               <Field label="Alt Text"><Input value={p.alt as string} onChange={(e) => update({ alt: e.target.value })} className={inputCls} /></Field>
               <Field label="Border Radius"><Input type="number" value={p.borderRadius as string} onChange={(e) => update({ borderRadius: e.target.value })} className={inputCls} /></Field>
               <Field label="Soft float (live site)"><ToggleBtn value={!!(p.ambientFloat as boolean)} onChange={(v) => update({ ambientFloat: v })} /></Field>
@@ -150,11 +165,14 @@ function PanelContent({ element, onClose }: { element: BuilderElement; onClose: 
             <>
               <Field label="Video">
                 <input ref={fileRef} type="file" accept="video/*" className="hidden" onChange={(e) => handleFileUpload(e, "src")} />
-                <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()} className="w-full text-[10px] border-white/10 text-white/50 hover:text-white hover:bg-white/5 h-7">
-                  {(p.src as string) ? "Change Video" : "Upload Video"}
+                <Button variant="outline" size="sm" disabled={uploading} onClick={() => fileRef.current?.click()} className="w-full text-[10px] border-white/10 text-white/50 hover:text-white hover:bg-white/5 h-7">
+                  {uploading ? (
+                    <><Loader2 className="h-3 w-3 mr-1 animate-spin" aria-hidden="true" /> Uploading…</>
+                  ) : (p.src as string) ? "Change Video" : "Upload Video"}
                 </Button>
               </Field>
-              <Field label="Or paste URL"><Input value={p.src as string} onChange={(e) => update({ src: e.target.value })} placeholder="https://..." className={inputCls} /></Field>
+              <Field label="Or paste URL"><Input value={p.src as string} onChange={(e) => update({ src: e.target.value })} placeholder="YouTube, Vimeo, or .mp4 URL" className={inputCls} /></Field>
+              <p className="text-[10px] leading-snug text-white/35">Paste a YouTube or Vimeo link to embed it, or upload an MP4/WebM file.</p>
             </>
           )}
 

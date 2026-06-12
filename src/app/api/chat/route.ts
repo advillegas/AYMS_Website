@@ -217,7 +217,9 @@ export async function POST(req: Request) {
     model: anthropic("claude-haiku-4-5"),
     system: buildSystemPrompt({ liveTrips, liveEvents }),
     messages: modelMessages,
-    temperature: 0.5,
+    // Lower temperature → tighter adherence to the scope-lock + anti-
+    // injection rules (less creative drift on adversarial prompts).
+    temperature: 0.3,
     maxOutputTokens: 800,
   });
 

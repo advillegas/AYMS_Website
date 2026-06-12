@@ -174,7 +174,7 @@ export default function CampPage() {
               initial={reduceMotion ? false : { scale: 0.85, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ duration: 0.6, ease: [0.34, 1.56, 0.64, 1] }}
-              className="mx-auto mb-6 w-44 sm:w-52"
+              className="mx-auto mb-4 w-24 sm:w-28"
             >
               <Image
                 src="/camp/hero-graphic.png"

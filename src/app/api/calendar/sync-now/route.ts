@@ -18,6 +18,7 @@ import { useSupabaseBackend } from "@/lib/supabase";
 import {
   verifySupabaseToken,
   resolveAppUserByEmail,
+  emailHasPermission,
 } from "@/lib/supabase-verify";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 
@@ -42,13 +43,17 @@ export async function POST(request: NextRequest) {
       );
     }
     // auth.uid() ≠ users.id for migrated members — resolve the canonical
-    // row by the verified email claim to check the role.
+    // row by the verified email claim to check access. Allowed if the
+    // caller is an admin OR holds the `manageCalendar` role permission
+    // (so a non-admin role granted calendar management can sync too).
     const email = (verified.email ?? "").trim().toLowerCase();
     const appUser = email ? await resolveAppUserByEmail(email) : null;
     const isAdmin = email === "admin@ayms.com" || appUser?.role === "admin";
-    if (!isAdmin) {
+    const canManageCalendar =
+      isAdmin || (email ? await emailHasPermission(email, "manageCalendar") : false);
+    if (!canManageCalendar) {
       return NextResponse.json(
-        { error: "Admin access required." },
+        { error: "You need the Manage calendar permission to sync feeds." },
         { status: 403 },
       );
     }

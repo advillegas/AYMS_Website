@@ -34,6 +34,7 @@ export type PermissionKey =
   | "createThreads"
   | "useVoice"
   | "useVideo"
+  | "manageCalendar"
   | "viewAdminPanel";
 
 export interface PermissionDef {
@@ -169,6 +170,15 @@ export const ALL_PERMISSIONS: PermissionDef[] = [
     label: "Use video channels",
     description: "Join video / streaming rooms.",
     category: "voice",
+  },
+
+  // Admin
+  {
+    key: "manageCalendar",
+    label: "Manage calendar",
+    description:
+      "Add and sync external calendar feeds, and create / edit / delete community events.",
+    category: "admin",
   },
 ];
 

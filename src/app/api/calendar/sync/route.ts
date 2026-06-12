@@ -154,6 +154,11 @@ interface ParsedVEvent {
   location: string;
   dtstart: string;
   dtend: string;
+  /** iCal property parameters (e.g. "TZID=America/Los_Angeles" or
+   *  "VALUE=DATE") preserved so the date/time can be resolved against
+   *  the event's own timezone instead of being read as raw UTC. */
+  dtstartParams: string;
+  dtendParams: string;
 }
 
 function parseICalText(text: string): ParsedVEvent[] {
@@ -184,6 +189,8 @@ function parseICalText(text: string): ParsedVEvent[] {
           location: current.location ?? "",
           dtstart: current.dtstart,
           dtend: current.dtend ?? "",
+          dtstartParams: current.dtstartParams ?? "",
+          dtendParams: current.dtendParams ?? "",
         });
       }
       continue;
@@ -194,7 +201,9 @@ function parseICalText(text: string): ParsedVEvent[] {
     if (colonIdx === -1) continue;
     const keyPart = trimmed.slice(0, colonIdx).toUpperCase();
     const value = trimmed.slice(colonIdx + 1);
-    const key = keyPart.split(";")[0];
+    const semiIdx = keyPart.indexOf(";");
+    const key = semiIdx === -1 ? keyPart : keyPart.slice(0, semiIdx);
+    const params = semiIdx === -1 ? "" : keyPart.slice(semiIdx + 1);
 
     switch (key) {
       case "UID":
@@ -214,26 +223,90 @@ function parseICalText(text: string): ParsedVEvent[] {
         break;
       case "DTSTART":
         current.dtstart = value;
+        current.dtstartParams = params;
         break;
       case "DTEND":
         current.dtend = value;
+        current.dtendParams = params;
         break;
     }
   }
   return events;
 }
 
-function icalDateToYMD(raw: string): string {
-  const digits = raw.replace(/[^0-9]/g, "");
-  if (digits.length < 8) return "";
-  return `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6, 8)}`;
+/**
+ * Display timezone for events whose iCal time is in UTC (a trailing
+ * "Z") with no TZID — i.e. the feed gives us an absolute instant but
+ * no intended local zone. AYMS is California-based, so we render those
+ * in Pacific. Events that DO carry a TZID keep their own local
+ * wall-clock time (honored per-event); floating times are used as-is.
+ */
+const DEFAULT_TZ = "America/Los_Angeles";
+
+/** Format an absolute Date into {date,time} parts for a given IANA zone. */
+function zonedParts(date: Date, timeZone: string): { date: string; time: string } {
+  const fmt = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  const map: Record<string, string> = {};
+  for (const p of fmt.formatToParts(date)) map[p.type] = p.value;
+  if (!map.year) return { date: "", time: "" };
+  return {
+    date: `${map.year}-${map.month}-${map.day}`,
+    time: `${map.hour}:${map.minute}`,
+  };
 }
 
-/** Extract HH:mm time from an iCal datetime like 20260524T190000Z. */
-function icalDateToTime(raw: string): string {
-  const digits = raw.replace(/[^0-9]/g, "");
-  if (digits.length < 12) return "";
-  return `${digits.slice(8, 10)}:${digits.slice(10, 12)}`;
+/**
+ * Resolve an iCal DTSTART/DTEND value (+ its property params) into the
+ * local calendar date and HH:mm to store/display.
+ *
+ *  - VALUE=DATE / date-only (no "T"): all-day → date, no time.
+ *  - Trailing "Z" (UTC instant) with no TZID: convert to DEFAULT_TZ.
+ *  - TZID=… present: the digits are already the event's local wall
+ *    time in that zone → use them directly (honors per-event TZID).
+ *  - Floating (no Z, no TZID): treat as local wall time → use directly.
+ */
+function resolveICalDateTime(
+  rawValue: string,
+  params: string,
+): { date: string; time: string } {
+  const value = rawValue.trim();
+  const digits = value.replace(/[^0-9]/g, "");
+  if (digits.length < 8) return { date: "", time: "" };
+  const ymd = `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6, 8)}`;
+
+  const isDateOnly =
+    !value.includes("T") || /VALUE=DATE(?!-TIME)/i.test(params);
+  if (isDateOnly || digits.length < 12) {
+    return { date: ymd, time: "" };
+  }
+
+  const isUtc = /Z$/i.test(value);
+  // UTC instant with no explicit zone → render in the fallback zone.
+  if (isUtc && !/TZID=/i.test(params)) {
+    const utc = new Date(
+      Date.UTC(
+        Number(digits.slice(0, 4)),
+        Number(digits.slice(4, 6)) - 1,
+        Number(digits.slice(6, 8)),
+        Number(digits.slice(8, 10)),
+        Number(digits.slice(10, 12)),
+      ),
+    );
+    const z = zonedParts(utc, DEFAULT_TZ);
+    if (z.date) return z;
+  }
+
+  // TZID-qualified or floating: the wall-clock digits are the intended
+  // local time — keep them as-is.
+  return { date: ymd, time: `${digits.slice(8, 10)}:${digits.slice(10, 12)}` };
 }
 
 /* ------------------------------------------------------------------ */
@@ -347,16 +420,20 @@ async function syncViaSupabase(): Promise<NextResponse> {
 
         // 3. Map to event rows (snake_case, matching use-events-supabase)
         const feedEvents = parsed
-          .map((ev) => ({
-            uid: ev.uid,
-            title: ev.summary,
-            description: ev.description,
-            date: icalDateToYMD(ev.dtstart),
-            endDate: icalDateToYMD(ev.dtend),
-            startTime: icalDateToTime(ev.dtstart),
-            endTime: icalDateToTime(ev.dtend),
-            location: ev.location,
-          }))
+          .map((ev) => {
+            const start = resolveICalDateTime(ev.dtstart, ev.dtstartParams);
+            const end = resolveICalDateTime(ev.dtend, ev.dtendParams);
+            return {
+              uid: ev.uid,
+              title: ev.summary,
+              description: ev.description,
+              date: start.date,
+              endDate: end.date,
+              startTime: start.time,
+              endTime: end.time,
+              location: ev.location,
+            };
+          })
           .filter((e) => e.date);
 
         const nowIso = new Date().toISOString();
@@ -539,16 +616,20 @@ export async function POST(request: NextRequest) {
 
         // 3. Map to event shape
         const feedEvents = parsed
-          .map((ev) => ({
-            uid: ev.uid,
-            title: ev.summary,
-            description: ev.description,
-            date: icalDateToYMD(ev.dtstart),
-            endDate: icalDateToYMD(ev.dtend),
-            startTime: icalDateToTime(ev.dtstart),
-            endTime: icalDateToTime(ev.dtend),
-            location: ev.location,
-          }))
+          .map((ev) => {
+            const start = resolveICalDateTime(ev.dtstart, ev.dtstartParams);
+            const end = resolveICalDateTime(ev.dtend, ev.dtendParams);
+            return {
+              uid: ev.uid,
+              title: ev.summary,
+              description: ev.description,
+              date: start.date,
+              endDate: end.date,
+              startTime: start.time,
+              endTime: end.time,
+              location: ev.location,
+            };
+          })
           .filter((e) => e.date);
 
         // 4. Upsert events

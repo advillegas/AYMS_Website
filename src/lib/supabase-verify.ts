@@ -79,3 +79,44 @@ export async function resolveCanonicalUserIdByEmail(
   const row = await resolveAppUserByEmail(email);
   return row?.id ?? null;
 }
+
+/**
+ * Server-side fine-grained permission check: does the user behind this
+ * verified email hold `permission` via any of their assigned roles?
+ *
+ * Resolves users → user_roles → roles.permissions (the same model the
+ * client uses). Used to gate privileged endpoints (e.g. calendar
+ * sync-now) on a role permission rather than only the coarse
+ * `users.role === 'admin'`. The legacy admin account always passes via
+ * its role; this widens access only to roles explicitly granted the
+ * permission.
+ */
+export async function emailHasPermission(
+  email: string,
+  permission: string,
+): Promise<boolean> {
+  const svc = getServiceClient() ?? getAnonServerClient();
+  if (!svc || !email.trim()) return false;
+  try {
+    const appUser = await resolveAppUserByEmail(email);
+    if (!appUser) return false;
+    const { data: ur, error: urErr } = await svc
+      .from("user_roles")
+      .select("role_id")
+      .eq("user_id", appUser.id);
+    if (urErr || !ur || ur.length === 0) return false;
+    const roleIds = ur.map((r) => r.role_id as string);
+    const { data: roles, error: rolesErr } = await svc
+      .from("roles")
+      .select("permissions")
+      .in("id", roleIds);
+    if (rolesErr || !roles) return false;
+    return roles.some((r) => {
+      const perms = (r.permissions ?? []) as unknown;
+      return Array.isArray(perms) && perms.includes(permission);
+    });
+  } catch (err) {
+    console.error("[supabase-verify] permission check failed", err);
+    return false;
+  }
+}

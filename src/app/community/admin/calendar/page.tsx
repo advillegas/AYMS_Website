@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/store";
+import { useHasPermission } from "@/lib/use-roles-store";
 import { getAuthInstance } from "@/lib/firebase";
 import { getSupabase, useSupabaseBackend } from "@/lib/supabase";
 import {
@@ -80,6 +81,7 @@ const EVENT_TYPES = [
 
 export default function AdminCalendarPage() {
   const user = useAuth((s) => s.user);
+  const canManageCalendar = useHasPermission("manageCalendar");
   const confirm = useConfirm();
   const {
     events,
@@ -191,6 +193,33 @@ export default function AdminCalendarPage() {
     const ok = await deleteEvent(ev.id);
     if (ok) toast.success("Event deleted.");
     else toast.error("Couldn't delete the event.");
+  }
+
+  // Calendar management (adding feeds, creating/editing events) is gated
+  // by the `manageCalendar` role permission — not just admin-panel access.
+  // Admins have it by default; it can be granted to any role from
+  // Admin → Roles & permissions.
+  if (!canManageCalendar) {
+    return (
+      <div className="p-4 lg:p-6 overflow-auto h-full">
+        <div className="mx-auto max-w-5xl">
+          <h1 className="text-2xl font-bold flex items-center gap-2 font-[family-name:var(--font-heading)]">
+            <Calendar className="h-6 w-6 text-primary" />
+            Calendar Management
+          </h1>
+          <div className="mt-6 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-6 text-center">
+            <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
+              You don&apos;t have permission to manage the calendar.
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Ask an admin to grant your role the{" "}
+              <span className="font-semibold">Manage calendar</span>{" "}
+              permission (Admin → Roles &amp; permissions).
+            </p>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (

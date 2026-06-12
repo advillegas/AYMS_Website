@@ -35,6 +35,7 @@ export type PermissionKey =
   | "useVoice"
   | "useVideo"
   | "manageCalendar"
+  | "manageContent"
   | "viewAdminPanel";
 
 export interface PermissionDef {
@@ -178,6 +179,13 @@ export const ALL_PERMISSIONS: PermissionDef[] = [
     label: "Manage calendar",
     description:
       "Add and sync external calendar feeds, and create / edit / delete community events.",
+    category: "admin",
+  },
+  {
+    key: "manageContent",
+    label: "Edit site content",
+    description:
+      "Open the site editor: build / edit / publish marketing pages, navigation, and templates.",
     category: "admin",
   },
 ];

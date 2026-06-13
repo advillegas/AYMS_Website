@@ -144,6 +144,80 @@ export function sbDeleteTemplate(id: string): void {
     });
 }
 
+/* ----------------------------- version history --------------------- */
+
+export interface CmsVersion {
+  id: string;
+  slug: string;
+  title: string;
+  elements: BuilderElement[];
+  createdAt: string;
+}
+
+interface VersionRow {
+  id: string;
+  slug: string;
+  title: string | null;
+  elements: BuilderElement[] | null;
+  created_at: string | null;
+}
+
+/** Snapshot a page's elements into history (called on each publish). Keeps the 10 most recent per slug. */
+export async function sbWriteVersion(
+  slug: string,
+  title: string,
+  elements: BuilderElement[],
+): Promise<void> {
+  const sb = getSupabase();
+  if (!sb) return;
+  const id = `ver-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+  try {
+    const { error } = await sb
+      .from("cms_page_versions")
+      .insert({ id, slug, title, elements: elements ?? [] });
+    if (error) {
+      console.warn("[cms:sb] version write failed", slug, error.message);
+      return;
+    }
+    // Prune to the 10 newest snapshots for this page.
+    const { data } = await sb
+      .from("cms_page_versions")
+      .select("id")
+      .eq("slug", slug)
+      .order("created_at", { ascending: false });
+    if (Array.isArray(data) && data.length > 10) {
+      const stale = data.slice(10).map((r) => (r as { id: string }).id);
+      if (stale.length) await sb.from("cms_page_versions").delete().in("id", stale);
+    }
+  } catch (e) {
+    console.warn("[cms:sb] version write threw", e);
+  }
+}
+
+/** Most-recent-first version snapshots for a page (max 10). */
+export async function sbListVersions(slug: string): Promise<CmsVersion[]> {
+  const sb = getSupabase();
+  if (!sb) return [];
+  try {
+    const { data, error } = await sb
+      .from("cms_page_versions")
+      .select("*")
+      .eq("slug", slug)
+      .order("created_at", { ascending: false })
+      .limit(10);
+    if (error || !Array.isArray(data)) return [];
+    return (data as VersionRow[]).map((r) => ({
+      id: r.id,
+      slug: r.slug,
+      title: r.title ?? "",
+      elements: Array.isArray(r.elements) ? r.elements : [],
+      createdAt: r.created_at ?? "",
+    }));
+  } catch {
+    return [];
+  }
+}
+
 /* ----------------------------- one-shot load ----------------------- */
 
 export async function sbLoadCms(): Promise<{

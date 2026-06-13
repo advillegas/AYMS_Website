@@ -26,7 +26,12 @@ import {
   sbDeleteTemplate,
   sbLoadCms,
   sbSubscribeCms,
+  sbWriteVersion,
+  sbListVersions,
+  type CmsVersion,
 } from "./cms-store-supabase";
+
+export type { CmsVersion };
 
 export interface CmsPage {
   slug: string;
@@ -64,6 +69,11 @@ const SYSTEM_PAGES = [
   { slug: "featured", title: "Featured Event", href: "/featured" },
 ];
 
+/** True for the core marketing pages backed by coded React (home, trips, …). */
+export function isSystemSlug(slug: string): boolean {
+  return SYSTEM_PAGES.some((sp) => sp.slug === slug);
+}
+
 interface CmsState {
   pages: Record<string, CmsPage>;
   navLinks: NavLink[];
@@ -76,6 +86,10 @@ interface CmsState {
   setPageElements: (slug: string, elements: BuilderElement[]) => void;
   publishPage: (slug: string) => void;
   unpublishPage: (slug: string) => void;
+  /** Fetch recent published-version snapshots for rollback (Supabase). */
+  listVersions: (slug: string) => Promise<CmsVersion[]>;
+  /** Restore a snapshot's elements as the live published content. */
+  restoreVersion: (slug: string, elements: BuilderElement[]) => void;
   setEditingSlug: (slug: string | null) => void;
   getPage: (slug: string) => CmsPage | undefined;
   hasPublishedPage: (slug: string) => boolean;
@@ -298,6 +312,14 @@ function fsDeleteTemplate(id: string): void {
   );
 }
 
+/** Snapshot a page version on publish (Supabase only; no-op on Firebase). */
+function fsWriteVersion(slug: string, title: string, elements: BuilderElement[]): void {
+  if (!isValidSlug(slug)) return;
+  if (useSupabaseBackend) {
+    void sbWriteVersion(slug, title, elements);
+  }
+}
+
 /** Toggle a page's published flag (optimistic local + FS write-through). */
 function setPublished(
   set: (fn: (s: CmsState) => Partial<CmsState> | CmsState) => void,
@@ -448,8 +470,21 @@ export const useCms = create<CmsState>((set, get) => ({
     if (p) fsWritePage(p);
   },
 
-  publishPage: (slug) => setPublished(set, get, slug, true),
+  publishPage: (slug) => {
+    setPublished(set, get, slug, true);
+    // Snapshot the just-published version so a bad edit can be rolled back.
+    const p = get().pages[slug];
+    if (p && p.elements.length > 0) fsWriteVersion(slug, p.title, p.elements);
+  },
   unpublishPage: (slug) => setPublished(set, get, slug, false),
+
+  listVersions: (slug) => sbListVersions(slug),
+
+  restoreVersion: (slug, elements) => {
+    // Restore = make the snapshot the live published content.
+    get().setPageElements(slug, elements);
+    setPublished(set, get, slug, true);
+  },
 
   setEditingSlug: (slug) => set({ editingSlug: slug }),
 

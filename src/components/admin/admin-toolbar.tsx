@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useEditMode } from "@/lib/edit-mode";
-import type { ElementType } from "@/lib/builder-store";
+import type { ElementType, BuilderElement } from "@/lib/builder-store";
+import type { CmsVersion } from "@/lib/cms-store";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
@@ -30,6 +31,10 @@ import {
   Megaphone,
   HelpCircle,
   Sparkles,
+  RotateCcw,
+  History,
+  Undo2,
+  AlertTriangle,
 } from "lucide-react";
 
 interface PaletteItem { type: ElementType; icon: React.ElementType; label: string }
@@ -82,13 +87,60 @@ interface Props {
   onAddElement: (type: ElementType) => void;
   onSave: () => void;
   onPublish: () => void;
+  slug: string;
+  isSystem: boolean;
+  onReset: () => void;
+  onUnpublish: () => void;
+  onListVersions: () => Promise<CmsVersion[]>;
+  onRestoreVersion: (elements: BuilderElement[]) => void;
 }
 
-export function AdminToolbar({ onAddElement, onSave, onPublish }: Props) {
+function formatWhen(iso: string): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+export function AdminToolbar({
+  onAddElement,
+  onSave,
+  onPublish,
+  slug,
+  isSystem,
+  onReset,
+  onUnpublish,
+  onListVersions,
+  onRestoreVersion,
+}: Props) {
   const isEditMode = useEditMode((s) => s.isEditMode);
   const pageSlug = useEditMode((s) => s.pageSlug);
   const exitEditMode = useEditMode((s) => s.exitEditMode);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [revertOpen, setRevertOpen] = useState(false);
+  const [confirmPublish, setConfirmPublish] = useState(false);
+  const [versions, setVersions] = useState<CmsVersion[]>([]);
+  const [versionsLoading, setVersionsLoading] = useState(false);
+
+  async function openRevert() {
+    const next = !revertOpen;
+    setRevertOpen(next);
+    if (next) {
+      setVersionsLoading(true);
+      try {
+        setVersions(await onListVersions());
+      } catch {
+        setVersions([]);
+      } finally {
+        setVersionsLoading(false);
+      }
+    }
+  }
 
   if (!isEditMode) return null;
 
@@ -164,8 +216,85 @@ export function AdminToolbar({ onAddElement, onSave, onPublish }: Props) {
 
       {/* Right: actions */}
       <div className="flex items-center gap-1.5">
+        {/* Revert / safety menu */}
+        <div className="relative">
+          <button
+            type="button"
+            onClick={openRevert}
+            aria-expanded={revertOpen}
+            aria-haspopup="menu"
+            className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-medium text-white/60 hover:text-white hover:bg-white/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]"
+          >
+            <Undo2 className="h-3 w-3" aria-hidden="true" />
+            Revert
+            <ChevronDown className={`h-3 w-3 transition-transform ${revertOpen ? "rotate-180" : ""}`} aria-hidden="true" />
+          </button>
+          {revertOpen && (
+            <>
+              <div className="fixed inset-0 z-10" aria-hidden="true" onClick={() => setRevertOpen(false)} />
+              <div
+                role="menu"
+                aria-label="Revert options"
+                className="absolute top-full right-0 mt-2 z-20 w-[300px] max-w-[calc(100vw-1.5rem)] rounded-xl bg-[#1a0f18] border border-white/10 p-2 shadow-xl shadow-black/40"
+              >
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => { onReset(); setRevertOpen(false); toast.success("Reset to the original design — review, then Publish."); }}
+                  className="flex w-full items-start gap-2.5 rounded-lg p-2.5 text-left text-white/70 hover:bg-white/5 hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]"
+                >
+                  <RotateCcw className="h-3.5 w-3.5 mt-0.5 shrink-0 text-[#FF0099]" aria-hidden="true" />
+                  <span>
+                    <span className="block text-[11px] font-semibold">Reset to original design</span>
+                    <span className="block text-[10px] text-white/40">Reload the built-in AYMS layout into the editor.</span>
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => { onUnpublish(); setRevertOpen(false); toast.success("Unpublished — the original site page is live again."); }}
+                  className="flex w-full items-start gap-2.5 rounded-lg p-2.5 text-left text-white/70 hover:bg-white/5 hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]"
+                >
+                  <X className="h-3.5 w-3.5 mt-0.5 shrink-0 text-[#FF0099]" aria-hidden="true" />
+                  <span>
+                    <span className="block text-[11px] font-semibold">Unpublish this page</span>
+                    <span className="block text-[10px] text-white/40">Hide your version; show the original live page.</span>
+                  </span>
+                </button>
+
+                <div className="my-1.5 flex items-center gap-1.5 px-2.5 text-[9px] font-bold uppercase tracking-wider text-white/30">
+                  <History className="h-3 w-3" aria-hidden="true" /> Version history
+                </div>
+                <div className="max-h-44 overflow-y-auto">
+                  {versionsLoading ? (
+                    <p className="px-2.5 py-2 text-[10px] text-white/30">Loading…</p>
+                  ) : versions.length === 0 ? (
+                    <p className="px-2.5 py-2 text-[10px] text-white/30">No saved versions yet. Each publish saves one.</p>
+                  ) : (
+                    versions.map((v, i) => (
+                      <div key={v.id} className="flex items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 hover:bg-white/5">
+                        <span className="text-[10px] text-white/60">
+                          {formatWhen(v.createdAt)}
+                          {i === 0 && <span className="ml-1.5 text-[9px] text-[#FF0099]">current</span>}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => { onRestoreVersion(v.elements); setRevertOpen(false); toast.success("Version restored and published."); }}
+                          className="rounded-md border border-white/10 px-2 py-0.5 text-[10px] font-medium text-white/70 hover:bg-[#FF0099]/15 hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]"
+                        >
+                          Restore
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+
         <Button
-          onClick={() => { onSave(); toast.success("Saved!"); }}
+          onClick={() => { onSave(); toast.success("Saved as draft (not live yet)."); }}
           variant="ghost"
           className="h-7 px-2.5 text-[11px] text-white/60 hover:text-white hover:bg-white/10 gap-1"
         >
@@ -173,7 +302,7 @@ export function AdminToolbar({ onAddElement, onSave, onPublish }: Props) {
           Save
         </Button>
         <Button
-          onClick={() => { onPublish(); toast.success("Published!"); }}
+          onClick={() => setConfirmPublish(true)}
           className="h-7 px-2.5 text-[11px] bg-gradient-to-r from-[#FF0099] to-[#B51760] text-white border-0 hover:brightness-110 gap-1"
         >
           <Upload className="h-3 w-3" aria-hidden="true" />
@@ -189,6 +318,51 @@ export function AdminToolbar({ onAddElement, onSave, onPublish }: Props) {
           Exit
         </Button>
       </div>
+
+      {/* Publish confirmation */}
+      {confirmPublish && (
+        <div
+          className="fixed inset-0 z-[120] flex items-center justify-center bg-black/50 p-4"
+          onClick={() => setConfirmPublish(false)}
+        >
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="publish-confirm-title"
+            className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 id="publish-confirm-title" className="font-display text-lg text-[#221019]">
+              Publish to the live site?
+            </h2>
+            <p className="mt-2 text-sm text-[#221019]/70">
+              This replaces the <strong>{slug}</strong> page that <strong>everyone</strong> sees on the live website.
+            </p>
+            {isSystem && (
+              <div className="mt-3 flex items-start gap-2 rounded-lg border border-[#FF7F50]/30 bg-[#FF7F50]/10 p-2.5 text-[12px] text-[#9a3412]">
+                <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" aria-hidden="true" />
+                <span>This is a <strong>core site page</strong>. If something looks off after publishing, use <strong>Revert → Reset to original</strong> or restore a previous version.</span>
+              </div>
+            )}
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setConfirmPublish(false)}
+                className="rounded-full px-4 py-2 text-sm font-medium text-[#221019]/60 hover:bg-[#221019]/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => { setConfirmPublish(false); onPublish(); toast.success("Published to the live site!"); }}
+                className="rounded-full bg-gradient-to-r from-[#FF0099] to-[#B51760] px-5 py-2 text-sm font-semibold text-white hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]"
+              >
+                Publish now
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

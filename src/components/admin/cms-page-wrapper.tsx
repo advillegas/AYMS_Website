@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useCallback } from "react";
-import { useCms } from "@/lib/cms-store";
+import { useCms, isSystemSlug } from "@/lib/cms-store";
 import { useEditMode } from "@/lib/edit-mode";
 import { useAuth } from "@/lib/store";
 import { useHasPermission } from "@/lib/use-roles-store";
@@ -129,6 +129,37 @@ export function CmsPageWrapper({ slug, children }: Props) {
     publishPage(slug);
   }, [slug, setPageElements, publishPage]);
 
+  // Reload the built-in coded design into the editor canvas (self-recovery).
+  const handleReset = useCallback(() => {
+    const snapFn = PAGE_SNAPSHOTS[slug];
+    useBuilder.setState({
+      elements: snapFn ? snapFn() : [],
+      selectedId: null,
+    });
+    useEditMode.setState({ selectedElementId: null });
+  }, [slug]);
+
+  // Hide this page's override so the original coded page goes live again.
+  const handleUnpublish = useCallback(() => {
+    useCms.getState().unpublishPage(slug);
+  }, [slug]);
+
+  const handleListVersions = useCallback(
+    () => useCms.getState().listVersions(slug),
+    [slug],
+  );
+
+  const handleRestoreVersion = useCallback(
+    (els: BuilderElement[]) => {
+      useBuilder.setState({
+        elements: JSON.parse(JSON.stringify(els)),
+        selectedId: null,
+      });
+      useCms.getState().restoreVersion(slug, els);
+    },
+    [slug],
+  );
+
   const handleSelect = useCallback((id: string) => {
     setSelectedElement(id);
     useBuilder.setState({ selectedId: id });
@@ -227,6 +258,12 @@ export function CmsPageWrapper({ slug, children }: Props) {
           onAddElement={handleAddElement}
           onSave={handleSave}
           onPublish={handlePublish}
+          slug={slug}
+          isSystem={isSystemSlug(slug)}
+          onReset={handleReset}
+          onUnpublish={handleUnpublish}
+          onListVersions={handleListVersions}
+          onRestoreVersion={handleRestoreVersion}
         />
 
         <div className="pt-10" onClick={() => setSelectedElement(null)}>

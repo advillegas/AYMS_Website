@@ -46,7 +46,7 @@ const PALETTE: PaletteCategory[] = [
     items: [
       { type: "heading", icon: Heading, label: "Heading" },
       { type: "text", icon: Type, label: "Text" },
-      { type: "image", icon: ImageIcon, label: "Image" },
+      { type: "image", icon: ImageIcon, label: "Image / GIF" },
       { type: "video", icon: Video, label: "Video" },
       { type: "button", icon: MousePointer, label: "Button" },
       { type: "card", icon: CreditCard, label: "Card" },

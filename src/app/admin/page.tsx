@@ -10,7 +10,7 @@ import { PageManager } from "@/components/admin/page-manager";
 import { NavEditor } from "@/components/admin/nav-editor";
 import { NewsletterPanel } from "@/components/admin/newsletter-panel";
 import { SiteSettingsPanel } from "@/components/admin/site-settings-panel";
-import { HomeContentPanel } from "@/components/admin/home-content-panel";
+import { ContentManager } from "@/components/admin/content-manager";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -170,7 +170,7 @@ export default function AdminPage() {
         </div>
       ) : activeTab === "content" ? (
         <div className="flex-1 overflow-hidden">
-          <HomeContentPanel />
+          <ContentManager />
         </div>
       ) : activeTab === "audience" ? (
         <div className="flex-1 overflow-hidden">

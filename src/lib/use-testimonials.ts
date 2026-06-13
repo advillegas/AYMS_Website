@@ -355,3 +355,49 @@ export function useTestimonials(): UseTestimonialsResult {
 
   return { testimonials, loading, isFirestore };
 }
+
+/* ------------------------------------------------------------------ */
+/* Admin mutations (Supabase). Writes require an authenticated admin    */
+/* (hardened RLS); the realtime subscription reflects changes live.     */
+/* ------------------------------------------------------------------ */
+
+function toRow(t: Partial<Testimonial>): Record<string, unknown> {
+  const row: Record<string, unknown> = {};
+  if (t.name !== undefined) row.name = t.name;
+  if (t.location !== undefined) row.location = t.location;
+  if (t.trip !== undefined) row.trip = t.trip;
+  if (t.en !== undefined) row.en = t.en;
+  if (t.es !== undefined) row.es = t.es;
+  if (t.initials !== undefined) row.initials = t.initials;
+  if (t.gradient !== undefined) row.gradient = t.gradient;
+  if (t.featured !== undefined) row.featured = t.featured;
+  return row;
+}
+
+export async function addTestimonial(t: Omit<Testimonial, "id">): Promise<boolean> {
+  const sb = getSupabase();
+  if (!sb) return false;
+  const id = `tst-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+  const { error } = await sb.from("testimonials").insert({ id, ...toRow(t) });
+  if (error) console.warn("[testimonials] add failed", error.message);
+  return !error;
+}
+
+export async function updateTestimonial(
+  id: string,
+  patch: Partial<Testimonial>,
+): Promise<boolean> {
+  const sb = getSupabase();
+  if (!sb) return false;
+  const { error } = await sb.from("testimonials").update(toRow(patch)).eq("id", id);
+  if (error) console.warn("[testimonials] update failed", error.message);
+  return !error;
+}
+
+export async function deleteTestimonial(id: string): Promise<boolean> {
+  const sb = getSupabase();
+  if (!sb) return false;
+  const { error } = await sb.from("testimonials").delete().eq("id", id);
+  if (error) console.warn("[testimonials] delete failed", error.message);
+  return !error;
+}

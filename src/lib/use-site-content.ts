@@ -54,6 +54,42 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   logoUrl: "/ayms-wordmark.png",
 };
 
+export interface HeroHeadline {
+  before: string;
+  accent: string;
+}
+export interface HeroStat {
+  value: string;
+  label: string;
+}
+export interface HomeContent {
+  headlines: HeroHeadline[];
+  stats: HeroStat[];
+}
+
+export const DEFAULT_HOME: HomeContent = {
+  headlines: [
+    { before: "The world is better with ", accent: "amigas" },
+    { before: "Create unforgettable ", accent: "experiences" },
+    { before: "Chase the horizon with ", accent: "amigas" },
+    { before: "Adventure is always better ", accent: "together" },
+    { before: "Sisterhood knows no ", accent: "borders" },
+    { before: "Your next trip, your new ", accent: "family" },
+    { before: "We don't just travel — we ", accent: "belong" },
+    { before: "Find your people, find the ", accent: "world" },
+    { before: "Every journey starts with an ", accent: "amiga" },
+    { before: "Wander far, grow ", accent: "closer" },
+    { before: "Explore boldly, never ", accent: "alone" },
+    { before: "Bigger adventures, deeper ", accent: "friendships" },
+    { before: "Make memories that last a ", accent: "lifetime" },
+  ],
+  stats: [
+    { value: "2k+", label: "amigas" },
+    { value: "30+", label: "trips" },
+    { value: "12", label: "countries" },
+  ],
+};
+
 /* ----------------------------- store ------------------------------- */
 
 interface ConfigRow {
@@ -135,6 +171,15 @@ function useDomain<T extends object>(key: string, fallback: T): T {
 
 export function useSiteSettings(): SiteSettings {
   return useDomain<SiteSettings>("settings", DEFAULT_SETTINGS);
+}
+
+export function useHomeContent(): HomeContent {
+  const c = useDomain<HomeContent>("home", DEFAULT_HOME);
+  // Never let an empty saved array blank out the hero.
+  return {
+    headlines: c.headlines.length ? c.headlines : DEFAULT_HOME.headlines,
+    stats: c.stats.length ? c.stats : DEFAULT_HOME.stats,
+  };
 }
 
 /** Persist a domain doc (admin only). */

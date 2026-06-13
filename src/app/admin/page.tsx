@@ -10,6 +10,7 @@ import { PageManager } from "@/components/admin/page-manager";
 import { NavEditor } from "@/components/admin/nav-editor";
 import { NewsletterPanel } from "@/components/admin/newsletter-panel";
 import { SiteSettingsPanel } from "@/components/admin/site-settings-panel";
+import { HomeContentPanel } from "@/components/admin/home-content-panel";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -30,11 +31,12 @@ import {
   FolderOpen,
   Users,
   Settings as SettingsIcon,
+  Sparkles,
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 
-type Tab = "pages" | "nav" | "templates" | "audience" | "settings";
+type Tab = "pages" | "nav" | "content" | "templates" | "audience" | "settings";
 
 export default function AdminPage() {
   const user = useAuth((s) => s.user);
@@ -99,6 +101,7 @@ export default function AdminPage() {
         <div className="flex border-b border-white/10">
           {([
             { id: "pages" as Tab, icon: FileText, label: "Pages" },
+            { id: "content" as Tab, icon: Sparkles, label: "Content" },
             { id: "nav" as Tab, icon: Navigation, label: "Nav" },
             { id: "settings" as Tab, icon: SettingsIcon, label: "Settings" },
             { id: "templates" as Tab, icon: LayoutTemplate, label: "Templates" },
@@ -164,6 +167,10 @@ export default function AdminPage() {
       {activeTab === "settings" ? (
         <div className="flex-1 overflow-hidden">
           <SiteSettingsPanel />
+        </div>
+      ) : activeTab === "content" ? (
+        <div className="flex-1 overflow-hidden">
+          <HomeContentPanel />
         </div>
       ) : activeTab === "audience" ? (
         <div className="flex-1 overflow-hidden">

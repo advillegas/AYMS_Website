@@ -8,6 +8,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Heart, Users, Sparkles, ArrowDown } from "lucide-react";
 import { FlipCard } from "@/components/ui/flip-card";
+import { useHomeContent, useSiteSettings } from "@/lib/use-site-content";
 
 const PILLARS = [
   {
@@ -28,12 +29,6 @@ const PILLARS = [
     es: { label: "Celebrar", desc: "Viajar y crear recuerdos" },
     accent: "from-[#C44B3F] to-[#FF0099]",
   },
-];
-
-const STATS = [
-  { value: "2k+", label: "amigas" },
-  { value: "30+", label: "trips" },
-  { value: "12", label: "countries" },
 ];
 
 /**
@@ -61,17 +56,19 @@ const HEADLINES: { before: string; accent: string }[] = [
 function RotatingHeadline() {
   const prefersReducedMotion = useReducedMotion();
   const [index, setIndex] = useState(0);
+  const { headlines } = useHomeContent();
+  const list = headlines.length ? headlines : HEADLINES;
 
   useEffect(() => {
     if (prefersReducedMotion) return;
     const id = setInterval(
-      () => setIndex((n) => (n + 1) % HEADLINES.length),
+      () => setIndex((n) => (n + 1) % list.length),
       4200,
     );
     return () => clearInterval(id);
-  }, [prefersReducedMotion]);
+  }, [prefersReducedMotion, list.length]);
 
-  const headline = HEADLINES[index];
+  const headline = list[index % list.length];
   return (
     <h1 className="text-editorial font-display text-ink text-balance text-pretty min-h-[2em]">
       <AnimatePresence mode="wait" initial={false}>
@@ -93,6 +90,8 @@ function RotatingHeadline() {
 
 export function Hero() {
   const prefersReducedMotion = useReducedMotion();
+  const { stats } = useHomeContent();
+  const settings = useSiteSettings();
   return (
     <section
       id="home"
@@ -132,8 +131,8 @@ export function Hero() {
               className="mx-auto mb-8 w-fit"
             >
               <Image
-                src="/ayms-wordmark.png"
-                alt="Amigas Y Más Social"
+                src={settings.logoUrl}
+                alt={settings.siteName}
                 width={266}
                 height={192}
                 priority
@@ -173,7 +172,7 @@ export function Hero() {
               transition={{ delay: prefersReducedMotion ? 0 : 0.55 }}
               className="mx-auto mt-8 flex max-w-xl flex-wrap items-center justify-center gap-3"
             >
-              {STATS.map((s) => (
+              {stats.map((s) => (
                 <div
                   key={s.label}
                   className="glass flex items-baseline gap-1.5 rounded-full px-4 py-1.5"

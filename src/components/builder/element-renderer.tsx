@@ -174,7 +174,14 @@ export function ElementRenderer({ element, editable, onUpdate, onClick, isSelect
               <img
                 src={p.src as string}
                 alt={p.alt as string}
-                className="mx-auto max-w-full"
+                className={cn(
+                  "block max-w-full",
+                  (p.align as string) === "left"
+                    ? "mr-auto"
+                    : (p.align as string) === "right"
+                      ? "ml-auto"
+                      : "mx-auto",
+                )}
                 style={{ width: p.width as string, borderRadius: `${p.borderRadius}px` }}
               />
               {editable && (

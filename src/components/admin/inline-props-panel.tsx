@@ -12,6 +12,16 @@ import { v4 as uuid } from "uuid";
 import { cn } from "@/lib/utils";
 import { uploadCmsMedia } from "@/lib/supabase-storage";
 
+/** Current image width as a clamped percent (20–100) of the content panel. */
+function imgWidthPct(w: unknown): number {
+  const s = typeof w === "string" ? w : "";
+  if (s.trim().endsWith("%")) {
+    const n = parseInt(s, 10);
+    if (Number.isFinite(n)) return Math.min(100, Math.max(20, n));
+  }
+  return 100;
+}
+
 export function InlinePropsPanel() {
   const selectedElementId = useEditMode((s) => s.selectedElementId);
   const setSelectedElement = useEditMode((s) => s.setSelectedElement);
@@ -155,6 +165,28 @@ function PanelContent({ element, onClose }: { element: BuilderElement; onClose: 
                 {(p.src as string) && <img src={p.src as string} alt="" className="mt-2 w-full rounded-lg" />}
               </Field>
               <Field label="Or paste URL"><Input value={p.src as string} onChange={(e) => update({ src: e.target.value })} placeholder="https://… (jpg, png, .gif, GIPHY)" className={inputCls} /></Field>
+              <Field label={`Width — ${imgWidthPct(p.width)}% of panel`}>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="range"
+                    min={20}
+                    max={100}
+                    step={5}
+                    value={imgWidthPct(p.width)}
+                    onChange={(e) => update({ width: `${e.target.value}%` })}
+                    aria-label="Image width (percent of panel)"
+                    className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-white/15 accent-[#FF0099]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => update({ width: "100%" })}
+                    className="shrink-0 rounded-md border border-white/10 px-2 py-1 text-[10px] font-medium text-white/60 hover:bg-white/5 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]"
+                  >
+                    Full
+                  </button>
+                </div>
+              </Field>
+              <Field label="Alignment"><AlignPicker value={(p.align as string) || "center"} onChange={(v) => update({ align: v })} /></Field>
               <Field label="Alt Text"><Input value={p.alt as string} onChange={(e) => update({ alt: e.target.value })} className={inputCls} /></Field>
               <Field label="Border Radius"><Input type="number" value={p.borderRadius as string} onChange={(e) => update({ borderRadius: e.target.value })} className={inputCls} /></Field>
               <Field label="Soft float (live site)"><ToggleBtn value={!!(p.ambientFloat as boolean)} onChange={(v) => update({ ambientFloat: v })} /></Field>

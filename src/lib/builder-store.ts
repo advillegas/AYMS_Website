@@ -72,7 +72,7 @@ function defaultProps(type: ElementType): Record<string, unknown> {
     case "text":
       return { ...RV, text: "Click to edit this text. Add your event details, descriptions, or any content here.", align: "left", color: "#e0e0e0", fontSize: "16" };
     case "image":
-      return { ...RV, src: "", alt: "Image", width: "100%", borderRadius: "12", ambientFloat: false };
+      return { ...RV, src: "", alt: "Image", width: "100%", align: "center", borderRadius: "12", ambientFloat: false };
     case "video":
       return { ...RV, src: "", poster: "", autoplay: false };
     case "button":

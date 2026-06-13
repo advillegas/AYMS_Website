@@ -26,6 +26,7 @@ import {
 import { Sheet, SheetTrigger, SheetContent } from "@/components/ui/sheet";
 import { cn, initials } from "@/lib/utils";
 import { useAuth } from "@/lib/store";
+import { useSiteSettings } from "@/lib/use-site-content";
 import { toast } from "sonner";
 
 const FALLBACK_LINKS = [
@@ -44,6 +45,7 @@ export function Navbar() {
   const user = useAuth((s) => s.user);
   const logout = useAuth((s) => s.logout);
   const pathname = usePathname();
+  const settings = useSiteSettings();
 
   async function handleSignOut() {
     await logout();
@@ -68,25 +70,27 @@ export function Navbar() {
 
   return (
     <>
-      {/* Announcement bar — thin refined magenta strip */}
-      <div className="fixed top-0 z-[60] w-full bg-gradient-to-r from-[#FF0099] via-[#B51760] to-[#FF0099]">
-        <Link
-          href="/featured"
-          className="group flex h-7 items-center justify-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/95 transition-colors hover:text-white"
-        >
-          <Sparkles className="h-3 w-3 opacity-80" aria-hidden="true" />
-          <span>Featured Event — Check it out</span>
-          <span className="opacity-70 transition-transform group-hover:translate-x-0.5" aria-hidden="true">&rarr;</span>
-        </Link>
-      </div>
+      {/* Announcement bar — thin refined magenta strip (owner-editable) */}
+      {settings.announcementEnabled && settings.announcementText && (
+        <div className="fixed top-0 z-[60] w-full bg-gradient-to-r from-[#FF0099] via-[#B51760] to-[#FF0099]">
+          <Link
+            href={settings.announcementHref || "/featured"}
+            className="group flex h-7 items-center justify-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/95 transition-colors hover:text-white"
+          >
+            <Sparkles className="h-3 w-3 opacity-80" aria-hidden="true" />
+            <span>{settings.announcementText}</span>
+            <span className="opacity-70 transition-transform group-hover:translate-x-0.5" aria-hidden="true">&rarr;</span>
+          </Link>
+        </div>
+      )}
 
-      <header className="fixed top-7 z-50 w-full">
+      <header className={cn("fixed z-50 w-full", settings.announcementEnabled && settings.announcementText ? "top-7" : "top-0")}>
         <div className="mx-auto max-w-7xl px-4 pt-3 sm:px-6 lg:px-8">
           <div className="glass-nav flex h-14 items-center justify-between rounded-full px-3 pl-5 shadow-[0_8px_30px_rgb(34_16_25/0.08)]">
           <Link href="/" aria-label="Amigas Y Más Social — home" className="flex items-center">
             <Image
-              src="/ayms-wordmark.png"
-              alt="Amigas Y Más Social"
+              src={settings.logoUrl}
+              alt={settings.siteName}
               width={266}
               height={192}
               priority
@@ -214,7 +218,7 @@ export function Navbar() {
             </SheetTrigger>
             <SheetContent side="right" className="w-72 canvas-editorial">
               <div className="flex items-center mb-6">
-                <Image src="/ayms-wordmark.png" alt="Amigas Y Más Social" width={266} height={192} unoptimized className="h-12 w-auto" />
+                <Image src={settings.logoUrl} alt={settings.siteName} width={266} height={192} unoptimized className="h-12 w-auto" />
               </div>
               <nav className="flex flex-col gap-3">
                 <Link

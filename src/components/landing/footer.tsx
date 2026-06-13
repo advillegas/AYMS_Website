@@ -6,6 +6,7 @@ import Image from "next/image";
 import { toast } from "sonner";
 import { Loader2, Send } from "lucide-react";
 import { useNewsletter } from "@/lib/use-newsletter";
+import { useSiteSettings } from "@/lib/use-site-content";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -115,6 +116,8 @@ const FOOTER_COLUMNS: { heading: string; links: { label: string; href: string }[
 ];
 
 export function Footer() {
+  const settings = useSiteSettings();
+  const igUrl = `https://www.instagram.com/${settings.instagramHandle}/`;
   return (
     <footer className="relative overflow-hidden bg-[#2A0A1E] py-20 grain">
       <div className="absolute inset-0 bg-gradient-to-b from-[#2A0A1E] via-[#1f0716] to-[#160510]" />
@@ -136,8 +139,8 @@ export function Footer() {
             <span className="text-[#FF0099]"> ♡</span>
           </h2>
           <p className="mt-4 max-w-md text-base leading-relaxed text-white/55">
-            A Latina travel community built on sisterhood, cultura y aventura.
-            The world is better with amigas.
+            A Latina travel community built on sisterhood, cultura y aventura.{" "}
+            {settings.tagline}
           </p>
         </div>
 
@@ -150,8 +153,8 @@ export function Footer() {
               className="inline-flex flex-col items-start gap-2"
             >
               <Image
-                src="/ayms-wordmark.png"
-                alt="Amigas Y Más Social"
+                src={settings.logoUrl}
+                alt={settings.siteName}
                 width={266}
                 height={192}
                 unoptimized
@@ -188,21 +191,29 @@ export function Footer() {
           <div className="md:col-span-3">
             <p className="eyebrow text-white/40">Follow</p>
             <a
-              href="https://www.instagram.com/amigasymassocial/"
+              href={igUrl}
               target="_blank"
               rel="noopener noreferrer"
-              aria-label="Follow Amigas Y Más Social on Instagram (opens in a new tab)"
+              aria-label={`Follow ${settings.siteName} on Instagram (opens in a new tab)`}
               className="lift mt-4 inline-flex items-center gap-2.5 rounded-full border border-white/12 bg-white/[0.05] px-4 py-2.5 text-sm font-medium text-white/70 transition-colors hover:border-[#FF0099]/40 hover:text-[#FACDE8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#2A0A1E]"
             >
               <InstagramIcon className="h-5 w-5" />
-              @amigasymassocial
+              @{settings.instagramHandle}
             </a>
+            {settings.contactEmail && (
+              <a
+                href={`mailto:${settings.contactEmail}`}
+                className="mt-3 block text-sm text-white/55 transition-colors hover:text-[#FACDE8] focus-visible:outline-none focus-visible:text-[#FACDE8]"
+              >
+                {settings.contactEmail}
+              </a>
+            )}
           </div>
         </div>
 
         <div className="mt-12 flex flex-col items-center justify-between gap-3 border-t border-white/[0.07] pt-6 text-center text-xs text-white/45 sm:flex-row sm:text-left">
           <p>
-            &copy; {new Date().getFullYear()} Amigas Y Más Social. All rights
+            &copy; {new Date().getFullYear()} {settings.siteName}. All rights
             reserved. ♡
           </p>
           <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">

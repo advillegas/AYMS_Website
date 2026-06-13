@@ -9,6 +9,7 @@ import { useCms } from "@/lib/cms-store";
 import { PageManager } from "@/components/admin/page-manager";
 import { NavEditor } from "@/components/admin/nav-editor";
 import { NewsletterPanel } from "@/components/admin/newsletter-panel";
+import { SiteSettingsPanel } from "@/components/admin/site-settings-panel";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -28,11 +29,12 @@ import {
   Trash2,
   FolderOpen,
   Users,
+  Settings as SettingsIcon,
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 
-type Tab = "pages" | "nav" | "templates" | "audience";
+type Tab = "pages" | "nav" | "templates" | "audience" | "settings";
 
 export default function AdminPage() {
   const user = useAuth((s) => s.user);
@@ -67,8 +69,8 @@ export default function AdminPage() {
 
   function handleEditPage(slug: string) {
     const systemMap: Record<string, string> = {
-      home: "/", trips: "/trips", events: "/events", gallery: "/gallery",
-      faq: "/faq", featured: "/featured",
+      home: "/", trips: "/trips", camp: "/camp", events: "/events",
+      gallery: "/gallery", faq: "/faq", featured: "/featured",
     };
     const href = systemMap[slug] || `/p/${slug}`;
     toggleEditMode(slug);
@@ -98,6 +100,7 @@ export default function AdminPage() {
           {([
             { id: "pages" as Tab, icon: FileText, label: "Pages" },
             { id: "nav" as Tab, icon: Navigation, label: "Nav" },
+            { id: "settings" as Tab, icon: SettingsIcon, label: "Settings" },
             { id: "templates" as Tab, icon: LayoutTemplate, label: "Templates" },
             { id: "audience" as Tab, icon: Users, label: "Audience" },
           ]).map((tab) => (
@@ -158,7 +161,11 @@ export default function AdminPage() {
       </aside>
 
       {/* Main content area */}
-      {activeTab === "audience" ? (
+      {activeTab === "settings" ? (
+        <div className="flex-1 overflow-hidden">
+          <SiteSettingsPanel />
+        </div>
+      ) : activeTab === "audience" ? (
         <div className="flex-1 overflow-hidden">
           <NewsletterPanel />
         </div>

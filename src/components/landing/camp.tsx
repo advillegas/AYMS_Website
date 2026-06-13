@@ -8,10 +8,10 @@ import { Calendar, MapPin, Users, Sun, Star } from "lucide-react";
 import Link from "next/link";
 
 const DETAILS = [
-  { icon: Calendar, en: "July 15–18, 2026", es: "15–18 de Julio, 2026" },
-  { icon: MapPin, en: "Camp Wilderness, CA", es: "Campamento Wilderness, CA" },
-  { icon: Users, en: "Limited to 50 Amigas", es: "Limitado a 50 Amigas" },
-  { icon: Sun, en: "3 Days of Fun", es: "3 Días de Diversión" },
+  { icon: Calendar, en: "August 28–30, 2026", es: "28–30 de Agosto, 2026" },
+  { icon: MapPin, en: "San Bernardino County, CA", es: "Condado de San Bernardino, CA" },
+  { icon: Users, en: "Latina Women 21+", es: "Mujeres Latinas 21+" },
+  { icon: Sun, en: "All-Inclusive Weekend", es: "Fin de Semana Todo Incluido" },
 ];
 
 export function Camp() {
@@ -58,13 +58,13 @@ export function Camp() {
             </div>
 
             <Link
-              href="/register"
+              href="/camp"
               className={cn(
                 buttonVariants({ size: "lg" }),
                 "lift mt-8 h-14 rounded-full border-0 bg-gradient-to-r from-[#FF0099] via-[#B51760] to-[#FF0099] px-10 text-base font-semibold text-white shadow-[0_8px_30px_rgb(255_0_153/0.30)] hover:brightness-110",
               )}
             >
-              Register Now ♡
+              Explore Camp ♡
             </Link>
           </motion.div>
 

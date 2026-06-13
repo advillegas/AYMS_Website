@@ -240,7 +240,7 @@ export function AdminToolbar({
                 <button
                   type="button"
                   role="menuitem"
-                  onClick={() => { onReset(); setRevertOpen(false); toast.success("Reset to the original design — review, then Publish."); }}
+                  onClick={() => { onReset(); setRevertOpen(false); toast.success("Reset — the original page is restored live."); }}
                   className="flex w-full items-start gap-2.5 rounded-lg p-2.5 text-left text-white/70 hover:bg-white/5 hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]"
                 >
                   <RotateCcw className="h-3.5 w-3.5 mt-0.5 shrink-0 text-[#FF0099]" aria-hidden="true" />

@@ -129,7 +129,11 @@ export function CmsPageWrapper({ slug, children }: Props) {
     publishPage(slug);
   }, [slug, setPageElements, publishPage]);
 
-  // Reload the built-in coded design into the editor canvas (self-recovery).
+  // Restore the original design (self-recovery). For core/system pages the
+  // true original is the coded React page, so we unpublish to bring it back
+  // live; the editor canvas is also reseeded from the default template so the
+  // admin isn't left staring at their broken draft. Custom pages (no coded
+  // fallback) just reseed the canvas.
   const handleReset = useCallback(() => {
     const snapFn = PAGE_SNAPSHOTS[slug];
     useBuilder.setState({
@@ -137,6 +141,9 @@ export function CmsPageWrapper({ slug, children }: Props) {
       selectedId: null,
     });
     useEditMode.setState({ selectedElementId: null });
+    if (isSystemSlug(slug)) {
+      useCms.getState().unpublishPage(slug);
+    }
   }, [slug]);
 
   // Hide this page's override so the original coded page goes live again.

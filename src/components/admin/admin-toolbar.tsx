@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useEditMode } from "@/lib/edit-mode";
-import type { ElementType, BuilderElement } from "@/lib/builder-store";
+import { useBuilder, type ElementType, type BuilderElement } from "@/lib/builder-store";
 import type { CmsVersion } from "@/lib/cms-store";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -35,6 +35,8 @@ import {
   History,
   Undo2,
   AlertTriangle,
+  Undo,
+  Redo,
 } from "lucide-react";
 
 interface PaletteItem { type: ElementType; icon: React.ElementType; label: string }
@@ -121,7 +123,30 @@ export function AdminToolbar({
   const isEditMode = useEditMode((s) => s.isEditMode);
   const pageSlug = useEditMode((s) => s.pageSlug);
   const exitEditMode = useEditMode((s) => s.exitEditMode);
+  const canUndo = useBuilder((s) => s.canUndo);
+  const canRedo = useBuilder((s) => s.canRedo);
   const [paletteOpen, setPaletteOpen] = useState(false);
+
+  // Ctrl/Cmd+Z = undo, Ctrl/Cmd+Shift+Z (or Ctrl+Y) = redo, while editing.
+  useEffect(() => {
+    if (!isEditMode) return;
+    function onKey(e: KeyboardEvent) {
+      const mod = e.ctrlKey || e.metaKey;
+      if (!mod) return;
+      const target = e.target as HTMLElement | null;
+      if (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return;
+      const key = e.key.toLowerCase();
+      if (key === "z" && !e.shiftKey) {
+        e.preventDefault();
+        useBuilder.getState().undo();
+      } else if ((key === "z" && e.shiftKey) || key === "y") {
+        e.preventDefault();
+        useBuilder.getState().redo();
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isEditMode]);
   const [revertOpen, setRevertOpen] = useState(false);
   const [confirmPublish, setConfirmPublish] = useState(false);
   const [versions, setVersions] = useState<CmsVersion[]>([]);
@@ -160,6 +185,28 @@ export function AdminToolbar({
             / {pageSlug}
           </span>
         )}
+        <div className="ml-2 flex items-center gap-0.5">
+          <button
+            type="button"
+            onClick={() => useBuilder.getState().undo()}
+            disabled={!canUndo}
+            aria-label="Undo"
+            title="Undo (Ctrl+Z)"
+            className="rounded-md p-1.5 text-white/50 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-25 disabled:hover:bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]"
+          >
+            <Undo className="h-3.5 w-3.5" aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            onClick={() => useBuilder.getState().redo()}
+            disabled={!canRedo}
+            aria-label="Redo"
+            title="Redo (Ctrl+Shift+Z)"
+            className="rounded-md p-1.5 text-white/50 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-25 disabled:hover:bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]"
+          >
+            <Redo className="h-3.5 w-3.5" aria-hidden="true" />
+          </button>
+        </div>
       </div>
 
       {/* Center: add elements dropdown */}

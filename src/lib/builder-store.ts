@@ -61,7 +61,21 @@ interface BuilderState {
 
   publish: () => void;
   loadFromStorage: () => void;
+
+  // Undo / redo for the editing canvas.
+  undo: () => void;
+  redo: () => void;
+  resetHistory: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
 }
+
+// History stacks live at module scope so the subscription below can record
+// every `elements` change regardless of which call site made it.
+let undoPast: BuilderElement[][] = [];
+let undoFuture: BuilderElement[][] = [];
+let timeTravel = false;
+const HISTORY_LIMIT = 60;
 
 const RV = { revealAnimation: "none", revealDelay: "0" } as const;
 
@@ -169,6 +183,32 @@ export const useBuilder = create<BuilderState>((set, get) => ({
   templates: [],
   activeTemplateId: null,
   publishedElements: [],
+  canUndo: false,
+  canRedo: false,
+
+  undo: () => {
+    if (undoPast.length === 0) return;
+    const prev = undoPast.pop() as BuilderElement[];
+    undoFuture.push(get().elements);
+    timeTravel = true;
+    set({ elements: prev, selectedId: null, canUndo: undoPast.length > 0, canRedo: true });
+    timeTravel = false;
+  },
+
+  redo: () => {
+    if (undoFuture.length === 0) return;
+    const next = undoFuture.pop() as BuilderElement[];
+    undoPast.push(get().elements);
+    timeTravel = true;
+    set({ elements: next, selectedId: null, canUndo: true, canRedo: undoFuture.length > 0 });
+    timeTravel = false;
+  },
+
+  resetHistory: () => {
+    undoPast = [];
+    undoFuture = [];
+    set({ canUndo: false, canRedo: false });
+  },
 
   addElement: (type, index) => {
     const el: BuilderElement = { id: uuid(), type, props: defaultProps(type) };
@@ -287,3 +327,17 @@ export const useBuilder = create<BuilderState>((set, get) => ({
     });
   },
 }));
+
+// Record every canvas `elements` change into the undo stack (skips
+// changes made BY undo/redo themselves). Captures all call sites,
+// including direct useBuilder.setState() from the page wrapper.
+useBuilder.subscribe((state, prev) => {
+  if (timeTravel) return;
+  if (state.elements === prev.elements) return;
+  undoPast.push(prev.elements);
+  if (undoPast.length > HISTORY_LIMIT) undoPast.shift();
+  undoFuture = [];
+  if (!state.canUndo || state.canRedo) {
+    useBuilder.setState({ canUndo: true, canRedo: false });
+  }
+});

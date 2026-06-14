@@ -108,6 +108,9 @@ export function CmsPageWrapper({ slug, children }: Props) {
         ];
         useBuilder.setState({ elements: seed, selectedId: null });
       }
+      // Fresh undo history per editing session (don't let undo cross back
+      // into the previous page's edits or the initial seed).
+      useBuilder.getState().resetHistory();
     }
   }, [isEditing, slug]);
 

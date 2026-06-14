@@ -1,10 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/store";
 import { useHasPermission } from "@/lib/use-roles-store";
 import { useInlineEdit } from "@/lib/use-inline-edit";
 import { Pencil, Check, SlidersHorizontal } from "lucide-react";
+
+/** Routes wired for in-place click-to-edit. Expand as pages get wrapped. */
+const INPLACE_ROUTES = ["/camp"];
 
 /**
  * Floating editor control shown to admins/content-managers on the marketing
@@ -17,8 +21,25 @@ export function InlineEditBar() {
   const canEditContent = useHasPermission("manageContent");
   const enabled = useInlineEdit((s) => s.enabled);
   const toggle = useInlineEdit((s) => s.toggle);
+  const pathname = usePathname();
 
   if (!isAuthenticated || !(canEditContent || user?.role === "admin")) return null;
+  // Hide entirely inside the community app + the block editor dashboard.
+  if (pathname.startsWith("/community") || pathname.startsWith("/admin")) return null;
+
+  // On pages not yet wired for in-place editing, the button just opens the
+  // structured Content/Settings dashboard instead of a no-op edit mode.
+  if (!INPLACE_ROUTES.includes(pathname)) {
+    return (
+      <Link
+        href="/admin?tab=content"
+        className="fixed bottom-6 left-6 z-[120] flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold text-white shadow-[0_8px_28px_rgb(34_16_25/0.35)] transition-all hover:scale-105 active:scale-95"
+        style={{ background: "linear-gradient(to right, var(--magenta), var(--brand-pink))" }}
+      >
+        <SlidersHorizontal className="h-4 w-4" /> Edit Site Content
+      </Link>
+    );
+  }
 
   return (
     <>

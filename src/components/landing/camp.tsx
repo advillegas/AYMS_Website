@@ -19,7 +19,7 @@ export function Camp() {
   return (
     <section id="camp" className="grain relative overflow-hidden bg-white py-28 sm:py-32">
       <div className="mesh-warm opacity-60" />
-      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#FF7F50]/25 to-transparent" />
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[var(--coral)]/25 to-transparent" />
 
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="grid items-center gap-16 lg:grid-cols-2">
@@ -29,7 +29,7 @@ export function Camp() {
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
           >
-            <Badge className="mb-5 rounded-full border-0 bg-gradient-to-r from-[#FF7F50] to-[#B51760] px-4 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-white shadow-[0_4px_14px_rgb(255_127_80/0.30)]">
+            <Badge className="mb-5 rounded-full border-0 bg-gradient-to-r from-[var(--coral)] to-[var(--brand-pink)] px-4 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-white shadow-[0_4px_14px_rgb(255_127_80/0.30)]">
               Summer 2026
             </Badge>
             <h2 className="text-title font-display text-ink text-balance">
@@ -48,10 +48,10 @@ export function Camp() {
                   key={item.en}
                   className="glass lift elevate-2 group flex cursor-default items-center gap-3 rounded-2xl p-4"
                 >
-                  <item.icon className="h-5 w-5 shrink-0 text-[#FF7F50]" aria-hidden="true" />
+                  <item.icon className="h-5 w-5 shrink-0 text-[var(--coral)]" aria-hidden="true" />
                   <span className="text-sm font-medium text-ink">
                     <span className="group-hover:hidden">{item.en}</span>
-                    <span className="hidden font-semibold text-[#B51760] group-hover:inline">{item.es}</span>
+                    <span className="hidden font-semibold text-[var(--brand-pink)] group-hover:inline">{item.es}</span>
                   </span>
                 </div>
               ))}
@@ -61,7 +61,7 @@ export function Camp() {
               href="/camp"
               className={cn(
                 buttonVariants({ size: "lg" }),
-                "lift mt-8 h-14 rounded-full border-0 bg-gradient-to-r from-[#FF0099] via-[#B51760] to-[#FF0099] px-10 text-base font-semibold text-white shadow-[0_8px_30px_rgb(255_0_153/0.30)] hover:brightness-110",
+                "lift mt-8 h-14 rounded-full border-0 bg-gradient-to-r from-[var(--magenta)] via-[var(--brand-pink)] to-[var(--magenta)] px-10 text-base font-semibold text-white shadow-[0_8px_30px_rgb(255_0_153/0.30)] hover:brightness-110",
               )}
             >
               Explore Camp ♡
@@ -76,12 +76,12 @@ export function Camp() {
             className="relative"
           >
             <div className="glass-strong elevate-float relative flex aspect-[4/3] items-center justify-center overflow-hidden rounded-[2rem] p-10">
-              <div className="absolute inset-0 bg-gradient-to-br from-[#FF7F50]/10 via-transparent to-[#FACDE8]/25" />
+              <div className="absolute inset-0 bg-gradient-to-br from-[var(--coral)]/10 via-transparent to-[#FACDE8]/25" />
               <div className="relative text-center">
                 <motion.div
                   animate={prefersReducedMotion ? undefined : { rotate: [0, 5, -5, 0] }}
                   transition={prefersReducedMotion ? undefined : { duration: 6, repeat: Infinity, ease: "easeInOut" }}
-                  className="mx-auto flex h-28 w-28 items-center justify-center rounded-full bg-gradient-to-br from-[#FF0099] via-[#B51760] to-[#FF7F50] shadow-2xl"
+                  className="mx-auto flex h-28 w-28 items-center justify-center rounded-full bg-gradient-to-br from-[var(--magenta)] via-[var(--brand-pink)] to-[var(--coral)] shadow-2xl"
                 >
                   <Sun className="h-14 w-14 text-white" aria-hidden="true" />
                 </motion.div>
@@ -93,7 +93,7 @@ export function Camp() {
                 </p>
                 <div className="mt-4 flex justify-center gap-1" aria-hidden="true">
                   {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="h-4 w-4 fill-[#FF7F50] text-[#FF7F50]" />
+                    <Star key={i} className="h-4 w-4 fill-[var(--coral)] text-[var(--coral)]" />
                   ))}
                 </div>
               </div>

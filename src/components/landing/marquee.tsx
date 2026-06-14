@@ -20,12 +20,12 @@ export function Marquee() {
 
   return (
     <div
-      className="relative overflow-hidden bg-gradient-to-r from-[#B51760] via-[#FF0099] to-[#B51760] py-4"
+      className="relative overflow-hidden bg-gradient-to-r from-[var(--brand-pink)] via-[var(--magenta)] to-[var(--brand-pink)] py-4"
       aria-hidden="true"
     >
       {/* Left / right edge fades into the magenta band */}
-      <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-24 bg-gradient-to-r from-[#B51760] to-transparent" />
-      <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-24 bg-gradient-to-l from-[#B51760] to-transparent" />
+      <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-24 bg-gradient-to-r from-[var(--brand-pink)] to-transparent" />
+      <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-24 bg-gradient-to-l from-[var(--brand-pink)] to-transparent" />
       {prefersReducedMotion ? (
         // No infinite motion when the visitor opts out — show a single static,
         // centered, wrapping row instead of the scrolling track.

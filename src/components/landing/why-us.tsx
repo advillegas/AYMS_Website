@@ -10,7 +10,7 @@ const PROPS = [
     en: { title: "Small Groups", desc: "Intimate groups of 10–20 amigas so everyone bonds and no one gets lost in the crowd." },
     es: { title: "Grupos Pequeños", desc: "Grupos íntimos de 10–20 amigas para que todas se conecten y nadie se pierda." },
     gradient: "from-primary/20 to-rosa/10",
-    gradientBack: "from-[#FF0099] to-[#B51760]",
+    gradientBack: "from-[var(--magenta)] to-[var(--brand-pink)]",
   },
   {
     icon: Crown,
@@ -24,7 +24,7 @@ const PROPS = [
     en: { title: "Safe & Supported", desc: "Experienced trip leaders, local guides, and emergency protocols at every destination." },
     es: { title: "Seguras y Apoyadas", desc: "Líderes de viaje experimentadas, guías locales y protocolos de emergencia en cada destino." },
     gradient: "from-rosa/20 to-primary/10",
-    gradientBack: "from-[#9B2C8A] to-[#FF0099]",
+    gradientBack: "from-[#9B2C8A] to-[var(--magenta)]",
   },
   {
     icon: Heart,
@@ -38,14 +38,14 @@ const PROPS = [
     en: { title: "Bucket List Destinations", desc: "From Cancún to Kenya, Bali to NYC — we go where the magic is." },
     es: { title: "Destinos de Ensueño", desc: "De Cancún a Kenya, Bali a NYC — vamos donde está la magia." },
     gradient: "from-primary/20 to-rosa/10",
-    gradientBack: "from-[#FF0099] to-[#9B2C8A]",
+    gradientBack: "from-[var(--magenta)] to-[#9B2C8A]",
   },
   {
     icon: Sparkles,
     en: { title: "All-Inclusive Vibes", desc: "Hotels, meals, activities, and transfers included. Just show up and enjoy." },
     es: { title: "Todo Incluido", desc: "Hoteles, comidas, actividades y traslados incluidos. Solo llega y disfruta." },
     gradient: "from-rosa/20 to-primary/10",
-    gradientBack: "from-[#B51760] to-[#FF0099]",
+    gradientBack: "from-[var(--brand-pink)] to-[var(--magenta)]",
   },
 ];
 
@@ -54,7 +54,7 @@ export function WhyUs() {
   return (
     <section className="canvas-editorial grain relative overflow-hidden py-28 sm:py-32">
       <div className="mesh-warm opacity-70" />
-      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#FF0099]/20 to-transparent" />
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[var(--magenta)]/20 to-transparent" />
 
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <motion.div
@@ -64,7 +64,7 @@ export function WhyUs() {
           transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
           className="mx-auto max-w-2xl text-center"
         >
-          <p className="eyebrow text-[#FF0099]">Why Travel With Us</p>
+          <p className="eyebrow text-[var(--magenta)]">Why Travel With Us</p>
           <h2 className="text-title mt-4 font-display text-ink text-balance">
             Sit back &amp; relax,{" "}
             <span className="font-display-italic marker-swipe">you&apos;re in good hands</span>
@@ -88,8 +88,8 @@ export function WhyUs() {
                 className="h-52 cursor-pointer rounded-3xl"
                 front={
                   <div className="glass lift elevate-2 flex h-full flex-col items-start justify-center gap-3 rounded-3xl p-7">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[#FF0099]/12 to-[#FACDE8]/45">
-                      <p.icon className="h-6 w-6 text-[#FF0099]" aria-hidden="true" />
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[var(--magenta)]/12 to-[#FACDE8]/45">
+                      <p.icon className="h-6 w-6 text-[var(--magenta)]" aria-hidden="true" />
                     </div>
                     <h3 className="font-display text-lg text-ink">{p.en.title}</h3>
                     <p className="text-sm leading-relaxed text-ink-soft">{p.en.desc}</p>

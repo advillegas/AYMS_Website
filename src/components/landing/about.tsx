@@ -45,7 +45,7 @@ export function About() {
     <section id="about" className="canvas-warm grain relative overflow-hidden py-28 sm:py-32">
       {/* Warm editorial backdrop */}
       <div className="mesh-warm" />
-      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#FF0099]/25 to-transparent" />
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[var(--magenta)]/25 to-transparent" />
 
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Editorial intro — founder-led warmth */}
@@ -57,7 +57,7 @@ export function About() {
             transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
             className="lg:col-span-7"
           >
-            <p className="eyebrow text-[#B51760]">About Us</p>
+            <p className="eyebrow text-[var(--brand-pink)]">About Us</p>
             <h2 className="text-title mt-4 font-display text-ink text-balance">
               More than a community —{" "}
               <span className="font-display-italic marker-swipe">we are family</span>
@@ -80,19 +80,19 @@ export function About() {
           >
             <span
               aria-hidden="true"
-              className="font-display absolute -left-2 -top-8 select-none text-[7rem] leading-none text-[#FF0099]/15"
+              className="font-display absolute -left-2 -top-8 select-none text-[7rem] leading-none text-[var(--magenta)]/15"
             >
               &ldquo;
             </span>
             <blockquote className="relative">
               <p className="font-display text-[1.7rem] leading-snug text-ink sm:text-[2rem]">
                 We don&apos;t just travel together — we{" "}
-                <span className="font-display-italic text-[#B51760]">belong</span>{" "}
+                <span className="font-display-italic text-[var(--brand-pink)]">belong</span>{" "}
                 together.
               </p>
             </blockquote>
             <figcaption className="mt-5 flex items-center gap-2 text-sm text-ink-soft">
-              <span className="h-px w-8 bg-[#FF0099]/40" aria-hidden="true" />
+              <span className="h-px w-8 bg-[var(--magenta)]/40" aria-hidden="true" />
               The AYMS promise
             </figcaption>
           </motion.figure>
@@ -112,7 +112,7 @@ export function About() {
                 className="h-64 cursor-pointer rounded-3xl"
                 front={
                   <div className="glass lift elevate-2 flex h-full flex-col items-start justify-center gap-4 rounded-3xl p-7 text-left">
-                    <div className={`flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[#FF0099]/12 to-[#FACDE8]/40 ${v.iconColor}`}>
+                    <div className={`flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[var(--magenta)]/12 to-[#FACDE8]/40 ${v.iconColor}`}>
                       <v.icon className="h-6 w-6" aria-hidden="true" />
                     </div>
                     <h3 className="font-display text-xl text-ink">{v.en.title}</h3>
@@ -142,11 +142,11 @@ export function About() {
           className="glass-strong elevate-3 mt-20 overflow-hidden rounded-[2rem] p-8 sm:p-12"
         >
           <div className="flex flex-col items-center gap-8 text-center sm:flex-row sm:items-start sm:text-left">
-            <div className="elevate-float flex h-24 w-24 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#FF0099] via-[#B51760] to-[#FF7F50] font-display text-3xl font-semibold text-white">
+            <div className="elevate-float flex h-24 w-24 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[var(--magenta)] via-[var(--brand-pink)] to-[var(--coral)] font-display text-3xl font-semibold text-white">
               SV
             </div>
             <div className="flex-1">
-              <p className="eyebrow text-[#FF0099]">Founder &amp; CEO</p>
+              <p className="eyebrow text-[var(--magenta)]">Founder &amp; CEO</p>
               <h3 className="mt-2 font-display text-2xl text-ink sm:text-[2rem]">Sally Vee</h3>
               <p className="mt-4 max-w-2xl font-display-italic text-lg leading-relaxed text-ink-soft">
                 &ldquo;I had a vision of sisterhood and made it my mission to bring

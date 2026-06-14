@@ -14,10 +14,10 @@ function TestimonialCard({ t, hidden }: { t: Testimonial; hidden?: boolean }) {
         front={
           <div className="glass elevate-2 flex h-full flex-col justify-between rounded-3xl p-7">
             <div>
-              <Quote className="h-7 w-7 text-[#FF0099]/30" aria-hidden="true" />
+              <Quote className="h-7 w-7 text-[var(--magenta)]/30" aria-hidden="true" />
               <div className="mt-3 flex items-center gap-1" aria-label="5 out of 5 stars">
                 {Array.from({ length: 5 }).map((_, s) => (
-                  <Star key={s} className="h-3.5 w-3.5 fill-[#FF0099] text-[#FF0099]" aria-hidden="true" />
+                  <Star key={s} className="h-3.5 w-3.5 fill-[var(--magenta)] text-[var(--magenta)]" aria-hidden="true" />
                 ))}
               </div>
               <p className="font-display mt-4 text-xl leading-snug text-ink line-clamp-5">
@@ -77,7 +77,7 @@ export function Testimonials() {
   return (
     <section className="canvas-editorial grain relative overflow-hidden py-32">
       <div className="mesh-warm" aria-hidden="true" />
-      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#FF0099]/25 to-transparent" />
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[var(--magenta)]/25 to-transparent" />
 
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <motion.div
@@ -87,10 +87,10 @@ export function Testimonials() {
           transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
           className="max-w-2xl"
         >
-          <p className="eyebrow text-[#B51760]">Testimonials</p>
+          <p className="eyebrow text-[var(--brand-pink)]">Testimonials</p>
           <h2 className="font-display text-title mt-3 text-ink text-balance">
             See what it&apos;s{" "}
-            <span className="font-display-italic text-[#FF0099]">really like</span>
+            <span className="font-display-italic text-[var(--magenta)]">really like</span>
           </h2>
           <p className="text-lead mt-4 max-w-xl text-ink-soft leading-relaxed">
             Honest words from amigas who showed up solo and left with a second

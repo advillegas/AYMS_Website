@@ -121,7 +121,7 @@ function SpotlightSignup({ tripId }: { tripId: string }) {
     return (
       <p
         role="status"
-        className="rounded-2xl border border-[#FF0099]/30 bg-[#FF0099]/10 px-5 py-4 text-sm font-medium text-[#FFB3D0]"
+        className="rounded-2xl border border-[var(--magenta)]/30 bg-[var(--magenta)]/10 px-5 py-4 text-sm font-medium text-[#FFB3D0]"
       >
         You&apos;re on the list — we&apos;ll keep you posted on this trip and
         more. ♡
@@ -143,13 +143,13 @@ function SpotlightSignup({ tripId }: { tripId: string }) {
         onChange={(e) => setEmail(e.target.value)}
         placeholder="you@example.com"
         disabled={submitting}
-        className="h-12 flex-1 rounded-full border border-white/12 bg-white/[0.06] px-5 text-sm text-white placeholder:text-white/35 outline-none transition-colors focus-visible:border-[#FF0099]/40 focus-visible:ring-2 focus-visible:ring-[#FF0099]/40 disabled:opacity-60"
+        className="h-12 flex-1 rounded-full border border-white/12 bg-white/[0.06] px-5 text-sm text-white placeholder:text-white/35 outline-none transition-colors focus-visible:border-[var(--magenta)]/40 focus-visible:ring-2 focus-visible:ring-[var(--magenta)]/40 disabled:opacity-60"
       />
       <button
         type="submit"
         disabled={submitting}
         aria-busy={submitting}
-        className="lift inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#FF0099] via-[#B51760] to-[#FF0099] px-7 text-sm font-semibold text-white shadow-[0_6px_24px_rgb(255_0_153/0.30)] transition-all hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#1A0814] disabled:opacity-70"
+        className="lift inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[var(--magenta)] via-[var(--brand-pink)] to-[var(--magenta)] px-7 text-sm font-semibold text-white shadow-[0_6px_24px_rgb(255_0_153/0.30)] transition-all hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--magenta)]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#1A0814] disabled:opacity-70"
       >
         {submitting ? (
           <>
@@ -303,7 +303,7 @@ export function FeaturedSpotlight() {
                   </div>
                   <Link
                     href="/trips"
-                    className="lift sm:ml-auto inline-flex h-11 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#FF0099] via-[#B51760] to-[#FF0099] px-6 text-sm font-semibold text-white shadow-[0_6px_24px_rgb(255_0_153/0.30)] transition-all hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#1A0814]"
+                    className="lift sm:ml-auto inline-flex h-11 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[var(--magenta)] via-[var(--brand-pink)] to-[var(--magenta)] px-6 text-sm font-semibold text-white shadow-[0_6px_24px_rgb(255_0_153/0.30)] transition-all hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--magenta)]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#1A0814]"
                   >
                     View trip details
                     <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -346,7 +346,7 @@ export function FeaturedSpotlight() {
                           {e.location}
                         </p>
                       </div>
-                      <span className="shrink-0 rounded-full bg-[#FF0099]/15 px-2.5 py-1 text-xs font-semibold text-[#FFB3D0]">
+                      <span className="shrink-0 rounded-full bg-[var(--magenta)]/15 px-2.5 py-1 text-xs font-semibold text-[#FFB3D0]">
                         {formatEventDate(e.date)}
                       </span>
                     </li>

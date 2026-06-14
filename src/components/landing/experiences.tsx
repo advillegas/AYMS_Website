@@ -54,7 +54,7 @@ export function Experiences() {
 
   return (
     <section className="canvas-warm grain relative overflow-hidden py-28">
-      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#FF0099]/25 to-transparent" />
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[var(--magenta)]/25 to-transparent" />
 
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <motion.div
@@ -64,10 +64,10 @@ export function Experiences() {
           transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
           className="max-w-2xl"
         >
-          <p className="eyebrow text-[#FF0099]">Bucket List</p>
+          <p className="eyebrow text-[var(--magenta)]">Bucket List</p>
           <h2 className="text-title mt-3 font-display text-ink text-balance">
             Unforgettable{" "}
-            <span className="font-display-italic text-[#B51760]">experiences</span>
+            <span className="font-display-italic text-[var(--brand-pink)]">experiences</span>
           </h2>
           <p className="text-lead mt-4 text-ink-soft">
             Every trip is packed with curated activities that you&apos;ll

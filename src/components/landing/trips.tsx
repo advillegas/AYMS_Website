@@ -37,7 +37,7 @@ export function Trips() {
   return (
     <section id="trips" className="grain relative overflow-hidden bg-white py-28">
       <div className="mesh-warm" />
-      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#FF7F50]/35 to-transparent" />
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[var(--coral)]/35 to-transparent" />
 
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <motion.div
@@ -47,10 +47,10 @@ export function Trips() {
           transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
           className="text-center"
         >
-          <p className="eyebrow text-[#FF7F50]">Upcoming Trips</p>
+          <p className="eyebrow text-[var(--coral)]">Upcoming Trips</p>
           <h2 className="text-title mt-3 font-display text-ink text-balance">
             Travel with your{" "}
-            <span className="font-display-italic text-[#FF7F50]">amigas</span>
+            <span className="font-display-italic text-[var(--coral)]">amigas</span>
           </h2>
           <p className="text-lead mx-auto mt-5 max-w-2xl text-ink-soft">
             We organize group trips that create lifelong memories. From beach
@@ -77,7 +77,7 @@ export function Trips() {
               href="/trips"
               className={cn(
                 buttonVariants({ size: "lg" }),
-                "mt-6 rounded-full bg-[#FF0099] font-semibold text-white hover:bg-[#B51760]",
+                "mt-6 rounded-full bg-[var(--magenta)] font-semibold text-white hover:bg-[var(--brand-pink)]",
               )}
             >
               Browse all trips
@@ -137,7 +137,7 @@ export function Trips() {
                     <div className="flex flex-1 flex-col p-4">
                       <h3 className="font-display text-lg text-ink">{trip.title}</h3>
                       <div className="mt-2 flex items-center gap-2 text-sm text-ink-soft">
-                        <Calendar className="h-4 w-4 text-[#FF7F50]" aria-hidden="true" />
+                        <Calendar className="h-4 w-4 text-[var(--coral)]" aria-hidden="true" />
                         {trip.dates}
                       </div>
                       {trip.description ? (
@@ -158,7 +158,7 @@ export function Trips() {
                             </span>
                           ) : null}
                         </div>
-                        <span className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-[#FF7F50]">
+                        <span className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-[var(--coral)]">
                           View
                           <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
                         </span>

@@ -98,7 +98,7 @@ export function CommunityPreview() {
   return (
     <section className="canvas-warm grain relative overflow-hidden py-32">
       <div className="mesh-warm" aria-hidden="true" />
-      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#FF0099]/25 to-transparent" />
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[var(--magenta)]/25 to-transparent" />
 
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <motion.div
@@ -108,13 +108,13 @@ export function CommunityPreview() {
           transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
           className="mx-auto max-w-2xl text-center"
         >
-          <p className="eyebrow inline-flex items-center justify-center gap-2 text-[#B51760]">
-            <Sparkles className="h-3.5 w-3.5 text-[#FF0099]" aria-hidden="true" />
+          <p className="eyebrow inline-flex items-center justify-center gap-2 text-[var(--brand-pink)]">
+            <Sparkles className="h-3.5 w-3.5 text-[var(--magenta)]" aria-hidden="true" />
             Join the Family
           </p>
           <h2 className="font-display text-title mt-4 text-ink text-balance">
             Become an{" "}
-            <span className="font-display-italic text-[#FF0099]">Amiga</span>
+            <span className="font-display-italic text-[var(--magenta)]">Amiga</span>
           </h2>
           <p className="text-lead mx-auto mt-5 max-w-xl text-ink-soft leading-relaxed">
             Real friendships, bucket-list adventures, and a sisterhood that
@@ -138,10 +138,10 @@ export function CommunityPreview() {
               }}
               className="glass lift elevate-2 flex flex-col items-center rounded-3xl p-7 text-center"
             >
-              <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[#FF0099]/15 to-[#B51760]/10">
-                <s.icon className="h-5 w-5 text-[#FF0099]" aria-hidden="true" />
+              <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[var(--magenta)]/15 to-[var(--brand-pink)]/10">
+                <s.icon className="h-5 w-5 text-[var(--magenta)]" aria-hidden="true" />
               </div>
-              <p className="font-display text-4xl text-[#B51760]">
+              <p className="font-display text-4xl text-[var(--brand-pink)]">
                 {s.value}
               </p>
               <p className="mt-1 text-sm text-ink-soft">{s.label}</p>
@@ -157,7 +157,7 @@ export function CommunityPreview() {
             viewport={{ once: true }}
             transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
           >
-            <p className="eyebrow text-[#B51760]">From our amigas</p>
+            <p className="eyebrow text-[var(--brand-pink)]">From our amigas</p>
             <div className="mt-4 space-y-4">
               {highlights.map((t) => (
                 <div
@@ -198,7 +198,7 @@ export function CommunityPreview() {
             viewport={{ once: true }}
             transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
           >
-            <p className="eyebrow text-[#B51760]">What&apos;s coming up</p>
+            <p className="eyebrow text-[var(--brand-pink)]">What&apos;s coming up</p>
             <div className="mt-4 overflow-hidden rounded-3xl glass-strong elevate-2">
               {upcomingEvents.length === 0 ? (
                 <div className="p-8 text-center text-sm text-ink-soft">
@@ -225,7 +225,7 @@ export function CommunityPreview() {
                           {e.location}
                         </p>
                       </div>
-                      <span className="shrink-0 rounded-full bg-[#FF0099]/10 px-3 py-1 text-xs font-semibold text-[#B51760]">
+                      <span className="shrink-0 rounded-full bg-[var(--magenta)]/10 px-3 py-1 text-xs font-semibold text-[var(--brand-pink)]">
                         {formatEventDate(e.date)}
                       </span>
                     </li>
@@ -235,7 +235,7 @@ export function CommunityPreview() {
               <div className="border-t border-[#FACDE8]/50 p-4">
                 <Link
                   href="/events"
-                  className="flex items-center justify-center gap-1.5 text-sm font-semibold text-[#FF0099] transition-colors hover:text-[#B51760]"
+                  className="flex items-center justify-center gap-1.5 text-sm font-semibold text-[var(--magenta)] transition-colors hover:text-[var(--brand-pink)]"
                 >
                   See the full calendar
                   <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -255,14 +255,14 @@ export function CommunityPreview() {
         >
           <Link
             href="/register"
-            className="lift inline-flex h-12 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#FF0099] to-[#B51760] px-8 text-sm font-semibold text-white shadow-[0_6px_24px_rgb(255_0_153/0.30)] transition-all hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]/60 focus-visible:ring-offset-2"
+            className="lift inline-flex h-12 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[var(--magenta)] to-[var(--brand-pink)] px-8 text-sm font-semibold text-white shadow-[0_6px_24px_rgb(255_0_153/0.30)] transition-all hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--magenta)]/60 focus-visible:ring-offset-2"
           >
             Become an Amiga — it&apos;s free
             <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </Link>
           <Link
             href="/trips"
-            className="lift inline-flex h-12 items-center justify-center rounded-full border border-[#221019]/15 px-8 text-sm font-semibold text-ink transition-all hover:border-[#FF0099]/50 hover:bg-white/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]/40 focus-visible:ring-offset-2"
+            className="lift inline-flex h-12 items-center justify-center rounded-full border border-[#221019]/15 px-8 text-sm font-semibold text-ink transition-all hover:border-[var(--magenta)]/50 hover:bg-white/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--magenta)]/40 focus-visible:ring-offset-2"
           >
             Browse trips
           </Link>

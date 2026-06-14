@@ -72,7 +72,7 @@ export function Navbar() {
     <>
       {/* Announcement bar — thin refined magenta strip (owner-editable) */}
       {settings.announcementEnabled && settings.announcementText && (
-        <div className="fixed top-0 z-[60] w-full bg-gradient-to-r from-[#FF0099] via-[#B51760] to-[#FF0099]">
+        <div className="fixed top-0 z-[60] w-full bg-gradient-to-r from-[var(--magenta)] via-[var(--brand-pink)] to-[var(--magenta)]">
           <Link
             href={settings.announcementHref || "/featured"}
             className="group flex h-7 items-center justify-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/95 transition-colors hover:text-white"
@@ -109,10 +109,10 @@ export function Navbar() {
                   href={l.href}
                   aria-current={active ? "page" : undefined}
                   className={cn(
-                    "relative text-sm font-medium transition-colors hover:text-[#FF0099]",
-                    "after:absolute after:-bottom-1.5 after:left-0 after:h-px after:bg-[#FF0099] after:transition-all after:duration-300",
+                    "relative text-sm font-medium transition-colors hover:text-[var(--magenta)]",
+                    "after:absolute after:-bottom-1.5 after:left-0 after:h-px after:bg-[var(--magenta)] after:transition-all after:duration-300",
                     active
-                      ? "text-[#FF0099] after:w-full"
+                      ? "text-[var(--magenta)] after:w-full"
                       : "text-ink-soft after:w-0 hover:after:w-full",
                   )}
                 >
@@ -127,21 +127,21 @@ export function Navbar() {
               <>
                 <Link
                   href="/community"
-                  className="lift inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-[#FF0099] to-[#B51760] px-5 py-2 text-sm font-semibold text-white shadow-[0_6px_20px_rgb(255_0_153/0.25)] transition-all hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#FDFCF7]"
+                  className="lift inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-[var(--magenta)] to-[var(--brand-pink)] px-5 py-2 text-sm font-semibold text-white shadow-[0_6px_20px_rgb(255_0_153/0.25)] transition-all hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--magenta)]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#FDFCF7]"
                 >
                   <LayoutDashboard className="h-3.5 w-3.5" />
                   Community
                 </Link>
                 <DropdownMenu>
                   <DropdownMenuTrigger
-                    className="flex items-center gap-1.5 rounded-full bg-[#FACDE8]/35 hover:bg-[#FACDE8]/55 transition-colors px-2 py-1 text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]/40"
+                    className="flex items-center gap-1.5 rounded-full bg-[#FACDE8]/35 hover:bg-[#FACDE8]/55 transition-colors px-2 py-1 text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--magenta)]/40"
                     aria-label="Account menu"
                   >
                     <Avatar className="h-7 w-7">
                       {user.avatar && (
                         <AvatarImage src={user.avatar} alt={user.name} />
                       )}
-                      <AvatarFallback className="bg-gradient-to-br from-[#FF0099] to-[#B51760] text-white text-[10px] font-bold">
+                      <AvatarFallback className="bg-gradient-to-br from-[var(--magenta)] to-[var(--brand-pink)] text-white text-[10px] font-bold">
                         {initials(user.name)}
                       </AvatarFallback>
                     </Avatar>
@@ -186,13 +186,13 @@ export function Navbar() {
               <>
                 <Link
                   href="/login"
-                  className="rounded-full px-4 py-2 text-sm font-medium text-ink-soft transition-colors hover:bg-[#221019]/[0.04] hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]/40"
+                  className="rounded-full px-4 py-2 text-sm font-medium text-ink-soft transition-colors hover:bg-[#221019]/[0.04] hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--magenta)]/40"
                 >
                   Log In
                 </Link>
                 <Link
                   href="/register"
-                  className="lift inline-flex items-center rounded-full bg-gradient-to-r from-[#FF0099] to-[#B51760] px-5 py-2 text-sm font-semibold text-white shadow-[0_6px_20px_rgb(255_0_153/0.25)] transition-all hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#FDFCF7]"
+                  className="lift inline-flex items-center rounded-full bg-gradient-to-r from-[var(--magenta)] to-[var(--brand-pink)] px-5 py-2 text-sm font-semibold text-white shadow-[0_6px_20px_rgb(255_0_153/0.25)] transition-all hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--magenta)]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#FDFCF7]"
                 >
                   Become an Amiga
                 </Link>
@@ -233,7 +233,7 @@ export function Navbar() {
                     key={l.href}
                     href={l.href}
                     onClick={() => setOpen(false)}
-                    className="text-base font-medium text-ink transition-colors hover:text-[#FF0099]"
+                    className="text-base font-medium text-ink transition-colors hover:text-[var(--magenta)]"
                   >
                     {l.label}
                   </Link>

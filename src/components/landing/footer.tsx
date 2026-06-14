@@ -56,7 +56,7 @@ function FooterSignup() {
       {done ? (
         <p
           role="status"
-          className="mt-3 rounded-2xl border border-[#FF0099]/30 bg-[#FF0099]/10 px-4 py-3 text-sm font-medium text-[#FFB3D0]"
+          className="mt-3 rounded-2xl border border-[var(--magenta)]/30 bg-[var(--magenta)]/10 px-4 py-3 text-sm font-medium text-[#FFB3D0]"
         >
           You&apos;re on the list — gracias! ♡
         </p>
@@ -74,14 +74,14 @@ function FooterSignup() {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="you@example.com"
             disabled={submitting}
-            className="h-11 flex-1 rounded-full border border-white/12 bg-white/[0.06] px-4 text-sm text-white placeholder:text-white/35 outline-none transition-colors focus-visible:border-[#FF0099]/40 focus-visible:ring-2 focus-visible:ring-[#FF0099]/40 disabled:opacity-60"
+            className="h-11 flex-1 rounded-full border border-white/12 bg-white/[0.06] px-4 text-sm text-white placeholder:text-white/35 outline-none transition-colors focus-visible:border-[var(--magenta)]/40 focus-visible:ring-2 focus-visible:ring-[var(--magenta)]/40 disabled:opacity-60"
           />
           <button
             type="submit"
             disabled={submitting}
             aria-busy={submitting}
             aria-label="Subscribe to the newsletter"
-            className="lift flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-[#FF0099] to-[#B51760] text-white shadow-[0_6px_24px_rgb(255_0_153/0.30)] transition-all hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#1a0a12] disabled:opacity-70"
+            className="lift flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-[var(--magenta)] to-[var(--brand-pink)] text-white shadow-[0_6px_24px_rgb(255_0_153/0.30)] transition-all hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--magenta)]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#1a0a12] disabled:opacity-70"
           >
             {submitting ? (
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
@@ -122,11 +122,11 @@ export function Footer() {
     <footer className="relative overflow-hidden bg-[#2A0A1E] py-20 grain">
       <div className="absolute inset-0 bg-gradient-to-b from-[#2A0A1E] via-[#1f0716] to-[#160510]" />
       <div className="absolute inset-0 pattern-dots opacity-[0.05]" />
-      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#FF0099]/35 to-transparent" />
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[var(--magenta)]/35 to-transparent" />
       {/* soft blush glow, top-left */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute -top-24 -left-24 h-72 w-72 rounded-full bg-[#FF0099]/10 blur-[90px]"
+        className="pointer-events-none absolute -top-24 -left-24 h-72 w-72 rounded-full bg-[var(--magenta)]/10 blur-[90px]"
       />
 
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -136,7 +136,7 @@ export function Footer() {
           <h2 className="mt-4 font-display text-title leading-[1.05] text-white">
             Find your new{" "}
             <span className="font-display-italic text-[#FACDE8]">amigas</span>
-            <span className="text-[#FF0099]"> ♡</span>
+            <span className="text-[var(--magenta)]"> ♡</span>
           </h2>
           <p className="mt-4 max-w-md text-base leading-relaxed text-white/55">
             A Latina travel community built on sisterhood, cultura y aventura.{" "}
@@ -195,7 +195,7 @@ export function Footer() {
               target="_blank"
               rel="noopener noreferrer"
               aria-label={`Follow ${settings.siteName} on Instagram (opens in a new tab)`}
-              className="lift mt-4 inline-flex items-center gap-2.5 rounded-full border border-white/12 bg-white/[0.05] px-4 py-2.5 text-sm font-medium text-white/70 transition-colors hover:border-[#FF0099]/40 hover:text-[#FACDE8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#2A0A1E]"
+              className="lift mt-4 inline-flex items-center gap-2.5 rounded-full border border-white/12 bg-white/[0.05] px-4 py-2.5 text-sm font-medium text-white/70 transition-colors hover:border-[var(--magenta)]/40 hover:text-[#FACDE8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--magenta)]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#2A0A1E]"
             >
               <InstagramIcon className="h-5 w-5" />
               @{settings.instagramHandle}

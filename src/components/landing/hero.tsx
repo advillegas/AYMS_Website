@@ -15,19 +15,19 @@ const PILLARS = [
     icon: Heart,
     en: { label: "Connect", desc: "Build lifelong friendships" },
     es: { label: "Conectar", desc: "Construye amistades para toda la vida" },
-    accent: "from-[#FF0099] to-[#C2266A]",
+    accent: "from-[var(--magenta)] to-[#C2266A]",
   },
   {
     icon: Users,
     en: { label: "Empower", desc: "Grow together as a community" },
     es: { label: "Empoderar", desc: "Crecer juntas como comunidad" },
-    accent: "from-[#B51760] to-[#9B2C8A]",
+    accent: "from-[var(--brand-pink)] to-[#9B2C8A]",
   },
   {
     icon: Sparkles,
     en: { label: "Celebrate", desc: "Travel and create memories" },
     es: { label: "Celebrar", desc: "Viajar y crear recuerdos" },
-    accent: "from-[#C44B3F] to-[#FF0099]",
+    accent: "from-[#C44B3F] to-[var(--magenta)]",
   },
 ];
 
@@ -102,9 +102,9 @@ export function Hero() {
 
       {/* Soft floating brand glows over the cream */}
       {[
-        { x: "14%", y: "20%", size: "w-72 h-72", color: "bg-[#FF0099]", opacity: "opacity-[0.07]", dur: 11, delay: 0 },
+        { x: "14%", y: "20%", size: "w-72 h-72", color: "bg-[var(--magenta)]", opacity: "opacity-[0.07]", dur: 11, delay: 0 },
         { x: "78%", y: "26%", size: "w-80 h-80", color: "bg-[#FACDE8]", opacity: "opacity-50", dur: 13, delay: 1.5 },
-        { x: "60%", y: "74%", size: "w-72 h-72", color: "bg-[#FF7F50]", opacity: "opacity-[0.06]", dur: 12, delay: 1 },
+        { x: "60%", y: "74%", size: "w-72 h-72", color: "bg-[var(--coral)]", opacity: "opacity-[0.06]", dur: 12, delay: 1 },
       ].map((b, i) => (
         <motion.div
           key={i}
@@ -149,10 +149,10 @@ export function Hero() {
               className="pill-glass mx-auto mb-8 flex w-fit items-center gap-2.5 px-4 py-1.5"
             >
               <span className="relative flex h-2 w-2" aria-hidden="true">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#FF0099] opacity-75" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-[#FF0099]" />
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--magenta)] opacity-75" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-[var(--magenta)]" />
               </span>
-              <span className="eyebrow text-[#B51760]" style={{ fontSize: "0.68rem" }}>
+              <span className="eyebrow text-[var(--brand-pink)]" style={{ fontSize: "0.68rem" }}>
                 Community · Travel · Sisterhood
               </span>
             </motion.div>
@@ -194,7 +194,7 @@ export function Hero() {
               href="/register"
               className={cn(
                 buttonVariants({ size: "lg" }),
-                "lift group h-14 rounded-full border-0 bg-gradient-to-r from-[#FF0099] to-[#B51760] px-10 text-base font-semibold tracking-wide text-white shadow-[0_8px_30px_rgb(255_0_153/0.30)] hover:brightness-110",
+                "lift group h-14 rounded-full border-0 bg-gradient-to-r from-[var(--magenta)] to-[var(--brand-pink)] px-10 text-base font-semibold tracking-wide text-white shadow-[0_8px_30px_rgb(255_0_153/0.30)] hover:brightness-110",
               )}
             >
               Become an Amiga ♡
@@ -235,11 +235,11 @@ export function Hero() {
                     </div>
                   }
                   back={
-                    <div className="glass-strong elevate-3 flex h-full flex-col items-center justify-center gap-3 rounded-3xl border border-[#FF0099]/15 p-6">
+                    <div className="glass-strong elevate-3 flex h-full flex-col items-center justify-center gap-3 rounded-3xl border border-[var(--magenta)]/15 p-6">
                       <span className={`inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br ${item.accent} shadow-[0_6px_18px_rgb(255_0_153/0.22)]`}>
                         <item.icon className="h-6 w-6 text-white" aria-hidden="true" />
                       </span>
-                      <h3 className="font-display-italic text-lg text-[#B51760]">{item.es.label}</h3>
+                      <h3 className="font-display-italic text-lg text-[var(--brand-pink)]">{item.es.label}</h3>
                       <p className="text-sm text-ink-soft">{item.es.desc}</p>
                     </div>
                   }

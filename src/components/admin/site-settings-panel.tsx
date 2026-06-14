@@ -112,6 +112,28 @@ export function SiteSettingsPanel() {
               <label className={labelCls}>Tagline</label>
               <Input value={form.tagline} onChange={(e) => set("tagline", e.target.value)} className={inputCls} />
             </div>
+            <div className="space-y-1.5">
+              <label className={labelCls}>Brand colors</label>
+              <div className="flex flex-wrap gap-3">
+                {([
+                  { k: "brandPrimary" as const, label: "Primary" },
+                  { k: "brandDeep" as const, label: "Deep" },
+                  { k: "brandCoral" as const, label: "Coral" },
+                ]).map(({ k, label }) => (
+                  <label key={k} className="flex items-center gap-2 text-xs text-white/60">
+                    <input
+                      type="color"
+                      value={form[k]}
+                      onChange={(e) => set(k, e.target.value)}
+                      className="h-8 w-10 cursor-pointer rounded border border-white/10 bg-transparent p-0.5"
+                      aria-label={`${label} brand color`}
+                    />
+                    {label}
+                  </label>
+                ))}
+              </div>
+              <p className="text-[10px] leading-snug text-white/35">Recolors buttons, headings, links &amp; gradients across the site.</p>
+            </div>
           </section>
 
           {/* Announcement bar */}

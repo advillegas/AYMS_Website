@@ -7,6 +7,7 @@ import { ChatProvider } from "@/components/chatbot/chat-provider";
 import { ConfirmProvider } from "@/components/ui/confirm-dialog";
 import { AuthBootstrap } from "@/components/auth-bootstrap";
 import { OrganizationJsonLd, WebSiteJsonLd } from "@/components/seo/json-ld";
+import { SiteThemeVars } from "@/components/site-theme-vars";
 import "./globals.css";
 
 const montserrat = Montserrat({
@@ -150,9 +151,10 @@ export default function RootLayout({
         >
           <TooltipProvider>
             <ConfirmProvider>
-              <AuthBootstrap />
-              <div
-                id="main-content"
+            <AuthBootstrap />
+            <SiteThemeVars />
+            <div
+              id="main-content"
                 tabIndex={-1}
                 className="flex flex-1 flex-col outline-none"
               >

@@ -13,13 +13,13 @@ import { useTrips } from "@/lib/use-trips";
 // so a destination only advertises "N trips" when admin-published trips
 // actually exist for that country.
 const DESTINATIONS = [
-  { name: "Mexico", emoji: "🇲🇽", gradient: "from-[#FF0099] to-[#C44B3F]", image: "/trips/cancun-aug-26.jpg" },
+  { name: "Mexico", emoji: "🇲🇽", gradient: "from-[var(--magenta)] to-[#C44B3F]", image: "/trips/cancun-aug-26.jpg" },
   { name: "Colombia", emoji: "🇨🇴", gradient: "from-[#DAA520] to-[#C44B3F]", image: "/trips/colombia-dec-26.jpg" },
   { name: "Bali", emoji: "🏝️", gradient: "from-[#2D8B6F] to-[#DAA520]", image: "/trips/bali-jun-26.jpg" },
-  { name: "Japan", emoji: "🇯🇵", gradient: "from-[#FF0099] to-[#FF6BA8]", image: "/trips/japan-nov-26.jpg" },
+  { name: "Japan", emoji: "🇯🇵", gradient: "from-[var(--magenta)] to-[#FF6BA8]", image: "/trips/japan-nov-26.jpg" },
   { name: "Kenya", emoji: "🦁", gradient: "from-[#DAA520] to-[#8B4513]", image: "/trips/safari-jul-26.jpg" },
   { name: "Morocco", emoji: "🇲🇦", gradient: "from-[#C44B3F] to-[#DAA520]", image: "/trips/morocco-may-26.jpg" },
-  { name: "Peru", emoji: "🇵🇪", gradient: "from-[#9B2C8A] to-[#FF0099]", image: "/destinations/peru.jpg" },
+  { name: "Peru", emoji: "🇵🇪", gradient: "from-[#9B2C8A] to-[var(--magenta)]", image: "/destinations/peru.jpg" },
   { name: "Greece", emoji: "🇬🇷", gradient: "from-[#2D6BB8] to-[#2D8B6F]", image: "/destinations/greece.jpg" },
 ];
 
@@ -42,7 +42,7 @@ export function Destinations() {
 
   return (
     <section className="canvas-editorial grain relative overflow-hidden py-28">
-      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#FF0099]/25 to-transparent" />
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[var(--magenta)]/25 to-transparent" />
 
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <motion.div
@@ -52,10 +52,10 @@ export function Destinations() {
           transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
           className="text-center"
         >
-          <p className="eyebrow text-[#B51760]">Explore by Destination</p>
+          <p className="eyebrow text-[var(--brand-pink)]">Explore by Destination</p>
           <h2 className="text-title mt-3 font-display text-ink text-balance">
             Where will{" "}
-            <span className="font-display-italic text-[#FF0099]">you go</span>?
+            <span className="font-display-italic text-[var(--magenta)]">you go</span>?
           </h2>
         </motion.div>
 
@@ -98,7 +98,7 @@ export function Destinations() {
                   <div className="flex items-center justify-between gap-2 p-3 sm:p-4">
                     <h3 className="min-w-0 truncate font-display text-base text-ink sm:text-lg">{dest.name}</h3>
                     <span className="inline-flex shrink-0 items-center gap-1 text-sm text-ink-soft">
-                      <MapPin className="h-3.5 w-3.5 text-[#FF0099]" aria-hidden="true" />
+                      <MapPin className="h-3.5 w-3.5 text-[var(--magenta)]" aria-hidden="true" />
                       Explore
                     </span>
                   </div>

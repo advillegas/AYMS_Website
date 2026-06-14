@@ -8,6 +8,7 @@ import { ConfirmProvider } from "@/components/ui/confirm-dialog";
 import { AuthBootstrap } from "@/components/auth-bootstrap";
 import { OrganizationJsonLd, WebSiteJsonLd } from "@/components/seo/json-ld";
 import { SiteThemeVars } from "@/components/site-theme-vars";
+import { InlineEditBar } from "@/components/inline/inline-edit-bar";
 import "./globals.css";
 
 const montserrat = Montserrat({
@@ -161,6 +162,7 @@ export default function RootLayout({
                 {children}
               </div>
               <ChatProvider />
+              <InlineEditBar />
               <Toaster richColors position="bottom-right" />
             </ConfirmProvider>
           </TooltipProvider>

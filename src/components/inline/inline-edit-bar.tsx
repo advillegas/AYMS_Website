@@ -1,0 +1,56 @@
+"use client";
+
+import Link from "next/link";
+import { useAuth } from "@/lib/store";
+import { useHasPermission } from "@/lib/use-roles-store";
+import { useInlineEdit } from "@/lib/use-inline-edit";
+import { Pencil, Check, SlidersHorizontal } from "lucide-react";
+
+/**
+ * Floating editor control shown to admins/content-managers on the marketing
+ * site. Toggles in-place "click to edit" mode; when on, a top banner explains
+ * it and links to the structured Content/Settings dashboard for lists.
+ */
+export function InlineEditBar() {
+  const user = useAuth((s) => s.user);
+  const isAuthenticated = useAuth((s) => s.isAuthenticated);
+  const canEditContent = useHasPermission("manageContent");
+  const enabled = useInlineEdit((s) => s.enabled);
+  const toggle = useInlineEdit((s) => s.toggle);
+
+  if (!isAuthenticated || !(canEditContent || user?.role === "admin")) return null;
+
+  return (
+    <>
+      {enabled && (
+        <div className="fixed left-0 right-0 top-0 z-[120] flex items-center justify-center gap-3 bg-[#221019] px-4 py-2 text-center text-xs font-medium text-white sm:text-sm">
+          <span>
+            <strong className="text-[var(--blush)]">Editing this page</strong> — click any text or photo to change it. Saves automatically.
+          </span>
+          <Link
+            href="/admin?tab=content"
+            className="hidden items-center gap-1 rounded-full border border-white/20 px-3 py-1 text-[11px] hover:bg-white/10 sm:inline-flex"
+          >
+            <SlidersHorizontal className="h-3 w-3" /> Lists &amp; settings
+          </Link>
+        </div>
+      )}
+      <button
+        type="button"
+        onClick={toggle}
+        className="fixed bottom-6 left-6 z-[120] flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold text-white shadow-[0_8px_28px_rgb(34_16_25/0.35)] transition-all hover:scale-105 active:scale-95"
+        style={{ background: enabled ? "#16a34a" : "linear-gradient(to right, var(--magenta), var(--brand-pink))" }}
+      >
+        {enabled ? (
+          <>
+            <Check className="h-4 w-4" /> Done editing
+          </>
+        ) : (
+          <>
+            <Pencil className="h-4 w-4" /> Edit page
+          </>
+        )}
+      </button>
+    </>
+  );
+}

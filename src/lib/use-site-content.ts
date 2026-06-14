@@ -297,3 +297,60 @@ export function useMarqueeContent(): MarqueeContent {
 export function saveSiteContent(key: string, value: unknown): Promise<boolean> {
   return useSiteContentStore.getState().setKey(key, value);
 }
+
+/* --------------------- in-place text/image overrides --------------- */
+/* Powers the click-to-edit editor: every wrapped element has a stable   */
+/* id; its override (if any) wins over the coded default. All overrides  */
+/* live in one realtime-synced cms_config doc.                           */
+
+export interface OverridesContent {
+  text: Record<string, string>;
+  media: Record<string, string>;
+}
+const DEFAULT_OVERRIDES: OverridesContent = { text: {}, media: {} };
+
+export function useOverrides(): OverridesContent {
+  return useDomain<OverridesContent>("overrides", DEFAULT_OVERRIDES);
+}
+
+/** Reactive override value for one text id (falls back to the coded default). */
+export function useOverrideText(id: string, fallback: string): string {
+  const v = useSiteContentStore((s) => {
+    const o = s.values["overrides"] as OverridesContent | undefined;
+    return o?.text?.[id];
+  });
+  useEffect(() => useSiteContentStore.getState().subscribe(), []);
+  return v ?? fallback;
+}
+
+/** Reactive override value for one image id (falls back to the coded default). */
+export function useOverrideImage(id: string, fallback: string): string {
+  const v = useSiteContentStore((s) => {
+    const o = s.values["overrides"] as OverridesContent | undefined;
+    return o?.media?.[id];
+  });
+  useEffect(() => useSiteContentStore.getState().subscribe(), []);
+  return v ?? fallback;
+}
+
+function currentOverrides(): OverridesContent {
+  const o = useSiteContentStore.getState().values["overrides"] as
+    | OverridesContent
+    | undefined;
+  return {
+    text: { ...(o?.text ?? {}) },
+    media: { ...(o?.media ?? {}) },
+  };
+}
+
+export function saveOverrideText(id: string, value: string): Promise<boolean> {
+  const next = currentOverrides();
+  next.text[id] = value;
+  return saveSiteContent("overrides", next);
+}
+
+export function saveOverrideImage(id: string, url: string): Promise<boolean> {
+  const next = currentOverrides();
+  next.media[id] = url;
+  return saveSiteContent("overrides", next);
+}

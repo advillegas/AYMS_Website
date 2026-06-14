@@ -3,14 +3,11 @@
 import { useEffect, useCallback } from "react";
 import { useCms, isSystemSlug } from "@/lib/cms-store";
 import { useEditMode } from "@/lib/edit-mode";
-import { useAuth } from "@/lib/store";
-import { useHasPermission } from "@/lib/use-roles-store";
 import { useBuilder, type ElementType, type BuilderElement, getDefaultPropsForType } from "@/lib/builder-store";
 import { ElementRenderer } from "@/components/builder/element-renderer";
 import { AdminToolbar } from "@/components/admin/admin-toolbar";
 import { EditableWrapper } from "@/components/admin/editable-wrapper";
 import { InlinePropsPanel } from "@/components/admin/inline-props-panel";
-import { EditPageOverlay } from "@/components/admin/edit-overlay";
 import { Navbar } from "@/components/landing/navbar";
 import { Footer } from "@/components/landing/footer";
 import { v4 as uuid } from "uuid";
@@ -73,9 +70,6 @@ export function CmsPageWrapper({ slug, children }: Props) {
   const page = useCms((s) => s.pages[slug]);
   const setPageElements = useCms((s) => s.setPageElements);
   const publishPage = useCms((s) => s.publishPage);
-  const user = useAuth((s) => s.user);
-  const canEditContent = useHasPermission("manageContent");
-  const isAdmin = canEditContent || user?.role === "admin";
 
   const isEditMode = useEditMode((s) => s.isEditMode);
   const pageSlug = useEditMode((s) => s.pageSlug);
@@ -257,7 +251,6 @@ export function CmsPageWrapper({ slug, children }: Props) {
           </section>
         </main>
         <Footer />
-        {isAdmin && <EditPageOverlay slug={slug} />}
       </>
     );
   }
@@ -352,11 +345,7 @@ export function CmsPageWrapper({ slug, children }: Props) {
     );
   }
 
-  // Normal view (not editing, no CMS override)
-  return (
-    <>
-      {children}
-      {isAdmin && <EditPageOverlay slug={slug} />}
-    </>
-  );
+  // Normal view (not editing, no CMS override). In-place editing is provided
+  // globally by <InlineEditBar> in the root layout.
+  return <>{children}</>;
 }

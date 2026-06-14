@@ -16,6 +16,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { FlipCard } from "@/components/ui/flip-card";
+import { EditableText } from "@/components/inline/editable-text";
 
 const CHECKOUT_FULL = "https://buy.stripe.com/cNi7sM4nsdRp2Ga6s88IU0C";
 const CHECKOUT_SPLIT = "https://buy.stripe.com/aFa14o2fkcNl1C6g2I8IU0F";
@@ -196,21 +197,22 @@ export default function CampPage() {
                 <span className="eyebrow text-[#B51760]">All-Inclusive · Aug 28–30, 2026</span>
               </div>
               <h1 className="text-editorial font-display text-ink text-balance">
-                Relive Summer Camp —{" "}
-                <span className="font-display-italic marker-swipe text-[#B51760]">
-                  but make it Amigas
-                </span>
+                <EditableText id="camp.hero.title" as="span">Relive Summer Camp — </EditableText>
+                <EditableText id="camp.hero.titleAccent" as="span" className="font-display-italic marker-swipe text-[#B51760]">but make it Amigas</EditableText>
               </h1>
-              <p className="text-lead font-[family-name:var(--font-sans)] mx-auto mt-6 max-w-2xl text-ink-soft">
-                An <strong className="font-semibold text-ink">all-inclusive</strong> nostalgic
-                weekend designed for Latina women craving connection, laughter, and the kind of
-                friendships that feel like home.
-              </p>
+              <EditableText
+                id="camp.hero.subtitle"
+                as="p"
+                multiline
+                className="text-lead font-[family-name:var(--font-sans)] mx-auto mt-6 max-w-2xl text-ink-soft"
+              >
+                An all-inclusive nostalgic weekend designed for Latina women craving connection, laughter, and the kind of friendships that feel like home.
+              </EditableText>
               <div className="mt-7 flex flex-wrap items-center justify-center gap-x-6 gap-y-3">
-                {FACTS.map((f) => (
+                {FACTS.map((f, i) => (
                   <span key={f.label} className="flex items-center gap-2 text-sm font-medium text-ink-soft">
                     <f.icon className="h-4 w-4 text-[#FF7F50]" aria-hidden="true" />
-                    {f.label}
+                    <EditableText id={`camp.fact.${i}`} as="span">{f.label}</EditableText>
                   </span>
                 ))}
               </div>
@@ -250,25 +252,23 @@ export default function CampPage() {
                   Amigas Summer Camp?
                 </span>
               </h2>
-              <p className="mt-5 text-lead text-ink-soft">
-                Amigas Summer Camp is a grown-girl reimagining of the summer camp experience —
-                designed for Latina women who want to unplug, reconnect, and build real friendships
-                in a joyful, supportive space.
-              </p>
-              <p className="mt-4 font-display text-lg text-ink">
+              <EditableText id="camp.about.p1" as="p" multiline className="mt-5 text-lead text-ink-soft">
+                Amigas Summer Camp is a grown-girl reimagining of the summer camp experience — designed for Latina women who want to unplug, reconnect, and build real friendships in a joyful, supportive space.
+              </EditableText>
+              <EditableText id="camp.about.p2" as="p" className="mt-4 font-display text-lg text-ink">
                 This isn&apos;t a retreat where you sit quietly all day.
-              </p>
+              </EditableText>
               <ul className="mt-4 space-y-2.5">
                 {[
                   "It's laughter around a cozy fire.",
                   "Late-night talks about family traditions.",
                   "Inside jokes that turn into lifelong bonds.",
-                ].map((line) => (
-                  <li key={line} className="flex items-start gap-3 text-ink-soft">
+                ].map((line, i) => (
+                  <li key={i} className="flex items-start gap-3 text-ink-soft">
                     <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#FF0099]/10 text-[#FF0099]">
                       <Check className="h-3 w-3" aria-hidden="true" />
                     </span>
-                    {line}
+                    <EditableText id={`camp.about.line.${i}`} as="span">{line}</EditableText>
                   </li>
                 ))}
               </ul>
@@ -322,8 +322,8 @@ export default function CampPage() {
                         <div className="mb-4 h-16 w-16">
                           <Image src={f.icon} alt="" width={64} height={64} unoptimized className="h-full w-full object-contain" />
                         </div>
-                        <h3 className="font-display text-lg text-ink">{f.en.title}</h3>
-                        <p className="mt-2 text-sm leading-relaxed text-ink-soft">{f.en.desc}</p>
+                        <EditableText id={`camp.feature.${i}.en.title`} as="h3" className="font-display text-lg text-ink">{f.en.title}</EditableText>
+                        <EditableText id={`camp.feature.${i}.en.desc`} as="p" multiline className="mt-2 text-sm leading-relaxed text-ink-soft">{f.en.desc}</EditableText>
                       </div>
                     }
                     back={
@@ -331,8 +331,8 @@ export default function CampPage() {
                         <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/90 p-2.5">
                           <Image src={f.icon} alt="" width={48} height={48} unoptimized className="h-full w-full object-contain" />
                         </div>
-                        <h3 className="font-display text-lg">{f.es.title}</h3>
-                        <p className="mt-2 text-sm leading-relaxed text-white/90">{f.es.desc}</p>
+                        <EditableText id={`camp.feature.${i}.es.title`} as="h3" className="font-display text-lg">{f.es.title}</EditableText>
+                        <EditableText id={`camp.feature.${i}.es.desc`} as="p" multiline className="mt-2 text-sm leading-relaxed text-white/90">{f.es.desc}</EditableText>
                       </div>
                     }
                   />
@@ -369,15 +369,15 @@ export default function CampPage() {
                 <span className="font-display-italic marker-swipe text-[#B51760]">Inclusions</span>
               </h2>
               <ul className="mt-7 space-y-3">
-                {INCLUSIONS.map((item) => (
+                {INCLUSIONS.map((item, i) => (
                   <li
-                    key={item}
+                    key={i}
                     className="lift flex items-center gap-3 rounded-2xl border border-[#221019]/8 bg-white px-5 py-3.5 elevate-2"
                   >
                     <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#FF7F50]/20 to-[#FF0099]/10 text-[#FF7F50]">
                       <Check className="h-4 w-4" aria-hidden="true" />
                     </span>
-                    <span className="font-medium text-ink">{item}</span>
+                    <EditableText id={`camp.inclusion.${i}`} as="span" className="font-medium text-ink">{item}</EditableText>
                   </li>
                 ))}
               </ul>
@@ -389,10 +389,10 @@ export default function CampPage() {
                 <span className="font-display-italic marker-swipe text-[#B51760]">Activities</span>
               </h2>
               <div className="mt-7 grid gap-x-6 gap-y-3 sm:grid-cols-2">
-                {ACTIVITIES.map((item) => (
-                  <div key={item} className="flex items-center gap-2.5 text-ink-soft">
+                {ACTIVITIES.map((item, i) => (
+                  <div key={i} className="flex items-center gap-2.5 text-ink-soft">
                     <Sparkles className="h-4 w-4 shrink-0 text-[#FF0099]" aria-hidden="true" />
-                    <span className="font-medium">{item}</span>
+                    <EditableText id={`camp.activity.${i}`} as="span" className="font-medium">{item}</EditableText>
                   </div>
                 ))}
               </div>
@@ -433,11 +433,11 @@ export default function CampPage() {
                     ))}
                   </div>
                   <blockquote className="flex-1 text-ink-soft leading-relaxed">
-                    &ldquo;{t.quote}&rdquo;
+                    &ldquo;<EditableText id={`camp.testimonial.${i}.quote`} as="span" multiline>{t.quote}</EditableText>&rdquo;
                   </blockquote>
                   <figcaption className="mt-5">
-                    <span className="block font-display text-ink">{t.name}</span>
-                    <span className="text-xs text-ink-soft">{t.location}</span>
+                    <EditableText id={`camp.testimonial.${i}.name`} as="span" className="block font-display text-ink">{t.name}</EditableText>
+                    <EditableText id={`camp.testimonial.${i}.location`} as="span" className="text-xs text-ink-soft">{t.location}</EditableText>
                   </figcaption>
                 </motion.figure>
               ))}
@@ -454,10 +454,9 @@ export default function CampPage() {
                 Enough already.{" "}
                 <span className="font-display-italic marker-swipe text-[#B51760]">SIGN ME UP!</span>
               </h2>
-              <p className="mx-auto mt-4 max-w-xl text-lead text-ink-soft">
-                Spots are limited and these weekends fill fast. Lock in your bunk and we&apos;ll
-                handle the rest.
-              </p>
+              <EditableText id="camp.cta.subtitle" as="p" multiline className="mx-auto mt-4 max-w-xl text-lead text-ink-soft">
+                Spots are limited and these weekends fill fast. Lock in your bunk and we&apos;ll handle the rest.
+              </EditableText>
               <CheckoutButtons className="mt-8 items-center justify-center" />
             </motion.div>
             <motion.div {...reveal} className="mt-14 grid grid-cols-2 gap-4 sm:grid-cols-4">

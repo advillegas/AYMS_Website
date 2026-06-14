@@ -148,7 +148,7 @@ export function About() {
             </div>
             <div className="flex-1">
               <EditableText as="p" id="home.about.founderEyebrow" className="eyebrow text-[var(--magenta)]">Founder &amp; CEO</EditableText>
-              <EditableText as="h3" id="home.about.founderName" className="mt-2 font-display text-2xl text-ink sm:text-[2rem]">Sally Vee</EditableText>
+              <EditableText as="h3" id="home.about.founderName" className="mt-2 font-display text-2xl text-ink sm:text-[2rem]">Sally Romero</EditableText>
               <EditableText as="p" id="home.about.founderQuote" className="mt-4 max-w-2xl font-display-italic text-lg leading-relaxed text-ink-soft">
                 &ldquo;I had a vision of sisterhood and made it my mission to bring
                 it to life. Through countless meetings, sleepless nights, and a lot

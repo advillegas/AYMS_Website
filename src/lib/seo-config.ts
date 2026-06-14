@@ -32,6 +32,7 @@ export const SEO_PAGES: { slug: string; label: string }[] = [
   { slug: "faq", label: "FAQ" },
   { slug: "featured", label: "Featured Event" },
   { slug: "camp", label: "Summer Camp" },
+  { slug: "llm", label: "Company Profile (/llm)" },
 ];
 
 async function fetchSeoDoc(): Promise<SeoDoc> {

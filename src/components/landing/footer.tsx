@@ -111,6 +111,7 @@ const FOOTER_COLUMNS: { heading: string; links: { label: string; href: string }[
       { label: "Become an Amiga", href: "/register" },
       { label: "Log In", href: "/login" },
       { label: "FAQ", href: "/faq" },
+      { label: "About AYMS", href: "/llm" },
     ],
   },
 ];

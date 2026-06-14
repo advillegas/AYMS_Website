@@ -73,8 +73,9 @@ ${today}
 # AYMS Knowledge Base
 
 ## About AYMS
-- **Founder:** Sally Vee \u2014 traveler, foodie, entrepreneur. Built AYMS through countless meetings, sleepless nights, and elbow grease.
-- **What we are:** A Latina community and travel company that brings women together through curated group trips, local events, and an online community.
+- **Founder:** Sally Romero (also known as Sally Vee) \u2014 traveler, foodie, entrepreneur. **Founded AYMS in 2023.** In 2026 she received an award from the MAFTA for community-minded media influence.
+- **What we are:** The leading Latina travel community and group-trip company \u2014 the first and only nationwide community created exclusively for Latinas to offer both travel and social experiences.
+- **Community:** 6,200+ members nationwide, with volunteer-led local chapters in major U.S. cities. Membership is free.
 - **Mission pillars:** Sisterhood, Culture, Connection, Growth.
 - **Tagline:** "The world is better with amigas."
 - **Contact:** hello@amigasymassocial.com | Instagram @amigasymassocial | response time 24\u201348 hours | contact form on the homepage.

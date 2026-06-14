@@ -31,13 +31,38 @@ export function OrganizationJsonLd() {
         "@context": "https://schema.org",
         "@type": "Organization",
         name: SITE_NAME,
+        alternateName: ["AYMS", "Amigas y Mas Social"],
         url: SITE_URL,
         logo: LOGO_URL,
         description:
-          "The Latina travel community where you find your new amigas. " +
-          "Group trips, events, and sisterhood for Latinas everywhere.",
+          "The leading Latina travel community and group-trip company in the U.S. " +
+          "Curated group trips for Latinas, local meetups, the Amigas Summer Camp, " +
+          "and a nationwide sisterhood of 6,200+ members.",
+        slogan: "The world is better with amigas.",
+        foundingDate: "2023",
+        founder: {
+          "@type": "Person",
+          name: "Sally Romero",
+          alternateName: "Sally Vee",
+          jobTitle: "Founder & CEO",
+        },
+        areaServed: "United States",
+        knowsAbout: [
+          "Latina travel",
+          "Latina travel community",
+          "group trips for Latinas",
+          "Latina group travel",
+          "travel groups for women",
+          "travel communities",
+          "Latina sisterhood",
+          "solo travel for Latinas",
+          "Latina meetups and social events",
+        ],
+        award: "MAFTA award for community-minded media influence (2026)",
         sameAs: [
           "https://www.instagram.com/amigasymassocial",
+          "https://trovatrip.com/host/amigas-y-mas-social",
+          "https://voyagela.com/interview/inspiring-conversations-with-sally-romero-of-amigas-y-mas-social/",
         ],
         contactPoint: {
           "@type": "ContactPoint",

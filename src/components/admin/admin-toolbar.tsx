@@ -37,6 +37,7 @@ import {
   AlertTriangle,
   Undo,
   Redo,
+  Eye,
 } from "lucide-react";
 
 interface PaletteItem { type: ElementType; icon: React.ElementType; label: string }
@@ -123,6 +124,7 @@ export function AdminToolbar({
   const isEditMode = useEditMode((s) => s.isEditMode);
   const pageSlug = useEditMode((s) => s.pageSlug);
   const exitEditMode = useEditMode((s) => s.exitEditMode);
+  const setPreview = useEditMode((s) => s.setPreview);
   const canUndo = useBuilder((s) => s.canUndo);
   const canRedo = useBuilder((s) => s.canRedo);
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -340,6 +342,14 @@ export function AdminToolbar({
           )}
         </div>
 
+        <Button
+          onClick={() => setPreview(true)}
+          variant="ghost"
+          className="h-7 px-2.5 text-[11px] text-white/60 hover:text-white hover:bg-white/10 gap-1"
+        >
+          <Eye className="h-3 w-3" aria-hidden="true" />
+          Preview
+        </Button>
         <Button
           onClick={() => { onSave(); toast.success("Saved as draft (not live yet)."); }}
           variant="ghost"

@@ -81,6 +81,8 @@ export function CmsPageWrapper({ slug, children }: Props) {
   const pageSlug = useEditMode((s) => s.pageSlug);
   const selectedElementId = useEditMode((s) => s.selectedElementId);
   const setSelectedElement = useEditMode((s) => s.setSelectedElement);
+  const isPreview = useEditMode((s) => s.isPreview);
+  const setPreview = useEditMode((s) => s.setPreview);
 
   const elements = useBuilder((s) => s.elements);
 
@@ -256,6 +258,35 @@ export function CmsPageWrapper({ slug, children }: Props) {
         </main>
         <Footer />
         {isAdmin && <EditPageOverlay slug={slug} />}
+      </>
+    );
+  }
+
+  // PREVIEW-AS-VISITOR — render the working canvas with no edit chrome.
+  if (isEditing && isPreview) {
+    return (
+      <>
+        <Navbar />
+        <main className="min-h-screen pt-[88px]">
+          <section className="grain relative bg-[#FDFCF7]">
+            <div className="absolute inset-0 pattern-dots opacity-[0.04]" aria-hidden="true" />
+            <div className="relative mx-auto max-w-3xl px-4 py-16 sm:px-6 lg:px-8">
+              <div className="space-y-6">
+                {elements.map((el) => (
+                  <ElementRenderer key={el.id} element={el} />
+                ))}
+              </div>
+            </div>
+          </section>
+        </main>
+        <Footer />
+        <button
+          type="button"
+          onClick={() => setPreview(false)}
+          className="fixed bottom-6 left-1/2 z-[110] -translate-x-1/2 rounded-full bg-[#221019] px-5 py-2.5 text-sm font-semibold text-white shadow-2xl hover:brightness-125 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]"
+        >
+          Exit preview — back to editing
+        </button>
       </>
     );
   }

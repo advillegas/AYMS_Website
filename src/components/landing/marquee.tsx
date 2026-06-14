@@ -1,28 +1,13 @@
 "use client";
 
 import { useReducedMotion } from "framer-motion";
-
-const WORDS = [
-  "connect",
-  "empower",
-  "celebrate",
-  "latina travel",
-  "amigas y más social",
-  "sisterhood",
-  "group trips",
-  "latina community",
-  "memories",
-  "growth",
-  "family",
-  "cultura",
-  "aventura",
-  "hermandad",
-];
+import { useMarqueeContent } from "@/lib/use-site-content";
 
 export function Marquee() {
   const prefersReducedMotion = useReducedMotion();
+  const { words } = useMarqueeContent();
 
-  const track = WORDS.map((w) => (
+  const track = words.map((w) => (
     <span key={w} className="flex items-center gap-6">
       <span className="font-display text-lg italic tracking-tight text-white sm:text-xl">
         {w}

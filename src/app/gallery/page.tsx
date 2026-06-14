@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
-import { PAST_TRIPS } from "@/lib/trips-data";
+import { useGalleryContent } from "@/lib/use-site-content";
 import { Navbar } from "@/components/landing/navbar";
 import { Footer } from "@/components/landing/footer";
 import { CmsPageWrapper } from "@/components/admin/cms-page-wrapper";
@@ -24,8 +24,9 @@ const GRADIENTS = [
 export default function GalleryPage() {
   const [yearFilter, setYearFilter] = useState<string>("All");
   const reduceMotion = useReducedMotion();
+  const { pastTrips } = useGalleryContent();
 
-  const filtered = PAST_TRIPS.filter(
+  const filtered = pastTrips.filter(
     (t) => yearFilter === "All" || t.year.toString() === yearFilter,
   );
 
@@ -198,8 +199,8 @@ export default function GalleryPage() {
           <div className="relative mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-2 gap-6 sm:grid-cols-4 text-center">
               {[
-                { value: PAST_TRIPS.length + "+", label: "Trips Completed" },
-                { value: PAST_TRIPS.reduce((s, t) => s + t.amigas, 0) + "+", label: "Amigas Traveled" },
+                { value: pastTrips.length + "+", label: "Trips Completed" },
+                { value: pastTrips.reduce((s, t) => s + t.amigas, 0) + "+", label: "Amigas Traveled" },
                 { value: "10+", label: "Countries Visited" },
                 { value: "∞", label: "Memories Made" },
               ].map((s, i) => (

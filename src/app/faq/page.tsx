@@ -16,51 +16,14 @@ import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Search, HelpCircle } from "lucide-react";
 import Link from "next/link";
-
-const FAQ_DATA = [
-  {
-    category: "Trips & Booking",
-    items: [
-      { q: "Do you offer payment plans?", a: "Sí! All of our tours are available with a payment plan option. Reserving a trip simply holds your spot — no payment is taken online. Our team then follows up with you directly to walk through the deposit and the payment options for the balance before the trip." },
-      { q: "Are flights included?", a: "International flights are not included in the trip price. You will book your own flight from your home airport and we will meet up at the destination airport. Domestic flights within the trip itinerary are included when specified." },
-      { q: "What if I need to cancel?", a: "We understand plans change. Deposits are non-refundable but may be transferable to a future trip depending on timing. Full cancellation details are provided in our travel agreement when you book." },
-      { q: "How many Amigas come on a tour?", a: "On average our groups have 12–20 amigas plus the group tour leader. We keep groups intimate to ensure everyone bonds and has an amazing experience. Popular trips may add additional spots." },
-      { q: "What ages come on the tours?", a: "We welcome women 21+ but typically our groups are made up of women in their late 20s to mid 50s. All ages are welcome — what matters is the vibes!" },
-    ],
-  },
-  {
-    category: "Travel & Logistics",
-    items: [
-      { q: "Do I have to live in California to join?", a: "Not at all! We have amigas joining us from all over — CA, NY, TX, FL, IL, NV, AZ, GA, and many more states. We've even had amigas join from other countries. Everyone is welcome!" },
-      { q: "Do I need travel insurance?", a: "Travel insurance is not required but highly recommended. We suggest coverage for trip cancellation, luggage loss, and healthcare costs abroad. We can recommend providers during our group Zoom call." },
-      { q: "What if I'm a solo traveler?", a: "Most of our amigas travel solo — that's the whole point! You'll be matched with a roommate or can opt for a single supplement. By the time you land, you'll already feel like you've known everyone for years." },
-      { q: "What's included in the trip price?", a: "Each trip varies, but generally: accommodations, most meals, all excursions and activities, local transportation, and airport transfers. Check each trip's detail page for the full breakdown." },
-    ],
-  },
-  {
-    category: "Community & Membership",
-    items: [
-      { q: "How do I join the AYMS community?", a: "Just create an account on our website! Membership is free and gives you access to our community portal with chat channels, event calendar, member directory, and exclusive content." },
-      { q: "Do I have to go on a trip to be part of the community?", a: "Absolutely not! Many of our amigas are active community members who attend local events, join online chats, and connect with others before ever booking a trip. All are welcome." },
-      { q: "What are Coffee & Cuties events?", a: "Coffee & Cuties are our monthly local meetups where amigas gather for coffee, brunch, or activities in a casual setting. It's a great way to meet other amigas in person, especially if you're new!" },
-      { q: "How do I stay updated on new trips and events?", a: "Follow us on Instagram @amigasymassocial, join our newsletter from the homepage, and keep your community portal notifications on. We announce new trips and events across all channels." },
-    ],
-  },
-  {
-    category: "Safety & Support",
-    items: [
-      { q: "Is it safe to travel with a group?", a: "Safety is our top priority. All destinations are thoroughly vetted, we use trusted local partners, and our trip leaders are experienced travelers. We also have a mandatory pre-trip Zoom call to cover safety guidelines." },
-      { q: "What if I have dietary restrictions?", a: "We accommodate all dietary needs! Just let us know when you book and we'll make sure every meal works for you. Our local partners are always prepared for vegetarian, vegan, gluten-free, and allergy requirements." },
-      { q: "What happens in case of an emergency during a trip?", a: "Our trip leaders carry emergency contacts, local hospital info, and embassy details for every destination. We also share an emergency protocol during our pre-trip Zoom call. You're never alone with AYMS." },
-    ],
-  },
-];
+import { useFaqContent } from "@/lib/use-site-content";
 
 export default function FAQPage() {
   const [search, setSearch] = useState("");
   const reduceMotion = useReducedMotion();
+  const { categories } = useFaqContent();
 
-  const filteredCategories = FAQ_DATA.map((cat) => ({
+  const filteredCategories = categories.map((cat) => ({
     ...cat,
     items: cat.items.filter(
       (item) =>

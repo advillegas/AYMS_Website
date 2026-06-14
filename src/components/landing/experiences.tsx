@@ -3,20 +3,9 @@
 import Image from "next/image";
 import { motion, useReducedMotion } from "framer-motion";
 import { MapPin } from "lucide-react";
+import { useExperiencesContent, type ExperienceItem } from "@/lib/use-site-content";
 
-// `image` reuses the self-hosted destination photos under /public/trips so
-// each card shows the real place; the gradient + emoji stay behind it as a
-// graceful fallback if a photo ever fails to load.
-const EXPERIENCES = [
-  { title: "Cenote Swimming in the Yucatán", location: "Mexico", emoji: "🏊‍♀️", gradient: "from-[#2D8B6F] to-[#1a5c4a]", image: "/trips/cancun-aug-26.jpg" },
-  { title: "Cooking Class in Cartagena", location: "Colombia", emoji: "🍳", gradient: "from-[#DAA520] to-[#8B6914]", image: "/trips/colombia-dec-26.jpg" },
-  { title: "Sunrise Safari Drive", location: "Kenya", emoji: "🦒", gradient: "from-[#C44B3F] to-[#8B3029]", image: "/trips/safari-jul-26.jpg" },
-  { title: "Wine Tasting in Napa Valley", location: "California", emoji: "🍷", gradient: "from-[#9B2C8A] to-[#6B1D5E]", image: "/trips/napa-oct-26.jpg" },
-  { title: "Salsa Night in Medellín", location: "Colombia", emoji: "💃", gradient: "from-[#FF0099] to-[#B8306A]", image: "/trips/colombia-dec-26.jpg" },
-  { title: "Temple Visit in Kyoto", location: "Japan", emoji: "⛩️", gradient: "from-[#B51760] to-[#9B2C8A]", image: "/trips/japan-nov-26.jpg" },
-];
-
-type Experience = (typeof EXPERIENCES)[number];
+type Experience = ExperienceItem;
 
 function ExperienceCard({ exp, hidden }: { exp: Experience; hidden?: boolean }) {
   // mr-6 (not a flex gap) so the duplicated track loops seamlessly:
@@ -61,6 +50,7 @@ function ExperienceCard({ exp, hidden }: { exp: Experience; hidden?: boolean }) 
 
 export function Experiences() {
   const prefersReducedMotion = useReducedMotion();
+  const { items: EXPERIENCES } = useExperiencesContent();
 
   return (
     <section className="canvas-warm grain relative overflow-hidden py-28">

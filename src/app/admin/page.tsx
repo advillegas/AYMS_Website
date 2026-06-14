@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { useAuth } from "@/lib/store";
 import { useHasPermission } from "@/lib/use-roles-store";
 import { useAuthHydrated } from "@/lib/use-auth-hydrated";
-import { useCms } from "@/lib/cms-store";
+import { useCms, isSystemSlug } from "@/lib/cms-store";
 import { PageManager } from "@/components/admin/page-manager";
 import { NavEditor } from "@/components/admin/nav-editor";
 import { NewsletterPanel } from "@/components/admin/newsletter-panel";
@@ -48,9 +49,17 @@ export default function AdminPage() {
   const canEditContent = useHasPermission("manageContent");
   const allowed = canEditContent || user?.role === "admin";
 
-  const [activeTab, setActiveTab] = useState<Tab>("pages");
+  const [activeTab, setActiveTab] = useState<Tab>("content");
   const templates = useCms((s) => s.templates);
   const deleteTemplate = useCms((s) => s.deleteTemplate);
+
+  // Deep-link support: /admin?tab=content|settings|pages|… opens that tab.
+  useEffect(() => {
+    const t = new URLSearchParams(window.location.search).get("tab");
+    if (t && ["pages", "content", "nav", "settings", "templates", "audience"].includes(t)) {
+      setActiveTab(t as Tab);
+    }
+  }, []);
 
   // The admin dashboard authors the SHARED CMS, so once the signed-in admin is
   // confirmed we subscribe to Firestore in realtime — pages/nav/templates
@@ -70,13 +79,18 @@ export default function AdminPage() {
   const toggleEditMode = useEditMode((s) => s.toggleEditMode);
 
   function handleEditPage(slug: string) {
-    const systemMap: Record<string, string> = {
-      home: "/", trips: "/trips", camp: "/camp", events: "/events",
-      gallery: "/gallery", faq: "/faq", featured: "/featured",
-    };
-    const href = systemMap[slug] || `/p/${slug}`;
+    // Core marketing pages are real coded pages — their text, photos, FAQ,
+    // testimonials, etc. are edited in the Content & Settings tabs (which
+    // reflect the live site), NOT the block editor (which only builds
+    // standalone custom pages). Route the owner to the right place.
+    if (isSystemSlug(slug)) {
+      setActiveTab("content");
+      toast.info("Edit this page's text, photos, FAQ & more in the Content and Settings tabs.");
+      return;
+    }
+    // Custom standalone pages use the block editor.
     toggleEditMode(slug);
-    router.push(href);
+    router.push(`/p/${slug}`);
   }
 
   if (!hydrated) {
@@ -186,12 +200,16 @@ export default function AdminPage() {
               Manage Your Site
             </h2>
             <p className="mt-3 text-sm text-white/40 leading-relaxed">
-              Use the sidebar to manage pages, navigation, and templates.
-              To edit a page&apos;s content, click on it in the Pages list —
-              you&apos;ll be taken to the live page with inline editing enabled.
+              To edit your site&apos;s <strong className="text-white/70">text, photos, FAQ,
+              testimonials, hero headlines, gallery</strong> and more, use the{" "}
+              <strong className="text-white/70">Content</strong> tab. For your{" "}
+              <strong className="text-white/70">logo, announcement bar, contact info, and
+              brand colors</strong>, use the <strong className="text-white/70">Settings</strong> tab.
+              These mirror the live site and save instantly.
             </p>
             <p className="mt-4 text-xs text-white/25">
-              You can also click &quot;Edit This Page&quot; on any page while browsing the site.
+              The <strong className="text-white/40">Pages</strong> tab is only for building
+              brand-new standalone pages — it doesn&apos;t edit the main marketing pages.
             </p>
           </div>
         </div>

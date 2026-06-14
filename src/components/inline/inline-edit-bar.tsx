@@ -11,6 +11,20 @@ import { Pencil, Check, SlidersHorizontal } from "lucide-react";
 const INPLACE_ROUTES = ["/camp"];
 
 /**
+ * For pages not wired for in-place editing, send the owner straight to the
+ * structured editor for THAT page (not a generic dashboard) so "Edit" always
+ * lands somewhere useful.
+ */
+const EDIT_DESTINATION: Record<string, string> = {
+  "/": "/admin?tab=content&section=home",
+  "/gallery": "/admin?tab=content&section=gallery",
+  "/faq": "/admin?tab=content&section=faq",
+  "/trips": "/community/admin/trips",
+  "/events": "/community/admin/calendar",
+  "/featured": "/community/admin/calendar",
+};
+
+/**
  * Floating editor control shown to admins/content-managers on the marketing
  * site. Toggles in-place "click to edit" mode; when on, a top banner explains
  * it and links to the structured Content/Settings dashboard for lists.
@@ -30,13 +44,14 @@ export function InlineEditBar() {
   // On pages not yet wired for in-place editing, the button just opens the
   // structured Content/Settings dashboard instead of a no-op edit mode.
   if (!INPLACE_ROUTES.includes(pathname)) {
+    const dest = EDIT_DESTINATION[pathname] ?? "/admin?tab=content";
     return (
       <Link
-        href="/admin?tab=content"
+        href={dest}
         className="fixed bottom-6 left-6 z-[120] flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold text-white shadow-[0_8px_28px_rgb(34_16_25/0.35)] transition-all hover:scale-105 active:scale-95"
         style={{ background: "linear-gradient(to right, var(--magenta), var(--brand-pink))" }}
       >
-        <SlidersHorizontal className="h-4 w-4" /> Edit Site Content
+        <SlidersHorizontal className="h-4 w-4" /> Edit this page
       </Link>
     );
   }

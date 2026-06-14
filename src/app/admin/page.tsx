@@ -6,7 +6,8 @@ import { toast } from "sonner";
 import { useAuth } from "@/lib/store";
 import { useHasPermission } from "@/lib/use-roles-store";
 import { useAuthHydrated } from "@/lib/use-auth-hydrated";
-import { useCms, isSystemSlug } from "@/lib/cms-store";
+import { useCms } from "@/lib/cms-store";
+import { useInlineEdit } from "@/lib/use-inline-edit";
 import { PageManager } from "@/components/admin/page-manager";
 import { NavEditor } from "@/components/admin/nav-editor";
 import { NewsletterPanel } from "@/components/admin/newsletter-panel";
@@ -50,6 +51,9 @@ export default function AdminPage() {
   const allowed = canEditContent || user?.role === "admin";
 
   const [activeTab, setActiveTab] = useState<Tab>("content");
+  const [contentSection, setContentSection] = useState<
+    "home" | "testimonials" | "experiences" | "gallery" | "faq" | "marquee"
+  >("home");
   const templates = useCms((s) => s.templates);
   const deleteTemplate = useCms((s) => s.deleteTemplate);
 
@@ -79,18 +83,41 @@ export default function AdminPage() {
   const toggleEditMode = useEditMode((s) => s.toggleEditMode);
 
   function handleEditPage(slug: string) {
-    // Core marketing pages are real coded pages — their text, photos, FAQ,
-    // testimonials, etc. are edited in the Content & Settings tabs (which
-    // reflect the live site), NOT the block editor (which only builds
-    // standalone custom pages). Route the owner to the right place.
-    if (isSystemSlug(slug)) {
-      setActiveTab("content");
-      toast.info("Edit this page's text, photos, FAQ & more in the Content and Settings tabs.");
-      return;
+    // Each core page opens its *exact* editor — not a generic tab. Pages with
+    // structured content (trips, events, gallery, FAQ) go to their managers;
+    // text-heavy pages (camp, home) open the live page in click-to-edit mode.
+    switch (slug) {
+      case "trips":
+        toast.info("Add, edit & reorder trips here.");
+        router.push("/community/admin/trips");
+        return;
+      case "events":
+      case "featured":
+        toast.info("Manage events & the featured event here.");
+        router.push("/community/admin/calendar");
+        return;
+      case "gallery":
+        setContentSection("gallery");
+        setActiveTab("content");
+        return;
+      case "faq":
+        setContentSection("faq");
+        setActiveTab("content");
+        return;
+      case "home":
+        setContentSection("home");
+        setActiveTab("content");
+        return;
+      case "camp":
+        // Camp is pure narrative — open the live page in click-to-edit mode.
+        useInlineEdit.getState().set(true);
+        router.push("/camp");
+        return;
+      default:
+        // Custom standalone pages use the block editor.
+        toggleEditMode(slug);
+        router.push(`/p/${slug}`);
     }
-    // Custom standalone pages use the block editor.
-    toggleEditMode(slug);
-    router.push(`/p/${slug}`);
   }
 
   if (!hydrated) {
@@ -184,7 +211,7 @@ export default function AdminPage() {
         </div>
       ) : activeTab === "content" ? (
         <div className="flex-1 overflow-hidden">
-          <ContentManager />
+          <ContentManager section={contentSection} />
         </div>
       ) : activeTab === "audience" ? (
         <div className="flex-1 overflow-hidden">

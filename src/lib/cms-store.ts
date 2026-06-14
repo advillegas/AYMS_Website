@@ -59,7 +59,7 @@ const DEFAULT_NAV: NavLink[] = [
   { id: "nav-faq", label: "FAQ", href: "/faq", isVisible: true },
 ];
 
-const SYSTEM_PAGES = [
+export const SYSTEM_PAGES = [
   { slug: "home", title: "Home", href: "/" },
   { slug: "trips", title: "Trips", href: "/trips" },
   { slug: "camp", title: "Camp", href: "/camp" },
@@ -72,6 +72,11 @@ const SYSTEM_PAGES = [
 /** True for the core marketing pages backed by coded React (home, trips, …). */
 export function isSystemSlug(slug: string): boolean {
   return SYSTEM_PAGES.some((sp) => sp.slug === slug);
+}
+
+/** Public URL for a system page slug (falls back to a custom /p/ route). */
+export function systemPageHref(slug: string): string {
+  return SYSTEM_PAGES.find((sp) => sp.slug === slug)?.href ?? `/p/${slug}`;
 }
 
 interface CmsState {

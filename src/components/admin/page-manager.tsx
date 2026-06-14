@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useCms } from "@/lib/cms-store";
+import { useCms, SYSTEM_PAGES } from "@/lib/cms-store";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,16 +23,6 @@ import {
   Eye,
   EyeOff,
 } from "lucide-react";
-
-const SYSTEM_PAGES = [
-  { slug: "home", title: "Home", href: "/" },
-  { slug: "trips", title: "Trips", href: "/trips" },
-  { slug: "events", title: "Events", href: "/events" },
-  { slug: "gallery", title: "Gallery", href: "/gallery" },
-  { slug: "play", title: "Play", href: "/play" },
-  { slug: "faq", title: "FAQ", href: "/faq" },
-  { slug: "featured", title: "Featured Event", href: "/featured" },
-];
 
 interface Props {
   onEditPage: (slug: string) => void;

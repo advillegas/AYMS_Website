@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { HomeContentPanel } from "./home-content-panel";
 import { TestimonialsPanel } from "./testimonials-panel";
 import { ExperiencesPanel } from "./experiences-panel";
@@ -19,8 +19,23 @@ const TABS: { id: Sub; label: string }[] = [
   { id: "marquee", label: "Marquee" },
 ];
 
-export function ContentManager() {
-  const [sub, setSub] = useState<Sub>("home");
+const VALID_SUBS: Sub[] = ["home", "testimonials", "experiences", "gallery", "faq", "marquee"];
+
+export function ContentManager({ section }: { section?: Sub }) {
+  const [sub, setSub] = useState<Sub>(section ?? "home");
+
+  // Open the requested panel when the parent routes here ("edit this page"),
+  // so it lands on the right editor instead of always defaulting to Homepage.
+  useEffect(() => {
+    if (section && VALID_SUBS.includes(section)) setSub(section);
+  }, [section]);
+
+  // Also honor a fresh-load deep link (/admin?tab=content&section=gallery).
+  useEffect(() => {
+    const s = new URLSearchParams(window.location.search).get("section");
+    if (s && VALID_SUBS.includes(s as Sub)) setSub(s as Sub);
+  }, []);
+
   return (
     <div className="flex h-full flex-col">
       <div className="flex flex-wrap gap-1 border-b border-white/10 bg-[#220a18] px-4 pt-2">

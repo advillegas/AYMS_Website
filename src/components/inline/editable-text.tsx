@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useOverrideText, saveOverrideText } from "@/lib/use-site-content";
 import { useInlineEdit } from "@/lib/use-inline-edit";
 import { cn } from "@/lib/utils";
@@ -18,50 +18,94 @@ interface Props {
 }
 
 /**
- * A text node that an admin can click-to-edit in place when edit mode is on.
- * Edits save (debounced on blur) to the shared overrides doc and go live for
- * everyone. When edit mode is off (or for visitors) it renders plain text.
+ * Text that an admin can edit in place. In edit mode it shows a dashed
+ * outline; the element only becomes contentEditable AFTER it's tapped — so
+ * the page still scrolls normally (critical on touch devices, where an
+ * always-editable page traps scroll/taps). Saves on blur to the shared
+ * overrides doc and go live for everyone.
  */
 export function EditableText({ id, children, as = "span", className, multiline }: Props) {
   const value = useOverrideText(id, children);
   const editing = useInlineEdit((s) => s.enabled);
+  const [active, setActive] = useState(false);
   const ref = useRef<HTMLElement>(null);
   const Tag = as as React.ElementType;
 
-  // Keep the contentEditable DOM in sync with external (realtime) changes,
-  // but never while the user is actively typing in it.
+  // When this element is activated, seed it with the current text and focus it.
   useEffect(() => {
-    const el = ref.current;
-    if (editing && el && document.activeElement !== el) {
-      el.textContent = value;
+    if (active && ref.current) {
+      ref.current.textContent = value;
+      ref.current.focus();
+      // Place caret at the end.
+      const sel = window.getSelection();
+      if (sel) {
+        const range = document.createRange();
+        range.selectNodeContents(ref.current);
+        range.collapse(false);
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }
     }
-  }, [editing, value]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active]);
+
+  // Leaving edit mode entirely cancels any active editing.
+  useEffect(() => {
+    if (!editing) setActive(false);
+  }, [editing]);
 
   if (!editing) {
     return <Tag className={className}>{value}</Tag>;
   }
 
+  if (!active) {
+    return (
+      <Tag
+        className={cn(
+          className,
+          "cursor-pointer rounded-[3px] outline-dashed outline-1 outline-[var(--magenta)]/50 transition-[outline-color] hover:outline-[var(--magenta)]",
+        )}
+        role="button"
+        tabIndex={0}
+        title="Click to edit"
+        onClick={(e: React.MouseEvent) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setActive(true);
+        }}
+        onKeyDown={(e: React.KeyboardEvent) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setActive(true);
+          }
+        }}
+      >
+        {value}
+      </Tag>
+    );
+  }
+
   return (
     <Tag
       ref={ref}
-      className={cn(
-        className,
-        "cursor-text rounded-[3px] outline-dashed outline-1 outline-[var(--magenta)]/40 transition-[outline-color] hover:outline-[var(--magenta)] focus:outline focus:outline-2 focus:outline-[var(--magenta)]",
-      )}
+      className={cn(className, "rounded-[3px] outline outline-2 outline-[var(--magenta)]")}
       contentEditable
       suppressContentEditableWarning
       spellCheck={false}
       role="textbox"
-      tabIndex={0}
       onBlur={(e: React.FocusEvent<HTMLElement>) => {
-        const text = (e.currentTarget.textContent ?? "").replace(/\u00a0/g, " ");
-        if (text !== value) void saveOverrideText(id, text);
+        const text = (e.currentTarget.textContent ?? "").replace(/\u00a0/g, " ").trim();
+        if (text && text !== value) void saveOverrideText(id, text);
+        setActive(false);
       }}
       onKeyDown={(e: React.KeyboardEvent<HTMLElement>) => {
-        // Single-line fields commit on Enter; multiline keeps newlines.
         if (e.key === "Enter" && !multiline) {
           e.preventDefault();
           (e.currentTarget as HTMLElement).blur();
+        }
+        if (e.key === "Escape") {
+          e.preventDefault();
+          setActive(false);
         }
       }}
     />

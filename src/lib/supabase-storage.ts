@@ -8,6 +8,7 @@
 
 import { getSupabase } from "./supabase";
 import { useAuth } from "./store";
+import { recordMediaAsset, kindFromMime } from "./use-media-library";
 
 /**
  * Upload a file to the `media` bucket under `<folder>/<unique-name>`
@@ -64,7 +65,11 @@ export async function uploadCmsMedia(file: File): Promise<string> {
   const uid = useAuth.getState().user?.id;
   const folder = uid ? `cms/${uid}` : "cms";
   const url = await uploadToSupabaseStorage(folder, file);
-  if (url) return url;
+  if (url) {
+    // Catalog it so it shows up in the reusable media library.
+    void recordMediaAsset(url, file.name, kindFromMime(file.type));
+    return url;
+  }
 
   const isImage = file.type.startsWith("image/");
   if (isImage && file.size <= 2 * 1024 * 1024) {

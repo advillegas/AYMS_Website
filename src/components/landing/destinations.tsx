@@ -7,6 +7,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { MapPin, Plane } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTrips } from "@/lib/use-trips";
+import { EditableText } from "@/components/inline/editable-text";
 
 // Curated, aspirational gallery — imagery is editorial and stays fixed.
 // Live trip counts are layered on top from the CRM (see countByCountry),
@@ -52,7 +53,7 @@ export function Destinations() {
           transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
           className="text-center"
         >
-          <p className="eyebrow text-[var(--brand-pink)]">Explore by Destination</p>
+          <EditableText as="p" id="home.destinations.eyebrow" className="eyebrow text-[var(--brand-pink)]">Explore by Destination</EditableText>
           <h2 className="text-title mt-3 font-display text-ink text-balance">
             Where will{" "}
             <span className="font-display-italic text-[var(--magenta)]">you go</span>?

@@ -1,20 +1,16 @@
 import type { Metadata } from "next";
 import { FAQPageJsonLd } from "@/components/seo/json-ld";
+import { seoMetadata } from "@/lib/seo-config";
 
-export const metadata: Metadata = {
-  title: "FAQ — Traveling with Amigas Y Más Social",
-  description:
-    "Answers to common questions about Latina group trips, booking, payments, safety, " +
-    "what's included, community membership, and traveling solo with AYMS.",
-  openGraph: {
-    title: "Frequently Asked Questions | Amigas Y Más Social",
+export function generateMetadata(): Promise<Metadata> {
+  return seoMetadata("faq", {
+    title: "FAQ — Traveling with Amigas Y Más Social",
     description:
-      "Everything you need to know about traveling with the Latina travel community.",
-  },
-  alternates: {
+      "Answers to common questions about Latina group trips, booking, payments, safety, " +
+      "what's included, community membership, and traveling solo with AYMS.",
     canonical: "/faq",
-  },
-};
+  });
+}
 
 const ALL_FAQS = [
   { q: "Do you offer payment plans?", a: "Sí! All of our tours are available with a payment plan option. You can secure your spot with a deposit and pay the remaining balance in installments before the trip." },

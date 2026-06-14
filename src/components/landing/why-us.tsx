@@ -3,6 +3,7 @@
 import { motion, useReducedMotion } from "framer-motion";
 import { Shield, Heart, MapPin, Sparkles, Users, Crown } from "lucide-react";
 import { FlipCard } from "@/components/ui/flip-card";
+import { EditableText } from "@/components/inline/editable-text";
 
 const PROPS = [
   {
@@ -64,15 +65,15 @@ export function WhyUs() {
           transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
           className="mx-auto max-w-2xl text-center"
         >
-          <p className="eyebrow text-[var(--magenta)]">Why Travel With Us</p>
+          <EditableText as="p" id="home.whyus.eyebrow" className="eyebrow text-[var(--magenta)]">Why Travel With Us</EditableText>
           <h2 className="text-title mt-4 font-display text-ink text-balance">
             Sit back &amp; relax,{" "}
             <span className="font-display-italic marker-swipe">you&apos;re in good hands</span>
           </h2>
-          <p className="text-lead mx-auto mt-5 text-ink-soft">
+          <EditableText as="p" id="home.whyus.lead" className="text-lead mx-auto mt-5 text-ink-soft">
             Unlike big commercial group tours, we prioritize boutique
             experiences, hand-crafted itineraries, and real connections.
-          </p>
+          </EditableText>
         </motion.div>
 
         <div className="mt-14 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">

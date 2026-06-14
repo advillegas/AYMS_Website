@@ -1,21 +1,17 @@
 import type { Metadata } from "next";
 import { TripsJsonLd } from "@/components/seo/json-ld";
 import { TRIPS_DATA } from "@/lib/trips-data";
+import { seoMetadata } from "@/lib/seo-config";
 
-export const metadata: Metadata = {
-  title: "Latina Group Trips — Book Your Next Adventure",
-  description:
-    "Browse curated group trips for Latinas to Cancún, Colombia, Bali, Japan, Kenya, Morocco & more. " +
-    "Small groups, all-inclusive vibes, and a built-in sisterhood. Book your spot today.",
-  openGraph: {
-    title: "Latina Group Trips — Book Your Next Adventure | Amigas Y Más Social",
+export function generateMetadata(): Promise<Metadata> {
+  return seoMetadata("trips", {
+    title: "Latina Group Trips — Book Your Next Adventure",
     description:
-      "Curated group travel for Latinas. Small groups, bucket-list destinations, lifelong friendships.",
-  },
-  alternates: {
+      "Browse curated group trips for Latinas to Cancún, Colombia, Bali, Japan, Kenya, Morocco & more. " +
+      "Small groups, all-inclusive vibes, and a built-in sisterhood. Book your spot today.",
     canonical: "/trips",
-  },
-};
+  });
+}
 
 const STATUS_TO_AVAILABILITY = {
   available: "InStock" as const,

@@ -7,10 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { X, Trash2, Copy, Loader2 } from "lucide-react";
+import { X, Trash2, Copy, Loader2, Images } from "lucide-react";
 import { v4 as uuid } from "uuid";
 import { cn } from "@/lib/utils";
 import { uploadCmsMedia } from "@/lib/supabase-storage";
+import { MediaLibraryDialog } from "@/components/admin/media-library-dialog";
 
 /** Current image width as a clamped percent (20–100) of the content panel. */
 function imgWidthPct(w: unknown): number {
@@ -45,6 +46,7 @@ export function InlinePropsPanel() {
 function PanelContent({ element, onClose }: { element: BuilderElement; onClose: () => void }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [libraryKey, setLibraryKey] = useState<string | null>(null);
   const p = element.props;
 
   function update(props: Record<string, unknown>) {
@@ -157,11 +159,16 @@ function PanelContent({ element, onClose }: { element: BuilderElement; onClose: 
             <>
               <Field label="Image / GIF">
                 <input ref={fileRef} type="file" accept="image/*,image/gif" className="hidden" onChange={(e) => handleFileUpload(e, "src")} />
-                <Button variant="outline" size="sm" disabled={uploading} onClick={() => fileRef.current?.click()} className="w-full text-[10px] border-white/10 text-white/50 hover:text-white hover:bg-white/5 h-7">
-                  {uploading ? (
-                    <><Loader2 className="h-3 w-3 mr-1 animate-spin" aria-hidden="true" /> Uploading…</>
-                  ) : (p.src as string) ? "Change Image / GIF" : "Upload Image / GIF"}
-                </Button>
+                <div className="flex gap-1.5">
+                  <Button variant="outline" size="sm" disabled={uploading} onClick={() => fileRef.current?.click()} className="flex-1 text-[10px] border-white/10 text-white/50 hover:text-white hover:bg-white/5 h-7">
+                    {uploading ? (
+                      <><Loader2 className="h-3 w-3 mr-1 animate-spin" aria-hidden="true" /> Uploading…</>
+                    ) : (p.src as string) ? "Change Image / GIF" : "Upload Image / GIF"}
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => setLibraryKey("src")} className="shrink-0 text-[10px] border-white/10 text-white/50 hover:text-white hover:bg-white/5 h-7">
+                    <Images className="h-3 w-3 mr-1" aria-hidden="true" /> Library
+                  </Button>
+                </div>
                 {(p.src as string) && <img src={p.src as string} alt="" className="mt-2 w-full rounded-lg" />}
               </Field>
               <Field label="Or paste URL"><Input value={p.src as string} onChange={(e) => update({ src: e.target.value })} placeholder="https://… (jpg, png, .gif, GIPHY)" className={inputCls} /></Field>
@@ -582,6 +589,12 @@ function PanelContent({ element, onClose }: { element: BuilderElement; onClose: 
           </Field>
         </div>
       </div>
+      <MediaLibraryDialog
+        open={!!libraryKey}
+        onOpenChange={(o) => !o && setLibraryKey(null)}
+        current={libraryKey ? (p[libraryKey] as string) : undefined}
+        onSelect={(u) => libraryKey && update({ [libraryKey]: u })}
+      />
     </div>
   );
 }

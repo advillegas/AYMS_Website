@@ -298,6 +298,21 @@ export function saveSiteContent(key: string, value: unknown): Promise<boolean> {
   return useSiteContentStore.getState().setKey(key, value);
 }
 
+/* ------------------------------- SEO ------------------------------- */
+/* Per-page title/description overrides edited in Admin → SEO. Read      */
+/* server-side for crawlable metadata (see lib/seo-config.ts); this hook */
+/* powers the admin editor. Keyed by page slug.                          */
+
+export interface PageSeoEntry {
+  title?: string;
+  description?: string;
+}
+export type SeoMap = Record<string, PageSeoEntry>;
+
+export function useSeoContent(): SeoMap {
+  return useDomain<SeoMap>("seo", {});
+}
+
 /* --------------------- in-place text/image overrides --------------- */
 /* Powers the click-to-edit editor: every wrapped element has a stable   */
 /* id; its override (if any) wins over the coded default. All overrides  */

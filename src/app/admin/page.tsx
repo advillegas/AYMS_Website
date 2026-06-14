@@ -13,6 +13,7 @@ import { NavEditor } from "@/components/admin/nav-editor";
 import { NewsletterPanel } from "@/components/admin/newsletter-panel";
 import { SiteSettingsPanel } from "@/components/admin/site-settings-panel";
 import { ContentManager } from "@/components/admin/content-manager";
+import { SeoPanel } from "@/components/admin/seo-panel";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -34,11 +35,12 @@ import {
   Users,
   Settings as SettingsIcon,
   Sparkles,
+  Search,
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 
-type Tab = "pages" | "nav" | "content" | "templates" | "audience" | "settings";
+type Tab = "pages" | "nav" | "content" | "templates" | "audience" | "settings" | "seo";
 
 export default function AdminPage() {
   const user = useAuth((s) => s.user);
@@ -60,7 +62,7 @@ export default function AdminPage() {
   // Deep-link support: /admin?tab=content|settings|pages|… opens that tab.
   useEffect(() => {
     const t = new URLSearchParams(window.location.search).get("tab");
-    if (t && ["pages", "content", "nav", "settings", "templates", "audience"].includes(t)) {
+    if (t && ["pages", "content", "nav", "settings", "templates", "audience", "seo"].includes(t)) {
       setActiveTab(t as Tab);
     }
   }, []);
@@ -145,6 +147,7 @@ export default function AdminPage() {
             { id: "content" as Tab, icon: Sparkles, label: "Content" },
             { id: "nav" as Tab, icon: Navigation, label: "Nav" },
             { id: "settings" as Tab, icon: SettingsIcon, label: "Settings" },
+            { id: "seo" as Tab, icon: Search, label: "SEO" },
             { id: "templates" as Tab, icon: LayoutTemplate, label: "Templates" },
             { id: "audience" as Tab, icon: Users, label: "Audience" },
           ]).map((tab) => (
@@ -216,6 +219,10 @@ export default function AdminPage() {
       ) : activeTab === "audience" ? (
         <div className="flex-1 overflow-hidden">
           <NewsletterPanel />
+        </div>
+      ) : activeTab === "seo" ? (
+        <div className="flex-1 overflow-hidden">
+          <SeoPanel />
         </div>
       ) : (
         <div className="flex-1 flex items-center justify-center">

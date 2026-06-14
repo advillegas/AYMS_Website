@@ -3,6 +3,7 @@
 import { motion, useReducedMotion } from "framer-motion";
 import { Heart, Globe, Coffee, Sparkles } from "lucide-react";
 import { FlipCard } from "@/components/ui/flip-card";
+import { EditableText } from "@/components/inline/editable-text";
 
 const VALUES = [
   {
@@ -57,17 +58,17 @@ export function About() {
             transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
             className="lg:col-span-7"
           >
-            <p className="eyebrow text-[var(--brand-pink)]">About Us</p>
+            <EditableText as="p" id="home.about.eyebrow" className="eyebrow text-[var(--brand-pink)]">About Us</EditableText>
             <h2 className="text-title mt-4 font-display text-ink text-balance">
               More than a community —{" "}
               <span className="font-display-italic marker-swipe">we are family</span>
             </h2>
-            <p className="text-lead mt-6 max-w-xl text-ink-soft">
+            <EditableText as="p" id="home.about.lead" className="text-lead mt-6 max-w-xl text-ink-soft">
               Amigas Y Más Social is the Latina travel community built on
               connection, empowerment, and celebration. Founded by Sally Vee, we
               bring Latina women together through curated group trips, local
               meetups, and a sisterhood that lasts a lifetime.
-            </p>
+            </EditableText>
           </motion.div>
 
           {/* Oversized editorial pull-quote */}
@@ -146,14 +147,14 @@ export function About() {
               SV
             </div>
             <div className="flex-1">
-              <p className="eyebrow text-[var(--magenta)]">Founder &amp; CEO</p>
-              <h3 className="mt-2 font-display text-2xl text-ink sm:text-[2rem]">Sally Vee</h3>
-              <p className="mt-4 max-w-2xl font-display-italic text-lg leading-relaxed text-ink-soft">
+              <EditableText as="p" id="home.about.founderEyebrow" className="eyebrow text-[var(--magenta)]">Founder &amp; CEO</EditableText>
+              <EditableText as="h3" id="home.about.founderName" className="mt-2 font-display text-2xl text-ink sm:text-[2rem]">Sally Vee</EditableText>
+              <EditableText as="p" id="home.about.founderQuote" className="mt-4 max-w-2xl font-display-italic text-lg leading-relaxed text-ink-soft">
                 &ldquo;I had a vision of sisterhood and made it my mission to bring
                 it to life. Through countless meetings, sleepless nights, and a lot
                 of elbow grease, Amigas Y Más was born. It feels like family, every
                 time.&rdquo;
-              </p>
+              </EditableText>
             </div>
           </div>
         </motion.div>

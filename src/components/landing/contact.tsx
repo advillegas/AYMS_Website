@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Mail, Heart, Send, Loader2 } from "lucide-react";
+import { EditableText } from "@/components/inline/editable-text";
 import { useNewsletter } from "@/lib/use-newsletter";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -107,16 +108,16 @@ export function Contact() {
             viewport={{ once: true }}
             transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
           >
-            <p className="eyebrow text-[var(--brand-pink)]">Contact Us</p>
+            <EditableText as="p" id="home.contact.eyebrow" className="eyebrow text-[var(--brand-pink)]">Contact Us</EditableText>
             <h2 className="font-display text-title mt-3 text-ink text-balance">
               Ready to join the{" "}
               <span className="font-display-italic text-[var(--magenta)]">family</span>?
             </h2>
-            <p className="text-lead mt-5 text-ink-soft leading-relaxed">
+            <EditableText as="p" id="home.contact.lead" className="text-lead mt-5 text-ink-soft leading-relaxed">
               Have questions about events, trips, or membership? We&apos;d love
               to hear from you. Reach out and we&apos;ll get back to you
               shortly.
-            </p>
+            </EditableText>
 
             <div className="mt-8 space-y-4">
               {CONTACT_ITEMS.map((item) => {
@@ -171,15 +172,15 @@ export function Contact() {
             <Card className="glass-strong elevate-float overflow-hidden rounded-3xl border-[#FACDE8]/60">
               <div className="absolute inset-0 bg-gradient-to-br from-[var(--magenta)]/4 to-[#FACDE8]/8" />
               <CardHeader className="relative">
-                <p className="eyebrow text-[var(--brand-pink)]">Newsletter</p>
+                <EditableText as="p" id="home.contact.newsletterEyebrow" className="eyebrow text-[var(--brand-pink)]">Newsletter</EditableText>
                 <h3 className="font-display mt-2 text-2xl text-ink">
                   Stay in the{" "}
                   <span className="font-display-italic text-[var(--magenta)]">loop</span>
                 </h3>
-                <p className="mt-1 text-sm text-ink-soft">
+                <EditableText as="p" id="home.contact.newsletterSub" className="mt-1 text-sm text-ink-soft">
                   Be the first to know about new events, trips, and community
                   news.
-                </p>
+                </EditableText>
               </CardHeader>
               <CardContent className="relative">
                 <form onSubmit={handleSubscribe} className="space-y-4">
@@ -243,9 +244,9 @@ export function Contact() {
                       </>
                     )}
                   </Button>
-                  <p className="text-center text-[11px] text-ink-soft">
+                  <EditableText as="p" id="home.contact.newsletterFinePrint" className="text-center text-[11px] text-ink-soft">
                     No spam, ever — just the good stuff. Unsubscribe anytime. ♡
-                  </p>
+                  </EditableText>
                 </form>
               </CardContent>
             </Card>

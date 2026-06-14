@@ -9,6 +9,7 @@ import { AuthBootstrap } from "@/components/auth-bootstrap";
 import { OrganizationJsonLd, WebSiteJsonLd } from "@/components/seo/json-ld";
 import { SiteThemeVars } from "@/components/site-theme-vars";
 import { InlineEditBar } from "@/components/inline/inline-edit-bar";
+import { getPageSeo } from "@/lib/seo-config";
 import "./globals.css";
 
 const montserrat = Montserrat({
@@ -57,13 +58,20 @@ const DEFAULT_DESCRIPTION =
   "Group trips for Latinas to Cancún, Colombia, Bali, Japan & more. " +
   "Connect, empower, celebrate — sisterhood, cultura, aventura.";
 
-export const metadata: Metadata = {
+export async function generateMetadata(): Promise<Metadata> {
+  // Home title/description are owner-editable in Admin → SEO (the `home`
+  // slug); everything else stays coded. Falls back to defaults if unset.
+  const home = await getPageSeo("home");
+  const homeTitle =
+    home.title?.trim() || `${SITE_NAME} — Latina Travel Community & Group Trips`;
+  const homeDescription = home.description?.trim() || DEFAULT_DESCRIPTION;
+  return {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: `${SITE_NAME} — Latina Travel Community & Group Trips`,
+    default: homeTitle,
     template: `%s | ${SITE_NAME}`,
   },
-  description: DEFAULT_DESCRIPTION,
+  description: homeDescription,
   keywords: [
     "latina travel",
     "latina community",
@@ -90,8 +98,8 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_US",
     siteName: SITE_NAME,
-    title: `${SITE_NAME} — Latina Travel Community & Group Trips`,
-    description: DEFAULT_DESCRIPTION,
+    title: homeTitle,
+    description: homeDescription,
     url: SITE_URL,
     images: [
       {
@@ -106,8 +114,8 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     site: "@amigasymassocial",
     creator: "@amigasymassocial",
-    title: `${SITE_NAME} — Latina Travel Community & Group Trips`,
-    description: DEFAULT_DESCRIPTION,
+    title: homeTitle,
+    description: homeDescription,
     images: ["/og-default.png"],
   },
   robots: {
@@ -124,7 +132,8 @@ export const metadata: Metadata = {
   alternates: {
     canonical: SITE_URL,
   },
-};
+  };
+}
 
 export default function RootLayout({
   children,

@@ -5,7 +5,8 @@ import { useRef, useState } from "react";
 import { useOverrideImage, saveOverrideImage } from "@/lib/use-site-content";
 import { useInlineEdit } from "@/lib/use-inline-edit";
 import { uploadCmsMedia } from "@/lib/supabase-storage";
-import { Upload, Loader2 } from "lucide-react";
+import { MediaLibraryDialog } from "@/components/admin/media-library-dialog";
+import { Upload, Loader2, Images } from "lucide-react";
 
 interface Props {
   /** Stable, unique id for this image slot. */
@@ -32,6 +33,7 @@ export function EditableImage({ id, src, alt, fill, width, height, sizes, priori
   const editing = useInlineEdit((s) => s.enabled);
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [libraryOpen, setLibraryOpen] = useState(false);
 
   async function handle(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -68,17 +70,31 @@ export function EditableImage({ id, src, alt, fill, width, height, sizes, priori
     <>
       {img}
       <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handle} />
-      <button
-        type="button"
-        onClick={() => fileRef.current?.click()}
-        className="group/ei absolute inset-0 z-20 flex items-center justify-center bg-[#221019]/45 text-white opacity-0 transition-opacity hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none"
-        aria-label="Replace image"
-      >
-        <span className="flex items-center gap-1.5 rounded-full bg-[var(--magenta)] px-3 py-1.5 text-xs font-semibold">
+      <div className="absolute inset-0 z-20 flex items-center justify-center gap-2 bg-[#221019]/45 opacity-0 transition-opacity hover:opacity-100 focus-within:opacity-100">
+        <button
+          type="button"
+          onClick={() => fileRef.current?.click()}
+          className="flex items-center gap-1.5 rounded-full bg-[var(--magenta)] px-3 py-1.5 text-xs font-semibold text-white focus-visible:outline-none"
+          aria-label="Upload a new image"
+        >
           {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
           {uploading ? "Uploading…" : "Replace"}
-        </span>
-      </button>
+        </button>
+        <button
+          type="button"
+          onClick={() => setLibraryOpen(true)}
+          className="flex items-center gap-1.5 rounded-full bg-white/90 px-3 py-1.5 text-xs font-semibold text-[#221019] focus-visible:outline-none"
+          aria-label="Choose from media library"
+        >
+          <Images className="h-4 w-4" /> Library
+        </button>
+      </div>
+      <MediaLibraryDialog
+        open={libraryOpen}
+        onOpenChange={setLibraryOpen}
+        current={url}
+        onSelect={(u) => void saveOverrideImage(id, u)}
+      />
     </>
   );
 }

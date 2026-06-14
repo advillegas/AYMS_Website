@@ -8,7 +8,7 @@ import { useInlineEdit } from "@/lib/use-inline-edit";
 import { Pencil, Check, SlidersHorizontal } from "lucide-react";
 
 /** Routes wired for in-place click-to-edit. Expand as pages get wrapped. */
-const INPLACE_ROUTES = ["/camp"];
+const INPLACE_ROUTES = ["/", "/camp"];
 
 /**
  * For pages not wired for in-place editing, send the owner straight to the
@@ -16,7 +16,6 @@ const INPLACE_ROUTES = ["/camp"];
  * lands somewhere useful.
  */
 const EDIT_DESTINATION: Record<string, string> = {
-  "/": "/admin?tab=content&section=home",
   "/gallery": "/admin?tab=content&section=gallery",
   "/faq": "/admin?tab=content&section=faq",
   "/trips": "/community/admin/trips",

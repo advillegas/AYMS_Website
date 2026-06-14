@@ -1,19 +1,15 @@
 import type { Metadata } from "next";
+import { seoMetadata } from "@/lib/seo-config";
 
-export const metadata: Metadata = {
-  title: "Travel Gallery — Where We've Been",
-  description:
-    "Relive past Latina group trips to Thailand, Peru, Egypt, Japan, Colombia, Costa Rica, Greece, Spain, Bali & more. " +
-    "Real photos, real amigas, real memories.",
-  openGraph: {
-    title: "Latina Travel Gallery | Amigas Y Más Social",
+export function generateMetadata(): Promise<Metadata> {
+  return seoMetadata("gallery", {
+    title: "Travel Gallery — Where We've Been",
     description:
-      "Photos and memories from our Latina group trips around the world.",
-  },
-  alternates: {
+      "Relive past Latina group trips to Thailand, Peru, Egypt, Japan, Colombia, Costa Rica, Greece, Spain, Bali & more. " +
+      "Real photos, real amigas, real memories.",
     canonical: "/gallery",
-  },
-};
+  });
+}
 
 export default function GalleryLayout({
   children,

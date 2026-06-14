@@ -1,36 +1,28 @@
 import type { Metadata } from "next";
 import { EventsJsonLd } from "@/components/seo/json-ld";
 import { COMMUNITY_EVENTS } from "@/lib/events-data";
+import { seoMetadata } from "@/lib/seo-config";
 
 /**
  * Per-route metadata + structured data for /featured.
  *
  * The page itself is a Client Component (it hydrates CMS/builder state),
- * so metadata can't live there — App Router only reads `metadata` from
- * Server Components. A co-located server `layout.tsx` is the correct
- * place (confirmed against node_modules/next/dist/docs — metadata is
- * "only supported in Server Components" and resolves from layout.js or
- * page.js). The static OG image is inherited from the root layout's
- * openGraph.images (/og-default.png).
+ * so metadata can't live there — App Router only reads metadata from
+ * Server Components. A co-located server layout.tsx is the correct place.
+ * The static OG image is inherited from the root layout's openGraph.images.
  */
 
 const SITE_URL = "https://amigasymassocial.com";
 
-export const metadata: Metadata = {
-  title: "Featured Spotlight — This Month's Trip & Events",
-  description:
-    "See the featured Latina group trip everyone's talking about, plus upcoming " +
-    "community events. Grab your spot and join the sisterhood with Amigas Y Más Social.",
-  openGraph: {
-    title: "Featured Spotlight | Amigas Y Más Social",
+export function generateMetadata(): Promise<Metadata> {
+  return seoMetadata("featured", {
+    title: "Featured Spotlight — This Month's Trip & Events",
     description:
-      "This month's featured Latina group trip and upcoming community events.",
-    url: `${SITE_URL}/featured`,
-  },
-  alternates: {
+      "See the featured Latina group trip everyone's talking about, plus upcoming " +
+      "community events. Grab your spot and join the sisterhood with Amigas Y Más Social.",
     canonical: "/featured",
-  },
-};
+  });
+}
 
 export default function FeaturedLayout({
   children,

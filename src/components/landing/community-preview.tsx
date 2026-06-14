@@ -15,6 +15,7 @@ import Link from "next/link";
 import { motion, useReducedMotion } from "framer-motion";
 import { Sparkles, Users, Globe2, CalendarHeart, ArrowRight } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { EditableText } from "@/components/inline/editable-text";
 import { useTrips } from "@/lib/use-trips";
 import { useEvents } from "@/lib/use-events";
 import { useTestimonials } from "@/lib/use-testimonials";
@@ -116,11 +117,11 @@ export function CommunityPreview() {
             Become an{" "}
             <span className="font-display-italic text-[var(--magenta)]">Amiga</span>
           </h2>
-          <p className="text-lead mx-auto mt-5 max-w-xl text-ink-soft leading-relaxed">
+          <EditableText as="p" id="home.community.lead" className="text-lead mx-auto mt-5 max-w-xl text-ink-soft leading-relaxed">
             Real friendships, bucket-list adventures, and a sisterhood that
             travels together. Membership is free — your seat at the table is
             waiting.
-          </p>
+          </EditableText>
         </motion.div>
 
         {/* Aggregate stats */}
@@ -157,7 +158,7 @@ export function CommunityPreview() {
             viewport={{ once: true }}
             transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
           >
-            <p className="eyebrow text-[var(--brand-pink)]">From our amigas</p>
+            <EditableText as="p" id="home.community.highlightsLabel" className="eyebrow text-[var(--brand-pink)]">From our amigas</EditableText>
             <div className="mt-4 space-y-4">
               {highlights.map((t) => (
                 <div
@@ -198,7 +199,7 @@ export function CommunityPreview() {
             viewport={{ once: true }}
             transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
           >
-            <p className="eyebrow text-[var(--brand-pink)]">What&apos;s coming up</p>
+            <EditableText as="p" id="home.community.eventsLabel" className="eyebrow text-[var(--brand-pink)]">What&apos;s coming up</EditableText>
             <div className="mt-4 overflow-hidden rounded-3xl glass-strong elevate-2">
               {upcomingEvents.length === 0 ? (
                 <div className="p-8 text-center text-sm text-ink-soft">

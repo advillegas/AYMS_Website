@@ -13,7 +13,11 @@ function ScrollArea({
   return (
     <ScrollAreaPrimitive.Root
       data-slot="scroll-area"
-      className={cn("relative", className)}
+      // `min-h-0` lets the Root shrink inside a flex column so its viewport
+      // actually scrolls instead of growing past the container and being
+      // clipped by an ancestor's overflow-hidden (the "cut off, can't
+      // scroll" bug). `overflow-hidden` keeps the rounded clip on the root.
+      className={cn("relative min-h-0 overflow-hidden", className)}
       {...props}
     >
       <ScrollAreaPrimitive.Viewport

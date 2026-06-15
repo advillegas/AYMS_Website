@@ -7,6 +7,8 @@ interface EditModeState {
   /** Preview-as-visitor: render the canvas with no edit chrome. */
   isPreview: boolean;
   toggleEditMode: (slug?: string) => void;
+  /** Switch the editor to another page without leaving edit mode. */
+  setEditPage: (slug: string) => void;
   exitEditMode: () => void;
   setSelectedElement: (id: string | null) => void;
   setPreview: (on: boolean) => void;
@@ -24,6 +26,8 @@ export const useEditMode = create<EditModeState>((set) => ({
       selectedElementId: null,
       isPreview: false,
     })),
+  setEditPage: (slug) =>
+    set({ isEditMode: true, pageSlug: slug, selectedElementId: null, isPreview: false }),
   exitEditMode: () =>
     set({ isEditMode: false, pageSlug: null, selectedElementId: null, isPreview: false }),
   setSelectedElement: (id) => set({ selectedElementId: id }),

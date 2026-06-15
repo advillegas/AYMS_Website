@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useEditMode } from "@/lib/edit-mode";
 import { useBuilder, type BuilderElement } from "@/lib/builder-store";
-import type { CmsVersion } from "@/lib/cms-store";
+import { type CmsVersion, SYSTEM_PAGES, systemPageHref } from "@/lib/cms-store";
+import { pageHasSections } from "@/lib/sections/registry";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
@@ -57,13 +59,24 @@ export function SectionToolbar({
   onListVersions,
   onRestoreVersion,
 }: Props) {
+  const router = useRouter();
   const isEditMode = useEditMode((s) => s.isEditMode);
   const pageSlug = useEditMode((s) => s.pageSlug);
+  const setEditPage = useEditMode((s) => s.setEditPage);
   const exitEditMode = useEditMode((s) => s.exitEditMode);
   const setPreview = useEditMode((s) => s.setPreview);
   const canUndo = useBuilder((s) => s.canUndo);
   const canRedo = useBuilder((s) => s.canRedo);
+  const [pagesOpen, setPagesOpen] = useState(false);
   const [revertOpen, setRevertOpen] = useState(false);
+  const editablePages = SYSTEM_PAGES.filter((p) => pageHasSections(p.slug));
+
+  function goToPage(s: string) {
+    setPagesOpen(false);
+    if (s === pageSlug) return;
+    setEditPage(s);
+    router.push(systemPageHref(s));
+  }
   const [confirmPublish, setConfirmPublish] = useState(false);
   const [versions, setVersions] = useState<CmsVersion[]>([]);
   const [versionsLoading, setVersionsLoading] = useState(false);
@@ -126,7 +139,38 @@ export function SectionToolbar({
         <span className="hidden text-[11px] font-bold uppercase tracking-wider text-white/70 sm:inline">
           Editing
         </span>
-        {pageSlug && <span className="ml-1 text-[10px] text-white/30">/ {pageSlug}</span>}
+        {/* Page switcher — jump between pages without leaving the builder */}
+        <div className="relative ml-1">
+          <button
+            type="button"
+            onClick={() => setPagesOpen((v) => !v)}
+            aria-expanded={pagesOpen}
+            className="flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-[11px] font-semibold text-white/80 transition-colors hover:bg-white/10"
+            title="Switch page"
+          >
+            {SYSTEM_PAGES.find((p) => p.slug === pageSlug)?.title ?? pageSlug ?? "Page"}
+            <ChevronDown className={`h-3 w-3 transition-transform ${pagesOpen ? "rotate-180" : ""}`} aria-hidden="true" />
+          </button>
+          {pagesOpen && (
+            <>
+              <div className="fixed inset-0 z-10" aria-hidden="true" onClick={() => setPagesOpen(false)} />
+              <div role="menu" className="absolute left-0 top-full z-20 mt-2 w-44 rounded-xl border border-white/10 bg-[#1a0f18] p-1.5 shadow-xl shadow-black/40">
+                <p className="px-2 py-1 text-[9px] font-bold uppercase tracking-wider text-white/30">Edit page</p>
+                {editablePages.map((p) => (
+                  <button
+                    key={p.slug}
+                    type="button"
+                    onClick={() => goToPage(p.slug)}
+                    className={`flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-left text-xs transition-colors hover:bg-white/5 ${p.slug === pageSlug ? "text-[#FF0099]" : "text-white/70 hover:text-white"}`}
+                  >
+                    {p.title}
+                    <span className="text-[10px] text-white/25">{p.href}</span>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
         <div className="ml-1 flex items-center gap-0.5">
           <button
             type="button"

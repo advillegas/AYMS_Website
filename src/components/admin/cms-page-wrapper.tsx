@@ -160,8 +160,13 @@ export function CmsPageWrapper({ slug, children }: Props) {
   useEffect(() => {
     if (!isEditing) return;
     const pg = useCms.getState().pages[slug];
-    if (pg && pg.elements.length > 0) {
-      useBuilder.setState({ elements: JSON.parse(JSON.stringify(pg.elements)), selectedId: null });
+    // A section page only loads a saved draft if that draft is ITSELF a section
+    // list. Legacy generic-block drafts (from the old builder) are ignored and
+    // replaced with the real sections, so the canvas never shows "Unknown
+    // section" nonsense.
+    const savedUsable = pg && pg.elements.length > 0 && (!sectionMode || isSectionList(pg.elements));
+    if (savedUsable) {
+      useBuilder.setState({ elements: JSON.parse(JSON.stringify(pg!.elements)), selectedId: null });
     } else if (sectionMode) {
       useBuilder.setState({ elements: seedSectionsForPage(slug), selectedId: null });
     } else {
@@ -312,6 +317,7 @@ export function CmsPageWrapper({ slug, children }: Props) {
 
   // ─────────────────────────── PUBLISHED OVERRIDE (not editing) ───────────────────────────
   if (hasPublished && page && !isEditing) {
+    // Section pages render a published SECTION list full-bleed.
     if (isSectionList(page.elements)) {
       return (
         <>
@@ -325,24 +331,28 @@ export function CmsPageWrapper({ slug, children }: Props) {
         </>
       );
     }
-    return (
-      <>
-        <Navbar />
-        <main className="min-h-screen pt-[88px]">
-          <section className="grain relative bg-[#FDFCF7]">
-            <div className="absolute inset-0 pattern-dots opacity-[0.04]" aria-hidden="true" />
-            <div className="relative mx-auto max-w-3xl px-4 py-16 sm:px-6 lg:px-8">
-              <div className="space-y-6">
-                {page.elements.map((el) => (
-                  <ElementRenderer key={el.id} element={el} />
-                ))}
+    // Custom /p pages render their generic block override. A section page with
+    // a stale non-section override is ignored (falls through to coded design).
+    if (!pageHasSections(slug)) {
+      return (
+        <>
+          <Navbar />
+          <main className="min-h-screen pt-[88px]">
+            <section className="grain relative bg-[#FDFCF7]">
+              <div className="absolute inset-0 pattern-dots opacity-[0.04]" aria-hidden="true" />
+              <div className="relative mx-auto max-w-3xl px-4 py-16 sm:px-6 lg:px-8">
+                <div className="space-y-6">
+                  {page.elements.map((el) => (
+                    <ElementRenderer key={el.id} element={el} />
+                  ))}
+                </div>
               </div>
-            </div>
-          </section>
-        </main>
-        <Footer />
-      </>
-    );
+            </section>
+          </main>
+          <Footer />
+        </>
+      );
+    }
   }
 
   // ─────────────────────────── PREVIEW-AS-VISITOR ───────────────────────────

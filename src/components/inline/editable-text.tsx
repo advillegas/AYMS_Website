@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import { useOverrideText, saveOverrideText } from "@/lib/use-site-content";
 import { useInlineEdit } from "@/lib/use-inline-edit";
 import { cn } from "@/lib/utils";
@@ -95,8 +96,14 @@ export function EditableText({ id, children, as = "span", className, multiline }
       role="textbox"
       onBlur={(e: React.FocusEvent<HTMLElement>) => {
         const text = (e.currentTarget.textContent ?? "").replace(/\u00a0/g, " ").trim();
-        if (text && text !== value) void saveOverrideText(id, text);
         setActive(false);
+        if (!text) return; // empty discards the edit; the default text returns
+        if (text === value) return;
+        void saveOverrideText(id, text).then((ok) => {
+          if (!ok) {
+            toast.error("Couldn't save that change — check your connection and try again.");
+          }
+        });
       }}
       onKeyDown={(e: React.KeyboardEvent<HTMLElement>) => {
         if (e.key === "Enter" && !multiline) {

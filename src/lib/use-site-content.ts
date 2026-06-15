@@ -227,6 +227,9 @@ export const useSiteContentStore = create<SiteContentState>((set) => ({
     };
   },
   setKey: async (key, value) => {
+    // Optimistic update, remembering the previous value so we can roll back if
+    // the cloud write fails — otherwise the UI shows unsaved content as "saved".
+    const prev = useSiteContentStore.getState().values[key];
     set((s) => ({ values: { ...s.values, [key]: value } }));
     const sb = getSupabase();
     if (!sb) return false;
@@ -238,6 +241,13 @@ export const useSiteContentStore = create<SiteContentState>((set) => ({
       );
     if (error) {
       console.warn("[site-content] save failed", key, error.message);
+      // Roll back the optimistic change so the editor reflects reality.
+      set((s) => {
+        const next = { ...s.values };
+        if (prev === undefined) delete next[key];
+        else next[key] = prev;
+        return { values: next };
+      });
       return false;
     }
     return true;

@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useRef, useState } from "react";
 import { useOverrideImage, saveOverrideImage } from "@/lib/use-site-content";
 import { useInlineEdit } from "@/lib/use-inline-edit";
+import { toast } from "sonner";
 import { uploadCmsMedia } from "@/lib/supabase-storage";
 import { MediaLibraryDialog } from "@/components/admin/media-library-dialog";
 import { Upload, Loader2, Images } from "lucide-react";
@@ -42,9 +43,10 @@ export function EditableImage({ id, src, alt, fill, width, height, sizes, priori
     setUploading(true);
     try {
       const u = await uploadCmsMedia(file);
-      await saveOverrideImage(id, u);
+      const ok = await saveOverrideImage(id, u);
+      if (!ok) toast.error("Photo uploaded but couldn't be saved — try again.");
     } catch {
-      /* surfaced via console in uploadCmsMedia */
+      toast.error("Couldn't upload that photo. Use an image under ~5MB and try again.");
     } finally {
       setUploading(false);
     }
@@ -70,11 +72,13 @@ export function EditableImage({ id, src, alt, fill, width, height, sizes, priori
     <>
       {img}
       <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handle} />
-      <div className="absolute inset-0 z-20 flex items-center justify-center gap-2 bg-[#221019]/45 opacity-0 transition-opacity hover:opacity-100 focus-within:opacity-100">
+      {/* On touch there's no hover, so keep the controls visible (subtle by
+          default, fully revealed on hover/focus) whenever edit mode is on. */}
+      <div className="absolute inset-0 z-20 flex items-center justify-center gap-2 bg-[#221019]/25 opacity-100 transition-opacity hover:bg-[#221019]/45 focus-within:bg-[#221019]/45">
         <button
           type="button"
           onClick={() => fileRef.current?.click()}
-          className="flex items-center gap-1.5 rounded-full bg-[var(--magenta)] px-3 py-1.5 text-xs font-semibold text-white focus-visible:outline-none"
+          className="flex items-center gap-1.5 rounded-full bg-[var(--magenta)] px-3 py-1.5 text-xs font-semibold text-white shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
           aria-label="Upload a new image"
         >
           {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
@@ -83,7 +87,7 @@ export function EditableImage({ id, src, alt, fill, width, height, sizes, priori
         <button
           type="button"
           onClick={() => setLibraryOpen(true)}
-          className="flex items-center gap-1.5 rounded-full bg-white/90 px-3 py-1.5 text-xs font-semibold text-[#221019] focus-visible:outline-none"
+          className="flex items-center gap-1.5 rounded-full bg-white/90 px-3 py-1.5 text-xs font-semibold text-[#221019] shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--magenta)]"
           aria-label="Choose from media library"
         >
           <Images className="h-4 w-4" /> Library

@@ -7,7 +7,7 @@ import {
   getAuthInstance,
   isFirebaseConfigured,
 } from "./firebase";
-import { useSupabaseBackend } from "./supabase";
+import { useSupabaseBackend, getSupabase } from "./supabase";
 import { onSupabaseAuthChange } from "./supabase-auth";
 import { readUserProfile, upsertUserProfile } from "./firebase-auth";
 
@@ -47,6 +47,52 @@ export function useAuthHydrated(): boolean {
   }, [hydrated]);
 
   return hydrated;
+}
+
+/**
+ * Self-heal the password-admin's Supabase session.
+ *
+ * The legacy admin login establishes its Supabase session at sign-in, but on
+ * a later cold load that session can be gone (expired / never persisted),
+ * leaving the browser anonymous to Supabase. RLS then hides community data
+ * (channels, messages) as if it were deleted. When we detect that stale
+ * state, silently re-mint the session via /api/auth/admin-session (gated by
+ * the signed admin cookie) — no password re-prompt needed.
+ */
+export function useAdminSessionRecovery(): void {
+  const hydrated = useAuthHydrated();
+  useEffect(() => {
+    if (!hydrated || !useSupabaseBackend) return;
+    let cancelled = false;
+    void (async () => {
+      const sb = getSupabase();
+      if (!sb) return;
+      try {
+        const { data } = await sb.auth.getSession();
+        if (cancelled || data.session) return; // already signed in
+        const st = useAuth.getState();
+        if (!st.isAuthenticated || st.user?.id !== "admin") return;
+        const res = await fetch("/api/auth/admin-session", { method: "POST" });
+        if (!res.ok) return;
+        const j = (await res.json()) as {
+          ok?: boolean;
+          access_token?: string;
+          refresh_token?: string;
+        };
+        if (!cancelled && j?.ok && j.access_token && j.refresh_token) {
+          await sb.auth.setSession({
+            access_token: j.access_token,
+            refresh_token: j.refresh_token,
+          });
+        }
+      } catch {
+        /* best effort — the admin can always sign in again manually */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [hydrated]);
 }
 
 /**

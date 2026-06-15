@@ -1,6 +1,9 @@
 "use client";
 
-import { useFirebaseAuthSync } from "@/lib/use-auth-hydrated";
+import {
+  useFirebaseAuthSync,
+  useAdminSessionRecovery,
+} from "@/lib/use-auth-hydrated";
 
 /**
  * Mounted exactly once at the root layout. Owns the
@@ -12,5 +15,6 @@ import { useFirebaseAuthSync } from "@/lib/use-auth-hydrated";
  */
 export function AuthBootstrap() {
   useFirebaseAuthSync();
+  useAdminSessionRecovery();
   return null;
 }

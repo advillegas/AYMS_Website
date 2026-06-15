@@ -4,6 +4,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { useSupabaseBackend } from "@/lib/supabase";
 import { getServiceClient } from "@/lib/supabase-server";
+import {
+  ADMIN_COOKIE_NAME,
+  ADMIN_COOKIE_MAX_AGE,
+  signAdminCookie,
+} from "@/lib/admin-cookie";
 
 export const runtime = "nodejs";
 
@@ -210,7 +215,7 @@ export async function POST(request: Request) {
       : ("unavailable" as const)
     : undefined;
 
-  return NextResponse.json({
+  const response = NextResponse.json({
     ok: true,
     ...(adminBridge ? { adminBridge } : {}),
     user: {
@@ -224,4 +229,17 @@ export async function POST(request: Request) {
       role: "admin" as const,
     },
   });
+
+  // Signed proof of admin sign-in so /api/auth/admin-session can silently
+  // re-establish the Supabase session on later reloads (prevents the
+  // "everything looks deleted" anonymous-session state).
+  response.cookies.set(ADMIN_COOKIE_NAME, signAdminCookie(), {
+    httpOnly: true,
+    secure: true,
+    sameSite: "lax",
+    path: "/",
+    maxAge: ADMIN_COOKIE_MAX_AGE,
+  });
+
+  return response;
 }

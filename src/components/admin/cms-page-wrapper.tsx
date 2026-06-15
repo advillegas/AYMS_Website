@@ -16,6 +16,7 @@ import { ElementRenderer } from "@/components/builder/element-renderer";
 import { SectionRenderer } from "@/components/builder/section-renderer";
 import { SectionFrame } from "@/components/admin/section-frame";
 import { SectionToolbar } from "@/components/admin/section-toolbar";
+import { BuilderCoach } from "@/components/admin/builder-coach";
 import { SectionPropsPanel } from "@/components/admin/section-props-panel";
 import { SectionOutline } from "@/components/admin/section-outline";
 import { AddSectionDialog } from "@/components/admin/add-section-dialog";
@@ -524,6 +525,8 @@ export function CmsPageWrapper({ slug, children }: Props) {
           onListVersions={handleListVersions}
           onRestoreVersion={handleRestoreVersion}
         />
+
+        <BuilderCoach />
 
         {outlineOpen && (
           <aside className="fixed left-0 top-10 z-[60] hidden h-[calc(100vh-2.5rem)] w-56 border-r border-white/10 bg-[#1A0814] text-white lg:block">

@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useEditMode } from "@/lib/edit-mode";
 import { useBuilder, type BuilderElement } from "@/lib/builder-store";
-import { type CmsVersion, SYSTEM_PAGES, systemPageHref } from "@/lib/cms-store";
+import { useCms, type CmsVersion, SYSTEM_PAGES, systemPageHref } from "@/lib/cms-store";
 import { pageHasSections } from "@/lib/sections/registry";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,7 @@ import {
   Redo,
   Eye,
   ChevronDown,
+  Check,
 } from "lucide-react";
 
 interface Props {
@@ -38,6 +39,19 @@ interface Props {
   onListVersions: () => Promise<CmsVersion[]>;
   onRestoreVersion: (elements: BuilderElement[]) => void;
 }
+
+/** The four states an owner can be in, derived from canvas vs. saved/published. */
+type BuilderStatus = "none" | "unsaved" | "draft" | "published";
+
+const STATUS_META: Record<
+  BuilderStatus,
+  { label: string; dot: string; text: string; ping: boolean }
+> = {
+  none: { label: "No changes", dot: "bg-white/40", text: "text-white/55", ping: false },
+  unsaved: { label: "Unsaved changes", dot: "bg-amber-400", text: "text-amber-300", ping: true },
+  draft: { label: "Draft saved", dot: "bg-sky-400", text: "text-sky-300", ping: false },
+  published: { label: "Published — live", dot: "bg-green-500", text: "text-green-300", ping: true },
+};
 
 function formatWhen(iso: string): string {
   if (!iso) return "";
@@ -69,6 +83,26 @@ export function SectionToolbar({
   const setPreview = useEditMode((s) => s.setPreview);
   const canUndo = useBuilder((s) => s.canUndo);
   const canRedo = useBuilder((s) => s.canRedo);
+  const liveElements = useBuilder((s) => s.elements);
+  const savedPage = useCms((s) => s.pages[slug]);
+
+  // Derive the live status by comparing the canvas to the last saved draft
+  // (JSON compare) and the page's published flag. `canUndo` distinguishes a
+  // never-saved page that is still the untouched original ("No changes") from
+  // one the owner has actually started editing ("Unsaved changes").
+  const status = useMemo<BuilderStatus>(() => {
+    const saved = savedPage?.elements;
+    const hasSaved = Array.isArray(saved) && saved.length > 0;
+    const isPublished = !!savedPage?.isPublished && hasSaved;
+    const matchesSaved =
+      hasSaved && JSON.stringify(liveElements) === JSON.stringify(saved);
+    if (matchesSaved) return isPublished ? "published" : "draft";
+    if (!hasSaved && !canUndo) return "none";
+    return "unsaved";
+  }, [liveElements, savedPage, canUndo]);
+  const meta = STATUS_META[status];
+  const isDirty = status === "unsaved";
+
   const [pagesOpen, setPagesOpen] = useState(false);
   const [revertOpen, setRevertOpen] = useState(false);
   const editablePages = SYSTEM_PAGES.filter((p) => pageHasSections(p.slug));
@@ -195,13 +229,18 @@ export function SectionToolbar({
         >
           <PanelLeft className="h-3.5 w-3.5" aria-hidden="true" />
         </button>
-        <span className="relative flex h-2 w-2" aria-hidden="true">
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
-          <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
-        </span>
-        <span className="hidden text-[11px] font-bold uppercase tracking-wider text-white/70 sm:inline">
-          Editing
-        </span>
+        <div role="status" aria-live="polite" title={meta.label} className="flex items-center gap-1.5">
+          <span className="relative flex h-2 w-2" aria-hidden="true">
+            {meta.ping && (
+              <span className={`absolute inline-flex h-full w-full animate-ping rounded-full opacity-75 ${meta.dot}`} />
+            )}
+            <span className={`relative inline-flex h-2 w-2 rounded-full ${meta.dot}`} />
+          </span>
+          <span aria-hidden="true" className={`hidden text-[11px] font-semibold sm:inline ${meta.text}`}>
+            {meta.label}
+          </span>
+          <span className="sr-only">Builder status: {meta.label}</span>
+        </div>
         {/* Page switcher — jump between pages without leaving the builder */}
         <div className="relative ml-1">
           <button
@@ -344,9 +383,20 @@ export function SectionToolbar({
           <Eye className="h-3 w-3" aria-hidden="true" />
           <span className="hidden sm:inline">Preview</span>
         </Button>
-        <Button onClick={handleSave} disabled={saving} variant="ghost" className="h-7 gap-1 px-2.5 text-[11px] text-white/60 hover:bg-white/10 hover:text-white disabled:opacity-50">
-          <Save className="h-3 w-3" aria-hidden="true" />
-          <span className="hidden sm:inline">{saving ? "Saving…" : "Save"}</span>
+        <Button
+          onClick={handleSave}
+          disabled={saving || !isDirty}
+          aria-label={isDirty ? "Save draft" : "All changes saved"}
+          title={isDirty ? "Save your changes as a private draft" : "Nothing to save — you're all caught up"}
+          variant="ghost"
+          className="h-7 gap-1 px-2.5 text-[11px] text-white/60 hover:bg-white/10 hover:text-white disabled:opacity-50"
+        >
+          {isDirty ? (
+            <Save className="h-3 w-3" aria-hidden="true" />
+          ) : (
+            <Check className="h-3 w-3" aria-hidden="true" />
+          )}
+          <span className="hidden sm:inline">{saving ? "Saving…" : isDirty ? "Save" : "Saved"}</span>
         </Button>
         <Button onClick={() => setConfirmPublish(true)} className="h-7 gap-1 border-0 bg-gradient-to-r from-[#FF0099] to-[#B51760] px-2.5 text-[11px] text-white hover:brightness-110">
           <Upload className="h-3 w-3" aria-hidden="true" />

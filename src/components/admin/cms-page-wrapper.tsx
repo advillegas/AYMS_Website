@@ -8,8 +8,8 @@ import {
   useBuilder,
   type ElementType,
   type BuilderElement,
-  type SectionType,
   getDefaultPropsForType,
+  isSectionType,
 } from "@/lib/builder-store";
 import { ElementRenderer } from "@/components/builder/element-renderer";
 import { SectionRenderer } from "@/components/builder/section-renderer";
@@ -128,6 +128,89 @@ function SortableSectionFrame({
   );
 }
 
+/** Drag wrapper for a build-your-own block (tile/text/image/...) placed in a
+ *  section page. Centered in a content column so a lone tile looks intentional. */
+function SortableBlock({
+  element,
+  index,
+  total,
+  selected,
+  onSelect,
+  onDelete,
+  onDuplicate,
+  onMoveUp,
+  onMoveDown,
+  onUpdate,
+}: {
+  element: BuilderElement;
+  index: number;
+  total: number;
+  selected: boolean;
+  onSelect: () => void;
+  onDelete: () => void;
+  onDuplicate: () => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+  onUpdate: (props: Record<string, unknown>) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: element.id });
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 50 : undefined,
+  };
+  return (
+    <div ref={setNodeRef} style={style} data-section-id={element.id} className="scroll-mt-24">
+      <div className="relative mx-auto w-full max-w-3xl px-4 py-6">
+        <button
+          type="button"
+          {...attributes}
+          {...listeners}
+          onClick={(e) => e.stopPropagation()}
+          aria-label="Drag to reorder block"
+          title="Drag to reorder"
+          className="absolute -left-1 top-4 z-30 hidden h-8 w-8 cursor-grab items-center justify-center rounded-lg border border-[#221019]/12 bg-white/80 text-[#221019]/40 shadow-sm backdrop-blur transition-opacity hover:text-[#FF0099] active:cursor-grabbing sm:flex"
+        >
+          <GripVertical className="h-4 w-4" aria-hidden="true" />
+        </button>
+        <EditableWrapper
+          elementId={element.id}
+          onSelect={onSelect}
+          onDelete={onDelete}
+          onDuplicate={onDuplicate}
+          onMoveUp={onMoveUp}
+          onMoveDown={onMoveDown}
+          onOpenProps={onSelect}
+          isFirst={index === 0}
+          isLast={index === total - 1}
+          label={element.type}
+        >
+          <ElementRenderer
+            element={element}
+            editable
+            isSelected={selected}
+            onUpdate={onUpdate}
+            onClick={onSelect}
+          />
+        </EditableWrapper>
+      </div>
+    </div>
+  );
+}
+
+/** Read-only render of one page element for visitors/preview (section or block). */
+function PublicElement({ element }: { element: BuilderElement }) {
+  if (isSectionType(element.type)) {
+    return <SectionRenderer element={element} />;
+  }
+  return (
+    <div className="mx-auto w-full max-w-3xl px-4 py-6">
+      <ElementRenderer element={element} />
+    </div>
+  );
+}
+
 export function CmsPageWrapper({ slug, children }: Props) {
   const hasPublished = useCms((s) => s.hasPublishedPage(slug));
   const page = useCms((s) => s.pages[slug]);
@@ -160,11 +243,14 @@ export function CmsPageWrapper({ slug, children }: Props) {
   useEffect(() => {
     if (!isEditing) return;
     const pg = useCms.getState().pages[slug];
-    // A section page only loads a saved draft if that draft is ITSELF a section
-    // list. Legacy generic-block drafts (from the old builder) are ignored and
-    // replaced with the real sections, so the canvas never shows "Unknown
-    // section" nonsense.
-    const savedUsable = pg && pg.elements.length > 0 && (!sectionMode || isSectionList(pg.elements));
+    // A section page loads a saved draft if it contains at least one real
+    // section (i.e. it came from the new builder — possibly mixed with custom
+    // tiles/blocks). A PURE legacy generic-block draft (from the old builder)
+    // is ignored and replaced with the real sections, so the canvas never
+    // shows "Unknown section" nonsense.
+    const savedUsable =
+      pg && pg.elements.length > 0 &&
+      (!sectionMode || pg.elements.some((e) => isSectionType(e.type)));
     if (savedUsable) {
       useBuilder.setState({ elements: JSON.parse(JSON.stringify(pg!.elements)), selectedId: null });
     } else if (sectionMode) {
@@ -197,9 +283,16 @@ export function CmsPageWrapper({ slug, children }: Props) {
     useEditMode.setState({ selectedElementId: el.id });
   }, []);
 
-  const handleAddSection = useCallback((type: SectionType) => {
-    const def = getSectionDef(type);
-    const el: BuilderElement = { id: uuid(), type, props: { visible: true, ...(def?.defaultProps ?? {}) } };
+  // Add either a pre-built section OR a build-your-own block (tile, text,
+  // image, button...). Both live in the same page list and are reorderable.
+  const handleAdd = useCallback((type: string) => {
+    let el: BuilderElement;
+    if (isSectionType(type)) {
+      const def = getSectionDef(type);
+      el = { id: uuid(), type, props: { visible: true, ...(def?.defaultProps ?? {}) } };
+    } else {
+      el = { id: uuid(), type: type as ElementType, props: getDefaultPropsForType(type as ElementType) };
+    }
     useBuilder.setState((s) => ({ elements: [...s.elements, el], selectedId: el.id }));
     useEditMode.setState({ selectedElementId: el.id });
   }, []);
@@ -317,14 +410,15 @@ export function CmsPageWrapper({ slug, children }: Props) {
 
   // ─────────────────────────── PUBLISHED OVERRIDE (not editing) ───────────────────────────
   if (hasPublished && page && !isEditing) {
-    // Section pages render a published SECTION list full-bleed.
-    if (isSectionList(page.elements)) {
+    // Section pages render a published list (sections + any custom blocks)
+    // full-bleed, as long as it contains at least one real section.
+    if (page.elements.some((el) => isSectionType(el.type))) {
       return (
         <>
           <Navbar />
           <main className="flex-1">
             {page.elements.map((el) => (
-              <SectionRenderer key={el.id} element={el} />
+              <PublicElement key={el.id} element={el} />
             ))}
           </main>
           <Footer />
@@ -364,7 +458,7 @@ export function CmsPageWrapper({ slug, children }: Props) {
             <Navbar />
             <main className="flex-1">
               {elements.map((el) => (
-                <SectionRenderer key={el.id} element={el} />
+                <PublicElement key={el.id} element={el} />
               ))}
             </main>
             <Footer />
@@ -446,21 +540,37 @@ export function CmsPageWrapper({ slug, children }: Props) {
                     </button>
                   </div>
                 ) : (
-                  elements.map((el, i) => (
-                    <SortableSectionFrame
-                      key={el.id}
-                      element={el}
-                      index={i}
-                      total={elements.length}
-                      selected={selectedElementId === el.id}
-                      onSelect={() => handleSelect(el.id)}
-                      onMoveUp={() => handleMoveUp(el.id)}
-                      onMoveDown={() => handleMoveDown(el.id)}
-                      onDuplicate={() => handleDuplicate(el.id)}
-                      onDelete={() => handleDelete(el.id)}
-                      onToggleHide={() => handleToggleHide(el.id)}
-                    />
-                  ))
+                  elements.map((el, i) =>
+                    isSectionType(el.type) ? (
+                      <SortableSectionFrame
+                        key={el.id}
+                        element={el}
+                        index={i}
+                        total={elements.length}
+                        selected={selectedElementId === el.id}
+                        onSelect={() => handleSelect(el.id)}
+                        onMoveUp={() => handleMoveUp(el.id)}
+                        onMoveDown={() => handleMoveDown(el.id)}
+                        onDuplicate={() => handleDuplicate(el.id)}
+                        onDelete={() => handleDelete(el.id)}
+                        onToggleHide={() => handleToggleHide(el.id)}
+                      />
+                    ) : (
+                      <SortableBlock
+                        key={el.id}
+                        element={el}
+                        index={i}
+                        total={elements.length}
+                        selected={selectedElementId === el.id}
+                        onSelect={() => handleSelect(el.id)}
+                        onDelete={() => handleDelete(el.id)}
+                        onDuplicate={() => handleDuplicate(el.id)}
+                        onMoveUp={() => handleMoveUp(el.id)}
+                        onMoveDown={() => handleMoveDown(el.id)}
+                        onUpdate={(props) => handleUpdate(el.id, props)}
+                      />
+                    ),
+                  )
                 )}
               </SortableContext>
             </DndContext>
@@ -468,12 +578,13 @@ export function CmsPageWrapper({ slug, children }: Props) {
           <Footer />
         </div>
 
-        {selectedElementId && <SectionPropsPanel />}
+        <SectionPropsPanel />
+        <InlinePropsPanel />
         <AddSectionDialog
           open={addOpen}
           onOpenChange={setAddOpen}
           presentTypes={elements.map((e) => e.type)}
-          onAdd={handleAddSection}
+          onAdd={handleAdd}
         />
       </>
     );

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useBuilder } from "@/lib/builder-store";
+import { useBuilder, isSectionType } from "@/lib/builder-store";
 import { useEditMode } from "@/lib/edit-mode";
 import { getSectionDef } from "@/lib/sections/registry";
 import type { SectionField } from "@/lib/sections/types";
@@ -22,7 +22,8 @@ export function SectionPropsPanel() {
   const setSelected = useEditMode((s) => s.setSelectedElement);
   const element = useBuilder((s) => s.elements.find((e) => e.id === selectedId));
 
-  if (!element) return null;
+  // Only handles section blocks; generic blocks use InlinePropsPanel.
+  if (!element || !isSectionType(element.type)) return null;
   const def = getSectionDef(element.type);
   const p = element.props as Record<string, unknown>;
 

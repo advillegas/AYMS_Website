@@ -28,7 +28,9 @@ export function InlinePropsPanel() {
   const setSelectedElement = useEditMode((s) => s.setSelectedElement);
   const elements = useBuilder((s) => s.elements);
 
-  const el = elements.find((e) => e.id === selectedElementId);
+  const found = elements.find((e) => e.id === selectedElementId);
+  // Section blocks use SectionPropsPanel; this panel only edits generic blocks.
+  const el = found && !found.type.startsWith("section.") ? found : undefined;
   const isOpen = !!el;
 
   return (

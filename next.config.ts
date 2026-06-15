@@ -7,8 +7,12 @@ const nextConfig: NextConfig = {
   // Disable it for dev to keep `next dev` stable. Production build is unaffected.
   experimental: {
     turbopackFileSystemCacheForDev: false,
+    optimizePackageImports: ["lucide-react", "date-fns"],
   },
   images: {
+    // ExFAT dev volume breaks Next's image optimizer, so opt out in dev only;
+    // production builds keep full optimization.
+    unoptimized: process.env.NODE_ENV === "development",
     remotePatterns: [
       // GIPHY GIFs rendered in the community chat
       { protocol: "https", hostname: "media.giphy.com" },

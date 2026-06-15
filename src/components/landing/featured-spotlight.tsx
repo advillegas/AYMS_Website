@@ -237,12 +237,10 @@ export function FeaturedSpotlight() {
               <div
                 className={`relative h-44 overflow-hidden bg-gradient-to-br ${trip.gradient}`}
               >
-                {/* unoptimized: ExFAT volume breaks Next's image optimizer in dev */}
                 <Image
                   src={trip.image}
                   alt={`${trip.destination}, ${trip.country}`}
                   fill
-                  unoptimized
                   sizes="(max-width: 1024px) 100vw, 60vw"
                   className="object-cover"
                 />

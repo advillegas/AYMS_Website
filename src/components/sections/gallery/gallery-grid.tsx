@@ -42,6 +42,7 @@ export function GalleryGrid() {
             <button
               key={y}
               onClick={() => setYearFilter(y)}
+              aria-pressed={yearFilter === y}
               className={cn(
                 "shrink-0 rounded-full px-4 py-1.5 text-sm font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]",
                 yearFilter === y
@@ -90,12 +91,10 @@ export function GalleryGrid() {
                         {/* zoom layer for the Airbnb-style hover scale —
                             real location photo over the gradient fallback */}
                         <div className="photo-card-zoom absolute inset-0" aria-hidden="true">
-                          {/* unoptimized: ExFAT volume breaks Next's image optimizer in dev */}
                           <Image
                             src={trip.image}
-                            alt=""
+                            alt={trip.title}
                             fill
-                            unoptimized
                             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                             className="object-cover"
                           />

@@ -173,7 +173,7 @@
   --canvas-editorial: #FDFCF7;   /* warm cream */
   --canvas-warm: #FBF3F1;        /* warmer blush-cream for section rhythm */
   --ink: #221019;                /* near-black plum ink — editorial headings/body */
-  --ink-soft: #6E5762;           /* muted editorial body text */
+  --ink-soft: #574350;           /* muted editorial body text */
   --marker: #FACDE8;             /* blush marker-swipe highlight (AYMS brand) */
   --text-editorial: clamp(3rem, 1.1rem + 7.2vw, 6.5rem); /* hero display serif */
 }

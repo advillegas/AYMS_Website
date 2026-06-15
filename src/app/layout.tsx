@@ -15,7 +15,7 @@ import "./globals.css";
 const montserrat = Montserrat({
   variable: "--font-sans",
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700", "800"],
+  weight: ["400", "500", "600", "700"],
   display: "swap",
 });
 
@@ -28,7 +28,7 @@ const geistMono = Geist_Mono({
 const playfair = Playfair_Display({
   variable: "--font-heading",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800", "900"],
+  weight: ["500", "600", "700"],
   display: "swap",
 });
 
@@ -46,7 +46,7 @@ const cormorant = Cormorant_Garamond({
 const fraunces = Fraunces({
   variable: "--font-display",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "900"],
+  weight: ["400", "600", "900"],
   style: ["normal", "italic"],
   display: "swap",
 });

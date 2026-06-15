@@ -88,8 +88,8 @@ const PALETTE: PaletteCategory[] = [
 
 interface Props {
   onAddElement: (type: ElementType) => void;
-  onSave: () => void;
-  onPublish: () => void;
+  onSave: () => Promise<boolean>;
+  onPublish: () => Promise<boolean>;
   slug: string;
   isSystem: boolean;
   onReset: () => void;
@@ -151,8 +151,27 @@ export function AdminToolbar({
   }, [isEditMode]);
   const [revertOpen, setRevertOpen] = useState(false);
   const [confirmPublish, setConfirmPublish] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [publishing, setPublishing] = useState(false);
   const [versions, setVersions] = useState<CmsVersion[]>([]);
   const [versionsLoading, setVersionsLoading] = useState(false);
+
+  async function handleSave() {
+    setSaving(true);
+    const ok = await onSave();
+    setSaving(false);
+    if (ok) toast.success("Saved as draft (not live yet).");
+    else toast.error("Couldn't save — check your connection and try again.");
+  }
+
+  async function handlePublishConfirm() {
+    setPublishing(true);
+    const ok = await onPublish();
+    setPublishing(false);
+    setConfirmPublish(false);
+    if (ok) toast.success("Published to the live site!");
+    else toast.error("Couldn't save — check your connection and try again.");
+  }
 
   async function openRevert() {
     const next = !revertOpen;
@@ -351,12 +370,13 @@ export function AdminToolbar({
           Preview
         </Button>
         <Button
-          onClick={() => { onSave(); toast.success("Saved as draft (not live yet)."); }}
+          onClick={handleSave}
+          disabled={saving}
           variant="ghost"
-          className="h-7 px-2.5 text-[11px] text-white/60 hover:text-white hover:bg-white/10 gap-1"
+          className="h-7 px-2.5 text-[11px] text-white/60 hover:text-white hover:bg-white/10 gap-1 disabled:opacity-50"
         >
           <Save className="h-3 w-3" aria-hidden="true" />
-          Save
+          {saving ? "Saving…" : "Save"}
         </Button>
         <Button
           onClick={() => setConfirmPublish(true)}
@@ -405,16 +425,18 @@ export function AdminToolbar({
               <button
                 type="button"
                 onClick={() => setConfirmPublish(false)}
-                className="rounded-full px-4 py-2 text-sm font-medium text-[#221019]/60 hover:bg-[#221019]/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]"
+                disabled={publishing}
+                className="rounded-full px-4 py-2 text-sm font-medium text-[#221019]/60 hover:bg-[#221019]/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099] disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 type="button"
-                onClick={() => { setConfirmPublish(false); onPublish(); toast.success("Published to the live site!"); }}
-                className="rounded-full bg-gradient-to-r from-[#FF0099] to-[#B51760] px-5 py-2 text-sm font-semibold text-white hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]"
+                onClick={handlePublishConfirm}
+                disabled={publishing}
+                className="rounded-full bg-gradient-to-r from-[#FF0099] to-[#B51760] px-5 py-2 text-sm font-semibold text-white hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099] disabled:opacity-60"
               >
-                Publish now
+                {publishing ? "Publishing…" : "Publish now"}
               </button>
             </div>
           </div>

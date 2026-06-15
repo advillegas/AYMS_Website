@@ -84,6 +84,7 @@ export function EventsBody() {
             <button
               key={f}
               onClick={() => setFilter(f)}
+              aria-pressed={filter === f}
               className={cn(
                 "shrink-0 rounded-full px-4 py-1.5 text-sm font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]",
                 filter === f
@@ -181,7 +182,7 @@ export function EventsBody() {
                       <div className={`grain relative flex w-24 shrink-0 flex-col items-center justify-center overflow-hidden bg-gradient-to-br ${grad} text-white p-4`}>
                         {ev.image && (
                           <>
-                            <Image src={ev.image} alt="" fill unoptimized sizes="96px" className="object-cover" />
+                            <Image src={ev.image} alt={ev.title} fill sizes="96px" className="object-cover" />
                             <div className="absolute inset-0 bg-gradient-to-br from-black/55 via-black/35 to-black/50" aria-hidden="true" />
                           </>
                         )}

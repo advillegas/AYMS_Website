@@ -86,6 +86,7 @@ export function TripsGrid() {
             <button
               key={f}
               onClick={() => setFilter(f)}
+              aria-pressed={filter === f}
               className={cn(
                 "shrink-0 rounded-full px-4 py-1.5 text-sm font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]",
                 filter === f
@@ -124,7 +125,7 @@ export function TripsGrid() {
                   className="lift group shrink-0 w-64 snap-center flex items-center gap-4 rounded-2xl border border-[#FF7F50]/20 bg-white p-4 elevate-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]"
                 >
                   <div className={`relative h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-gradient-to-br ${trip.gradient}`} aria-hidden="true">
-                    <Image src={trip.image} alt="" fill unoptimized sizes="56px" className="object-cover" />
+                    <Image src={trip.image} alt={trip.title} fill sizes="56px" className="object-cover" />
                   </div>
                   <div className="min-w-0">
                     <p className="text-sm font-semibold truncate font-display text-ink group-hover:text-[#B51760] transition-colors">{trip.title}</p>
@@ -187,12 +188,10 @@ export function TripsGrid() {
                     >
                       <div className="photo-card-media p-2.5">
                         <div className={`photo-card-zoom grain relative h-44 overflow-hidden rounded-[1.1rem] bg-gradient-to-br ${trip.gradient}`}>
-                          {/* unoptimized: ExFAT volume breaks Next's image optimizer in dev */}
                           <Image
                             src={trip.image}
                             alt={`${trip.destination}, ${trip.country}`}
                             fill
-                            unoptimized
                             sizes="(max-width: 640px) 100vw, (max-width: 1280px) 33vw, 25vw"
                             className="object-cover"
                           />
@@ -299,7 +298,6 @@ function TripDetail({ trip }: { trip: Trip }) {
           src={trip.image}
           alt={`${trip.destination}, ${trip.country}`}
           fill
-          unoptimized
           priority
           sizes="(max-width: 768px) 100vw, 672px"
           className="object-cover"

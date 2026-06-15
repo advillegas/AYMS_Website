@@ -136,6 +136,16 @@ function MessagesInner() {
     router.push(`/community/messages?${sp.toString()}`);
   }
 
+  // Mobile: clear the active conversation so the collapsed layout falls
+  // back to the conversation list. On desktop the list is always
+  // visible, so this is effectively a no-op there.
+  function handleBack() {
+    setLocalActiveId(null);
+    const sp = new URLSearchParams(searchParams.toString());
+    sp.delete("c");
+    router.push(`/community/messages${sp.size ? `?${sp.toString()}` : ""}`);
+  }
+
   // Use localActiveId for rendering so clicks are instant.
   const effectiveActiveId = localActiveId ?? activeId;
 
@@ -200,7 +210,7 @@ function MessagesInner() {
             </div>
           </div>
         ) : (
-          <ConversationView conversationId={effectiveActiveId} />
+          <ConversationView conversationId={effectiveActiveId} onBack={handleBack} />
         )}
       </main>
 

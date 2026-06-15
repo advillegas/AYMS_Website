@@ -66,10 +66,10 @@ function rowToTemplate(r: TemplateRow): Template {
 
 /* ----------------------------- write-through ----------------------- */
 
-export function sbWritePage(page: CmsPage): void {
+export async function sbWritePage(page: CmsPage): Promise<boolean> {
   const sb = getSupabase();
-  if (!sb) return;
-  void sb
+  if (!sb) return false;
+  const { error } = await sb
     .from("cms_pages")
     .upsert(
       {
@@ -81,10 +81,9 @@ export function sbWritePage(page: CmsPage): void {
         updated_at: new Date().toISOString(),
       },
       { onConflict: "slug" },
-    )
-    .then(({ error }) => {
-      if (error) console.warn("[cms:sb] page write failed", page.slug, error.message);
-    });
+    );
+  if (error) console.warn("[cms:sb] page write failed", page.slug, error.message);
+  return !error;
 }
 
 export function sbDeletePage(slug: string): void {

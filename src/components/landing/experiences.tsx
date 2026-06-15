@@ -25,12 +25,10 @@ function ExperienceCard({ exp, hidden }: { exp: Experience; hidden?: boolean }) 
         <span className="absolute inset-0 flex items-center justify-center text-6xl drop-shadow-lg" aria-hidden="true">
           {exp.emoji}
         </span>
-        {/* unoptimized: ExFAT volume breaks Next's image optimizer in dev */}
         <Image
           src={exp.image}
           alt={`${exp.title} — ${exp.location}`}
           fill
-          unoptimized
           sizes="(max-width: 640px) 18rem, 20rem"
           className="object-cover"
         />

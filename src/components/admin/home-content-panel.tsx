@@ -10,6 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { toast } from "sonner";
 import { Loader2, Save, Plus, Trash2, RotateCcw, Type, Hash } from "lucide-react";
 
@@ -21,6 +22,7 @@ export function HomeContentPanel() {
   const [form, setForm] = useState<HomeContent>(live);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
+  const confirm = useConfirm();
 
   useEffect(() => {
     if (!dirty) setForm(live);
@@ -66,7 +68,17 @@ export function HomeContentPanel() {
                 <h3 className="text-sm font-semibold">Rotating headlines</h3>
               </div>
               <button
-                onClick={() => mutate({ ...form, headlines: DEFAULT_HOME.headlines })}
+                onClick={async () => {
+                  const ok = await confirm({
+                    title: "Reset headlines to defaults?",
+                    description:
+                      "This replaces your custom rotating headlines with the original AYMS set. Save changes to make it live.",
+                    confirmText: "Reset headlines",
+                    destructive: true,
+                  });
+                  if (!ok) return;
+                  mutate({ ...form, headlines: DEFAULT_HOME.headlines });
+                }}
                 className="flex items-center gap-1 text-[10px] text-white/40 hover:text-white"
               >
                 <RotateCcw className="h-3 w-3" /> Reset to defaults

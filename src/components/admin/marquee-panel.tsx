@@ -5,6 +5,7 @@ import { useMarqueeContent, saveSiteContent } from "@/lib/use-site-content";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { toast } from "sonner";
 import { Loader2, Save, Plus, Trash2 } from "lucide-react";
 
@@ -13,6 +14,7 @@ export function MarqueePanel() {
   const [form, setForm] = useState<string[]>(words);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
+  const confirm = useConfirm();
 
   useEffect(() => {
     if (!dirty) setForm(words);
@@ -60,7 +62,20 @@ export function MarqueePanel() {
                 }}
                 className="bg-white/5 border-white/10 text-white text-sm h-9 focus-visible:ring-[#FF0099]/30"
               />
-              <button onClick={() => mut(form.filter((_, j) => j !== i))} aria-label="Remove word" className="shrink-0 rounded-md p-1.5 text-white/30 hover:bg-red-500/10 hover:text-red-400">
+              <button
+                onClick={async () => {
+                  const ok = await confirm({
+                    title: "Remove this word?",
+                    description: "It will be removed from the scrolling strip. Save changes to make it live.",
+                    confirmText: "Remove",
+                    destructive: true,
+                  });
+                  if (!ok) return;
+                  mut(form.filter((_, j) => j !== i));
+                }}
+                aria-label="Remove word"
+                className="shrink-0 rounded-md p-1.5 text-white/30 hover:bg-red-500/10 hover:text-red-400"
+              >
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
             </div>

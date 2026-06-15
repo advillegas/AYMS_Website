@@ -6,6 +6,7 @@ import { useEditMode } from "@/lib/edit-mode";
 import { useBuilder, type BuilderElement } from "@/lib/builder-store";
 import { type CmsVersion, SYSTEM_PAGES, systemPageHref } from "@/lib/cms-store";
 import { pageHasSections } from "@/lib/sections/registry";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
@@ -28,8 +29,8 @@ interface Props {
   onAddSection: () => void;
   outlineOpen: boolean;
   onToggleOutline: () => void;
-  onSave: () => void;
-  onPublish: () => void;
+  onSave: () => Promise<boolean>;
+  onPublish: () => Promise<boolean>;
   slug: string;
   isSystem: boolean;
   onReset: () => void;
@@ -60,6 +61,7 @@ export function SectionToolbar({
   onRestoreVersion,
 }: Props) {
   const router = useRouter();
+  const confirm = useConfirm();
   const isEditMode = useEditMode((s) => s.isEditMode);
   const pageSlug = useEditMode((s) => s.pageSlug);
   const setEditPage = useEditMode((s) => s.setEditPage);
@@ -78,8 +80,69 @@ export function SectionToolbar({
     router.push(systemPageHref(s));
   }
   const [confirmPublish, setConfirmPublish] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [publishing, setPublishing] = useState(false);
   const [versions, setVersions] = useState<CmsVersion[]>([]);
   const [versionsLoading, setVersionsLoading] = useState(false);
+
+  async function handleSave() {
+    setSaving(true);
+    const ok = await onSave();
+    setSaving(false);
+    if (ok) toast.success("Saved as draft (not live yet).");
+    else toast.error("Couldn't save — check your connection and try again.");
+  }
+
+  async function handlePublishConfirm() {
+    setPublishing(true);
+    const ok = await onPublish();
+    setPublishing(false);
+    setConfirmPublish(false);
+    if (ok) toast.success("Published to the live site!");
+    else toast.error("Couldn't save — check your connection and try again.");
+  }
+
+  async function handleReset() {
+    setRevertOpen(false);
+    const ok = await confirm({
+      title: "Reset to the original design?",
+      description:
+        "This replaces what's on the canvas with the built-in AYMS sections. Publish afterward to update the live site.",
+      confirmText: "Reset",
+      destructive: true,
+    });
+    if (!ok) return;
+    onReset();
+    toast.success("Reset — the original page is restored.");
+  }
+
+  async function handleUnpublish() {
+    setRevertOpen(false);
+    const ok = await confirm({
+      title: "Unpublish this page?",
+      description:
+        "Visitors will immediately see the original built-in page instead of your published version.",
+      confirmText: "Unpublish",
+      destructive: true,
+    });
+    if (!ok) return;
+    onUnpublish();
+    toast.success("Unpublished — the original page is live again.");
+  }
+
+  async function handleRestore(v: CmsVersion) {
+    setRevertOpen(false);
+    const ok = await confirm({
+      title: "Restore this version?",
+      description:
+        "This makes the selected snapshot the live published page, replacing what's currently live.",
+      confirmText: "Restore",
+      destructive: true,
+    });
+    if (!ok) return;
+    onRestoreVersion(v.elements);
+    toast.success("Version restored and published.");
+  }
 
   useEffect(() => {
     if (!isEditMode) return;
@@ -226,7 +289,7 @@ export function SectionToolbar({
               <div role="menu" className="absolute right-0 top-full z-20 mt-2 w-[300px] max-w-[calc(100vw-1.5rem)] rounded-xl border border-white/10 bg-[#1a0f18] p-2 shadow-xl shadow-black/40">
                 <button
                   type="button"
-                  onClick={() => { onReset(); setRevertOpen(false); toast.success("Reset — the original page is restored."); }}
+                  onClick={handleReset}
                   className="flex w-full items-start gap-2.5 rounded-lg p-2.5 text-left text-white/70 transition-colors hover:bg-white/5 hover:text-white"
                 >
                   <RotateCcw className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#FF0099]" aria-hidden="true" />
@@ -237,7 +300,7 @@ export function SectionToolbar({
                 </button>
                 <button
                   type="button"
-                  onClick={() => { onUnpublish(); setRevertOpen(false); toast.success("Unpublished — the original page is live again."); }}
+                  onClick={handleUnpublish}
                   className="flex w-full items-start gap-2.5 rounded-lg p-2.5 text-left text-white/70 transition-colors hover:bg-white/5 hover:text-white"
                 >
                   <X className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#FF0099]" aria-hidden="true" />
@@ -263,7 +326,7 @@ export function SectionToolbar({
                         </span>
                         <button
                           type="button"
-                          onClick={() => { onRestoreVersion(v.elements); setRevertOpen(false); toast.success("Version restored and published."); }}
+                          onClick={() => handleRestore(v)}
                           className="rounded-md border border-white/10 px-2 py-0.5 text-[10px] font-medium text-white/70 transition-colors hover:bg-[#FF0099]/15 hover:text-white"
                         >
                           Restore
@@ -281,9 +344,9 @@ export function SectionToolbar({
           <Eye className="h-3 w-3" aria-hidden="true" />
           <span className="hidden sm:inline">Preview</span>
         </Button>
-        <Button onClick={() => { onSave(); toast.success("Saved as draft (not live yet)."); }} variant="ghost" className="h-7 gap-1 px-2.5 text-[11px] text-white/60 hover:bg-white/10 hover:text-white">
+        <Button onClick={handleSave} disabled={saving} variant="ghost" className="h-7 gap-1 px-2.5 text-[11px] text-white/60 hover:bg-white/10 hover:text-white disabled:opacity-50">
           <Save className="h-3 w-3" aria-hidden="true" />
-          <span className="hidden sm:inline">Save</span>
+          <span className="hidden sm:inline">{saving ? "Saving…" : "Save"}</span>
         </Button>
         <Button onClick={() => setConfirmPublish(true)} className="h-7 gap-1 border-0 bg-gradient-to-r from-[#FF0099] to-[#B51760] px-2.5 text-[11px] text-white hover:brightness-110">
           <Upload className="h-3 w-3" aria-hidden="true" />
@@ -310,11 +373,11 @@ export function SectionToolbar({
               </div>
             )}
             <div className="mt-5 flex justify-end gap-2">
-              <button type="button" onClick={() => setConfirmPublish(false)} className="rounded-full px-4 py-2 text-sm font-medium text-[#221019]/60 hover:bg-[#221019]/[0.05]">
+              <button type="button" onClick={() => setConfirmPublish(false)} disabled={publishing} className="rounded-full px-4 py-2 text-sm font-medium text-[#221019]/60 hover:bg-[#221019]/[0.05] disabled:opacity-50">
                 Cancel
               </button>
-              <button type="button" onClick={() => { setConfirmPublish(false); onPublish(); toast.success("Published to the live site!"); }} className="rounded-full bg-gradient-to-r from-[#FF0099] to-[#B51760] px-5 py-2 text-sm font-semibold text-white hover:brightness-110">
-                Publish now
+              <button type="button" onClick={handlePublishConfirm} disabled={publishing} className="rounded-full bg-gradient-to-r from-[#FF0099] to-[#B51760] px-5 py-2 text-sm font-semibold text-white hover:brightness-110 disabled:opacity-60">
+                {publishing ? "Publishing…" : "Publish now"}
               </button>
             </div>
           </div>

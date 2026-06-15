@@ -88,13 +88,15 @@ interface CmsState {
   // Page CRUD
   createPage: (title: string, slug: string) => void;
   deletePage: (slug: string) => void;
-  setPageElements: (slug: string, elements: BuilderElement[]) => void;
-  publishPage: (slug: string) => void;
+  /** Persist a page's elements; resolves to the remote write success. */
+  setPageElements: (slug: string, elements: BuilderElement[]) => Promise<boolean>;
+  /** Publish a page live; resolves to the remote write success. */
+  publishPage: (slug: string) => Promise<boolean>;
   unpublishPage: (slug: string) => void;
   /** Fetch recent published-version snapshots for rollback (Supabase). */
   listVersions: (slug: string) => Promise<CmsVersion[]>;
-  /** Restore a snapshot's elements as the live published content. */
-  restoreVersion: (slug: string, elements: BuilderElement[]) => void;
+  /** Restore a snapshot's elements as the live published content; resolves to the write success. */
+  restoreVersion: (slug: string, elements: BuilderElement[]) => Promise<boolean>;
   setEditingSlug: (slug: string | null) => void;
   getPage: (slug: string) => CmsPage | undefined;
   hasPublishedPage: (slug: string) => boolean;
@@ -245,18 +247,23 @@ function docToTemplate(
 /* admin-only at the rules layer (see firestore.rules → cmsPages /      */
 /* cmsConfig / cmsTemplates) and run client-side as the signed-in admin.*/
 
-function fsWritePage(page: CmsPage): void {
-  if (!isValidSlug(page.slug)) return;
+async function fsWritePage(page: CmsPage): Promise<boolean> {
+  if (!isValidSlug(page.slug)) return false;
   if (useSupabaseBackend) {
-    sbWritePage(page);
-    return;
+    return sbWritePage(page);
   }
-  if (!isFirebaseConfigured) return;
+  // Local-only sessions (no Firebase configured) treat the optimistic local +
+  // localStorage update as the source of truth, so report success.
+  if (!isFirebaseConfigured) return true;
   const db = getDb();
-  if (!db) return;
-  void setDoc(doc(db, FS_PAGES, page.slug), pageToDoc(page)).catch((e) =>
-    console.warn("[cms] page write failed", page.slug, e),
-  );
+  if (!db) return true;
+  try {
+    await setDoc(doc(db, FS_PAGES, page.slug), pageToDoc(page));
+    return true;
+  } catch (e) {
+    console.warn("[cms] page write failed", page.slug, e);
+    return false;
+  }
 }
 
 function fsDeletePage(slug: string): void {
@@ -331,7 +338,7 @@ function setPublished(
   get: () => CmsState,
   slug: string,
   isPublished: boolean,
-): void {
+): Promise<boolean> {
   set((s) => {
     const page = s.pages[slug];
     if (!page) return s;
@@ -343,7 +350,7 @@ function setPublished(
     return { pages };
   });
   const p = get().pages[slug];
-  if (p) fsWritePage(p);
+  return p ? fsWritePage(p) : Promise.resolve(false);
 }
 
 /* --------------------- starter-template merge ---------------------- */
@@ -452,7 +459,7 @@ export const useCms = create<CmsState>((set, get) => ({
 
   setPageElements: (slug, elements) => {
     const sanitized = sanitizeSlug(slug);
-    if (!sanitized) return;
+    if (!sanitized) return Promise.resolve(false);
     set((s) => {
       const existing = s.pages[sanitized];
       const now = new Date().toISOString();
@@ -472,23 +479,27 @@ export const useCms = create<CmsState>((set, get) => ({
       return { pages };
     });
     const p = get().pages[sanitized];
-    if (p) fsWritePage(p);
+    return p ? fsWritePage(p) : Promise.resolve(false);
   },
 
-  publishPage: (slug) => {
-    setPublished(set, get, slug, true);
+  publishPage: async (slug) => {
+    const ok = await setPublished(set, get, slug, true);
     // Snapshot the just-published version so a bad edit can be rolled back.
     const p = get().pages[slug];
     if (p && p.elements.length > 0) fsWriteVersion(slug, p.title, p.elements);
+    return ok;
   },
-  unpublishPage: (slug) => setPublished(set, get, slug, false),
+  unpublishPage: (slug) => {
+    void setPublished(set, get, slug, false);
+  },
 
   listVersions: (slug) => sbListVersions(slug),
 
-  restoreVersion: (slug, elements) => {
+  restoreVersion: async (slug, elements) => {
     // Restore = make the snapshot the live published content.
-    get().setPageElements(slug, elements);
-    setPublished(set, get, slug, true);
+    const okSet = await get().setPageElements(slug, elements);
+    const okPublish = await setPublished(set, get, slug, true);
+    return okSet && okPublish;
   },
 
   setEditingSlug: (slug) => set({ editingSlug: slug }),

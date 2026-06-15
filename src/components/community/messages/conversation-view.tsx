@@ -54,6 +54,8 @@ import {
   Copy,
   Plus,
   CornerUpLeft,
+  ArrowLeft,
+  ArrowDown,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -414,10 +416,22 @@ function MessageBubble({
       </div>
 
       {!editing && (
+        <button
+          type="button"
+          onClick={ctx.openAt}
+          className="absolute top-1 right-1 hidden h-7 w-7 items-center justify-center rounded-full border border-rosa/30 bg-card/90 text-muted-foreground shadow-sm active:bg-primary/10 [@media(hover:none)]:inline-flex"
+          aria-label="Message actions"
+          title="Message actions"
+        >
+          <MoreHorizontal className="h-4 w-4" />
+        </button>
+      )}
+
+      {!editing && (
         <div
           className={cn(
             "absolute -top-3 right-3 hidden gap-0.5 rounded-full bg-card border border-rosa/30 shadow-md px-1 py-0.5",
-            "group-hover:flex",
+            "group-hover:flex [@media(hover:none)]:hidden",
           )}
         >
           <AddReactionButton onSelect={onReact} align="end" />
@@ -522,7 +536,7 @@ interface ConversationViewProps {
   onBack?: () => void;
 }
 
-export function ConversationView({ conversationId }: ConversationViewProps) {
+export function ConversationView({ conversationId, onBack }: ConversationViewProps) {
   const currentUser = useAuth((s) => s.user);
   const confirm = useConfirm();
   const {
@@ -552,20 +566,62 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
   const [renaming, setRenaming] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  // Sticky-bottom tracking: only auto-scroll on new messages when the
+  // user is already near the bottom, so reading history isn't yanked.
+  const atBottomRef = useRef(true);
+  const justSentRef = useRef(false);
+  const [showJump, setShowJump] = useState(false);
   const header = useConversationHeader(conversation);
 
-  // Scroll to bottom: instant on conversation switch / initial load so
-  // the user sees the most recent messages first, smooth on new arrivals.
+  function isNearBottom() {
+    const el = scrollRef.current;
+    if (!el) return true;
+    return el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+  }
+
+  function handleScroll() {
+    const atBottom = isNearBottom();
+    atBottomRef.current = atBottom;
+    if (atBottom) setShowJump(false);
+  }
+
+  function jumpToBottom() {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    atBottomRef.current = true;
+    setShowJump(false);
+  }
+
+  // Scroll behaviour:
+  //  - conversation switch / initial load → snap to bottom (instant)
+  //  - new message while the user is at the bottom, or that they sent →
+  //    follow it (smooth)
+  //  - new message while the user is reading history → stay put and
+  //    surface a "new messages" affordance instead of hijacking scroll.
   const prevConvoRef = useRef<string | null>(conversationId);
   const prevDmCountRef = useRef<number>(0);
   useEffect(() => {
     const changedConvo = prevConvoRef.current !== conversationId;
     const isInitialLoad = prevDmCountRef.current === 0 && messages.length > 0;
+    const grew = messages.length > prevDmCountRef.current;
     prevConvoRef.current = conversationId;
     prevDmCountRef.current = messages.length;
-    bottomRef.current?.scrollIntoView({
-      behavior: changedConvo || isInitialLoad ? "instant" : "smooth",
-    });
+
+    if (changedConvo || isInitialLoad) {
+      bottomRef.current?.scrollIntoView({ behavior: "instant" });
+      atBottomRef.current = true;
+      setShowJump(false);
+      return;
+    }
+    if (grew) {
+      if (justSentRef.current || atBottomRef.current) {
+        bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+        setShowJump(false);
+      } else {
+        setShowJump(true);
+      }
+    }
+    justSentRef.current = false;
   }, [messages.length, conversationId]);
 
   // Mark conversation as read whenever messages change and the tab
@@ -603,6 +659,9 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
     const text = input.trim();
     if ((!text && !pendingGif) || sending) return;
     setSending(true);
+    // The message the user sends should always pull the view to the
+    // bottom, even if they'd scrolled up to read history.
+    justSentRef.current = true;
     try {
       const id = await sendMessage(text, {
         attachments: pendingGif ? [pendingGif] : undefined,
@@ -615,6 +674,7 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
         // sendMessage returned null - the underlying error has
         // already been logged + surfaced in the error banner. Toast
         // explicitly so a user staring at the composer notices.
+        justSentRef.current = false;
         toast.error("Couldn't send your message. Try again in a moment.");
       }
     } finally {
@@ -696,6 +756,17 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
     <div className="flex h-full min-h-0 flex-col">
       {/* Header */}
       <div className="flex h-12 shrink-0 items-center gap-3 border-b border-[#FACDE8]/25 glass elevate-2 px-4">
+        {onBack && (
+          <button
+            type="button"
+            onClick={onBack}
+            className="md:hidden -ml-1 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-foreground/70 hover:bg-primary/10 hover:text-primary transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            aria-label="Back to conversations"
+            title="Back to conversations"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </button>
+        )}
         {/* Avatar stack */}
         <div className="flex -space-x-2 shrink-0">
           {header.avatars.length === 0 ? (
@@ -803,7 +874,11 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
       )}
 
       {/* Messages */}
-      <div className="flex-1 min-h-0 overflow-y-auto px-3 py-3 [background-color:#fff]">
+      <div
+        ref={scrollRef}
+        onScroll={handleScroll}
+        className="relative flex-1 min-h-0 overflow-y-auto px-3 py-3 [background-color:#fff]"
+      >
         {loading && messages.length === 0 ? (
           <p className="text-center text-xs text-muted-foreground italic py-12">
             Loading messages...
@@ -839,6 +914,18 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
               );
             })}
             <div ref={bottomRef} />
+          </div>
+        )}
+        {showJump && (
+          <div className="sticky bottom-3 z-10 flex justify-center pointer-events-none">
+            <button
+              type="button"
+              onClick={jumpToBottom}
+              className="pointer-events-auto inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-[#FF0099] to-[#B51760] px-3 py-1.5 text-xs font-medium text-white shadow-lg hover:brightness-110"
+            >
+              <ArrowDown className="h-3.5 w-3.5" />
+              New messages
+            </button>
           </div>
         )}
       </div>

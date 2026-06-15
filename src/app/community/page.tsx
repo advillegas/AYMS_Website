@@ -26,6 +26,9 @@ import {
   Newspaper,
   MapPin,
   Flag,
+  Loader2,
+  MoreHorizontal,
+  ArrowDown,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useChat, useAuth, useCommunity } from "@/lib/store";
@@ -533,10 +536,22 @@ const ChatMessage = memo(function ChatMessage({
       </div>
 
       {!editing && (
+        <button
+          type="button"
+          onClick={ctx.openAt}
+          className="absolute top-1 right-1 hidden h-7 w-7 items-center justify-center rounded-full border border-rosa/30 bg-card/90 text-muted-foreground shadow-sm active:bg-primary/10 [@media(hover:none)]:inline-flex"
+          aria-label="Message actions"
+          title="Message actions"
+        >
+          <MoreHorizontal className="h-4 w-4" />
+        </button>
+      )}
+
+      {!editing && (
         <div
           className={cn(
             "absolute -top-3 right-3 hidden gap-0.5 rounded-full bg-card border border-rosa/30 shadow-md px-1 py-0.5",
-            "group-hover:flex",
+            "group-hover:flex [@media(hover:none)]:hidden",
           )}
         >
           <AddReactionButton onSelect={onReact} align="end" />
@@ -603,11 +618,16 @@ export default function ChatPage() {
   const [pendingGif, setPendingGif] = useState<GifAttachment | null>(null);
   const [highlight, setHighlight] = useState(0);
   const [mentionLen, setMentionLen] = useState(0);
+  const [sending, setSending] = useState(false);
+  const [showJump, setShowJump] = useState(false);
 
   const channels = useChannels((s) => s.channels);
   const activeChannel = useChat((s) => s.activeChannel);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  const atBottomRef = useRef(true);
+  const justSentRef = useRef(false);
 
   const channel = channels.find((c) => c.id === activeChannel);
   const {
@@ -682,20 +702,68 @@ export default function ChatPage() {
     el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
   }, [input]);
 
-  // Scroll to the bottom of the chat on channel switch (instant) and
-  // on new messages (smooth). Without the instant scroll on mount the
-  // user sees the oldest messages first and has to wait for the smooth
-  // animation to reach the bottom.
+  // Base UI's ScrollArea renders the scrollable element with a data-slot
+  // attribute; grab it from the bottom anchor so we can measure scroll
+  // position for sticky-bottom behaviour.
+  function getViewport(): HTMLElement | null {
+    return (
+      bottomRef.current?.closest<HTMLElement>(
+        '[data-slot="scroll-area-viewport"]',
+      ) ?? null
+    );
+  }
+
+  function jumpToBottom() {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    atBottomRef.current = true;
+    setShowJump(false);
+  }
+
+  // Track whether the user is near the bottom of the viewport so new
+  // messages only auto-scroll when they're already following along.
+  useEffect(() => {
+    const viewport = getViewport();
+    if (!viewport) return;
+    const onScroll = () => {
+      const atBottom =
+        viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight <
+        120;
+      atBottomRef.current = atBottom;
+      if (atBottom) setShowJump(false);
+    };
+    onScroll();
+    viewport.addEventListener("scroll", onScroll, { passive: true });
+    return () => viewport.removeEventListener("scroll", onScroll);
+  }, [activeChannel, view]);
+
+  // Scroll behaviour:
+  //  - channel switch / initial load → snap to bottom (instant)
+  //  - new message while at the bottom, or that the user sent → follow
+  //  - new message while reading history → stay put + surface affordance
   const prevChannelRef = useRef<string>(activeChannel);
   const prevMsgCountRef = useRef<number>(0);
   useEffect(() => {
     const changedChannel = prevChannelRef.current !== activeChannel;
     const isInitialLoad = prevMsgCountRef.current === 0 && messages.length > 0;
+    const grew = messages.length > prevMsgCountRef.current;
     prevChannelRef.current = activeChannel;
     prevMsgCountRef.current = messages.length;
-    bottomRef.current?.scrollIntoView({
-      behavior: changedChannel || isInitialLoad ? "instant" : "smooth",
-    });
+
+    if (changedChannel || isInitialLoad) {
+      bottomRef.current?.scrollIntoView({ behavior: "instant" });
+      atBottomRef.current = true;
+      setShowJump(false);
+      return;
+    }
+    if (grew) {
+      if (justSentRef.current || atBottomRef.current) {
+        bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+        setShowJump(false);
+      } else {
+        setShowJump(true);
+      }
+    }
+    justSentRef.current = false;
   }, [messages.length, activeChannel]);
 
   const insertMention = useCallback(
@@ -714,20 +782,39 @@ export default function ChatPage() {
     [input, mention, syncCaret],
   );
 
-  function doSend() {
+  async function doSend() {
     const text = input.trim();
-    if (!text && !pendingGif) return;
-    void sendMessage(text, {
-      attachments: pendingGif ? [pendingGif] : undefined,
-    });
+    if ((!text && !pendingGif) || sending) return;
+    const gif = pendingGif;
+    setSending(true);
+    // The user's own message should always pull the view to the bottom.
+    justSentRef.current = true;
+    // Clear optimistically — the channel echoes the message into the
+    // stream while the send is in flight, so the composer stays snappy.
     setInput("");
     setPendingGif(null);
     requestAnimationFrame(() => inputRef.current?.focus());
+    try {
+      const id = await sendMessage(text, {
+        attachments: gif ? [gif] : undefined,
+      });
+      if (!id) {
+        // Send failed. The optimistic message is flagged `_failed` in the
+        // stream; restore the draft (unless a new one was started) so the
+        // user can retry without retyping.
+        justSentRef.current = false;
+        toast.error("Couldn't send your message. Try again.");
+        setInput((cur) => (cur.trim() ? cur : text));
+        if (gif) setPendingGif((cur) => cur ?? gif);
+      }
+    } finally {
+      setSending(false);
+    }
   }
 
   function handleSendButton(e: React.FormEvent) {
     e.preventDefault();
-    doSend();
+    void doSend();
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
@@ -759,7 +846,7 @@ export default function ChatPage() {
     }
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      doSend();
+      void doSend();
     }
   }
 
@@ -1029,6 +1116,18 @@ export default function ChatPage() {
             ))}
             <div ref={bottomRef} />
           </div>
+          {showJump && (
+            <div className="sticky bottom-3 z-10 flex justify-center pointer-events-none">
+              <button
+                type="button"
+                onClick={jumpToBottom}
+                className="pointer-events-auto inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-[#FF0099] to-[#B51760] px-3 py-1.5 text-xs font-medium text-white shadow-lg hover:brightness-110"
+              >
+                <ArrowDown className="h-3.5 w-3.5" />
+                New messages
+              </button>
+            </div>
+          )}
         </ScrollArea>
       ) : (
         <ScrollArea className="flex-1 min-h-0 px-4 py-4 [background-color:#fff]">
@@ -1199,11 +1298,15 @@ export default function ChatPage() {
           <Button
             type="submit"
             size="icon"
-            disabled={!canSend}
+            disabled={!canSend || sending}
             className="bg-gradient-to-r from-[#FF0099] to-[#B51760] text-white border-0 disabled:opacity-40 rounded-full shrink-0 shadow-[0_4px_14px_rgb(255_0_153/0.35)] hover:brightness-110 lift"
             aria-label="Send message"
           >
-            <Send className="h-4 w-4" />
+            {sending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
           </Button>
         </form>
       </div>

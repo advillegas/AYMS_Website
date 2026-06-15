@@ -137,7 +137,6 @@ export function Hero() {
                 width={266}
                 height={192}
                 priority
-                unoptimized
                 className="mx-auto h-auto w-44 drop-shadow-[0_10px_30px_rgb(255_0_153/0.18)] sm:w-52"
               />
             </motion.div>
@@ -195,7 +194,7 @@ export function Hero() {
               href="/register"
               className={cn(
                 buttonVariants({ size: "lg" }),
-                "lift group h-14 rounded-full border-0 bg-gradient-to-r from-[var(--magenta)] to-[var(--brand-pink)] px-10 text-base font-semibold tracking-wide text-white shadow-[0_8px_30px_rgb(255_0_153/0.30)] hover:brightness-110",
+                "lift group h-14 rounded-full border-0 bg-gradient-to-r from-[var(--magenta)] to-[var(--brand-pink)] px-10 text-base font-semibold tracking-wide text-white shadow-[0_8px_30px_rgb(255_0_153/0.30)] hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--magenta)] focus-visible:ring-offset-2 focus-visible:ring-offset-[#FDFCF7]",
               )}
             >
               <EditableText as="span" id="home.hero.ctaPrimary">Become an Amiga ♡</EditableText>
@@ -204,7 +203,7 @@ export function Hero() {
               href="#about"
               className={cn(
                 buttonVariants({ size: "lg", variant: "outline" }),
-                "h-14 rounded-full border border-[#221019]/15 bg-transparent px-10 text-base font-semibold text-ink hover:border-[#221019]/25 hover:bg-[#221019]/[0.04]",
+                "h-14 rounded-full border border-[#221019]/15 bg-transparent px-10 text-base font-semibold text-ink hover:border-[#221019]/25 hover:bg-[#221019]/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--magenta)] focus-visible:ring-offset-2 focus-visible:ring-offset-[#FDFCF7]",
               )}
             >
               <EditableText as="span" id="home.hero.ctaSecondary">Learn More</EditableText>

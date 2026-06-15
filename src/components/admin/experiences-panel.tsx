@@ -7,6 +7,7 @@ import { uploadCmsMedia } from "@/lib/supabase-storage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { toast } from "sonner";
 import { Loader2, Save, Plus, Trash2, Upload } from "lucide-react";
 
@@ -58,6 +59,7 @@ export function ExperiencesPanel() {
   const [form, setForm] = useState<ExperienceItem[]>(items);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
+  const confirm = useConfirm();
 
   useEffect(() => {
     if (!dirty) setForm(items);
@@ -103,7 +105,16 @@ export function ExperiencesPanel() {
                 next[i] = ni;
                 mut(next);
               }}
-              onRemove={() => mut(form.filter((_, j) => j !== i))}
+              onRemove={async () => {
+                const ok = await confirm({
+                  title: `Remove “${it.title || "this experience"}”?`,
+                  description: "This removes the experience card. Save changes to make it live.",
+                  confirmText: "Remove",
+                  destructive: true,
+                });
+                if (!ok) return;
+                mut(form.filter((_, j) => j !== i));
+              }}
             />
           ))}
           <Button variant="outline" size="sm" onClick={() => mut([...form, { title: "New experience", location: "", emoji: "✨", gradient: "from-[#FF0099] to-[#B51760]", image: "" }])} className="h-8 gap-1 border-white/10 text-xs text-white/60 hover:bg-white/5 hover:text-white">

@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { toast } from "sonner";
 import { Loader2, Plus, Trash2, Save, Star, Quote } from "lucide-react";
 
@@ -29,6 +30,7 @@ function initialsFrom(name: string): string {
 function TestimonialCard({ t }: { t: Testimonial }) {
   const [form, setForm] = useState<Testimonial>(t);
   const [saving, setSaving] = useState(false);
+  const confirm = useConfirm();
   const dirty = JSON.stringify(form) !== JSON.stringify(t);
 
   function set<K extends keyof Testimonial>(k: K, v: Testimonial[K]) {
@@ -46,6 +48,13 @@ function TestimonialCard({ t }: { t: Testimonial }) {
   }
 
   async function remove() {
+    const confirmed = await confirm({
+      title: `Remove ${t.name || "this testimonial"}?`,
+      description: "This testimonial will be removed from the homepage immediately.",
+      confirmText: "Remove",
+      destructive: true,
+    });
+    if (!confirmed) return;
     const ok = await deleteTestimonial(t.id);
     toast[ok ? "success" : "error"](ok ? "Testimonial removed." : "Delete failed.");
   }

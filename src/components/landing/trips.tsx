@@ -114,7 +114,6 @@ export function Trips() {
                           src={trip.image}
                           alt={`${trip.destination}, ${trip.country} — group trip`}
                           fill
-                          unoptimized
                           sizes="(max-width: 768px) 100vw, 33vw"
                           className="object-cover"
                         />

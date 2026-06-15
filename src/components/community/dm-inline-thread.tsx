@@ -191,7 +191,7 @@ function DMReplyRow({ reply, onReact, onDelete, onReplyTo }: ReplyRowProps) {
         )}
       </div>
 
-      <div className="hidden self-start gap-0.5 group-hover:flex">
+      <div className="hidden self-start gap-0.5 group-hover:flex [@media(hover:none)]:flex">
         <button
           type="button"
           onClick={() => onReplyTo(displayName)}

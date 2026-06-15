@@ -5,6 +5,7 @@ import { useFaqContent, saveSiteContent, type FaqCategory } from "@/lib/use-site
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { toast } from "sonner";
 import { Loader2, Save, Plus, Trash2 } from "lucide-react";
 
@@ -16,6 +17,7 @@ export function FaqPanel() {
   const [form, setForm] = useState<FaqCategory[]>(categories);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
+  const confirm = useConfirm();
 
   useEffect(() => {
     if (!dirty) setForm(categories);
@@ -65,7 +67,21 @@ export function FaqPanel() {
                   className={`${inputCls} font-semibold`}
                   placeholder="Category name"
                 />
-                <button onClick={() => mut(form.filter((_, j) => j !== ci))} aria-label="Remove category" className="shrink-0 rounded-md p-1.5 text-white/30 hover:bg-red-500/10 hover:text-red-400">
+                <button
+                  onClick={async () => {
+                    const ok = await confirm({
+                      title: `Remove category “${cat.category || "Untitled"}”?`,
+                      description:
+                        "This removes the category and all of its questions. Save changes to make it live.",
+                      confirmText: "Remove category",
+                      destructive: true,
+                    });
+                    if (!ok) return;
+                    mut(form.filter((_, j) => j !== ci));
+                  }}
+                  aria-label="Remove category"
+                  className="shrink-0 rounded-md p-1.5 text-white/30 hover:bg-red-500/10 hover:text-red-400"
+                >
                   <Trash2 className="h-4 w-4" />
                 </button>
               </div>

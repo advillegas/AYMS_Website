@@ -8,6 +8,8 @@ import { useAuthHydrated } from "@/lib/use-auth-hydrated";
 import { useCms, systemPageHref } from "@/lib/cms-store";
 import { useInlineEdit } from "@/lib/use-inline-edit";
 import { pageHasSections } from "@/lib/sections/registry";
+import { useConfirm } from "@/components/ui/confirm-dialog";
+import { toast } from "sonner";
 import { PageManager } from "@/components/admin/page-manager";
 import { NavEditor } from "@/components/admin/nav-editor";
 import { NewsletterPanel } from "@/components/admin/newsletter-panel";
@@ -92,6 +94,19 @@ export default function AdminPage() {
   >("home");
   const templates = useCms((s) => s.templates);
   const deleteTemplate = useCms((s) => s.deleteTemplate);
+  const confirm = useConfirm();
+
+  async function handleDeleteTemplate(id: string, name: string) {
+    const ok = await confirm({
+      title: `Delete template “${name}”?`,
+      description: "This permanently removes the saved template. This cannot be undone.",
+      confirmText: "Delete template",
+      destructive: true,
+    });
+    if (!ok) return;
+    deleteTemplate(id);
+    toast.success(`Template “${name}” deleted`);
+  }
 
   useEffect(() => {
     const t = new URLSearchParams(window.location.search).get("tab");
@@ -249,7 +264,7 @@ export default function AdminPage() {
                         <p className="text-[10px] text-white/30">{t.elements.length} elements</p>
                       </div>
                       <button
-                        onClick={() => deleteTemplate(t.id)}
+                        onClick={() => void handleDeleteTemplate(t.id, t.name)}
                         aria-label={`Delete template ${t.name}`}
                         className="p-1 text-white/20 transition-colors hover:text-red-400"
                       >

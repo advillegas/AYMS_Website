@@ -2,6 +2,7 @@
 
 import { useEffect, useCallback, useState } from "react";
 import { useCms, isSystemSlug } from "@/lib/cms-store";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { useEditMode } from "@/lib/edit-mode";
 import { useInlineEdit } from "@/lib/use-inline-edit";
 import {
@@ -216,6 +217,7 @@ export function CmsPageWrapper({ slug, children }: Props) {
   const page = useCms((s) => s.pages[slug]);
   const setPageElements = useCms((s) => s.setPageElements);
   const publishPage = useCms((s) => s.publishPage);
+  const confirm = useConfirm();
 
   const isEditMode = useEditMode((s) => s.isEditMode);
   const pageSlug = useEditMode((s) => s.pageSlug);
@@ -298,12 +300,13 @@ export function CmsPageWrapper({ slug, children }: Props) {
   }, []);
 
   const handleSave = useCallback(() => {
-    setPageElements(slug, useBuilder.getState().elements);
+    return setPageElements(slug, useBuilder.getState().elements);
   }, [slug, setPageElements]);
 
-  const handlePublish = useCallback(() => {
-    setPageElements(slug, useBuilder.getState().elements);
-    publishPage(slug);
+  const handlePublish = useCallback(async () => {
+    const okSave = await setPageElements(slug, useBuilder.getState().elements);
+    const okPublish = await publishPage(slug);
+    return okSave && okPublish;
   }, [slug, setPageElements, publishPage]);
 
   const handleReset = useCallback(() => {
@@ -332,13 +335,25 @@ export function CmsPageWrapper({ slug, children }: Props) {
     useBuilder.setState({ selectedId: id });
   }, [setSelectedElement]);
 
-  const handleDelete = useCallback((id: string) => {
+  const handleDelete = useCallback(async (id: string) => {
+    const el = useBuilder.getState().elements.find((e) => e.id === id);
+    const label = el
+      ? (isSectionType(el.type) ? getSectionDef(el.type)?.label ?? el.type : el.type)
+      : "this block";
+    const ok = await confirm({
+      title: `Delete “${label}”?`,
+      description:
+        "It will be removed from the page. You can undo with Ctrl+Z, or Save/Publish to make the change permanent.",
+      confirmText: "Delete",
+      destructive: true,
+    });
+    if (!ok) return;
     useBuilder.setState((s) => ({
       elements: s.elements.filter((e) => e.id !== id),
       selectedId: s.selectedId === id ? null : s.selectedId,
     }));
     useEditMode.setState({ selectedElementId: null });
-  }, []);
+  }, [confirm]);
 
   const handleDuplicate = useCallback((id: string) => {
     useBuilder.setState((s) => {

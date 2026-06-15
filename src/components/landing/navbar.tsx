@@ -75,7 +75,7 @@ export function Navbar() {
         <div className="fixed top-0 z-[60] w-full bg-gradient-to-r from-[var(--magenta)] via-[var(--brand-pink)] to-[var(--magenta)]">
           <Link
             href={settings.announcementHref || "/featured"}
-            className="group flex h-7 items-center justify-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/95 transition-colors hover:text-white"
+            className="group flex h-7 items-center justify-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/95 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white"
           >
             <Sparkles className="h-3 w-3 opacity-80" aria-hidden="true" />
             <span>{settings.announcementText}</span>
@@ -94,7 +94,6 @@ export function Navbar() {
               width={266}
               height={192}
               priority
-              unoptimized
               className="h-10 w-auto drop-shadow-[0_2px_8px_rgb(255_0_153/0.18)]"
             />
           </Link>
@@ -218,7 +217,7 @@ export function Navbar() {
             </SheetTrigger>
             <SheetContent side="right" className="w-72 canvas-editorial">
               <div className="flex items-center mb-6">
-                <Image src={settings.logoUrl} alt={settings.siteName} width={266} height={192} unoptimized className="h-12 w-auto" />
+                <Image src={settings.logoUrl} alt={settings.siteName} width={266} height={192} className="h-12 w-auto" />
               </div>
               <nav className="flex flex-col gap-3">
                 <Link

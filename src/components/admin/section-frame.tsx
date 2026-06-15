@@ -56,6 +56,8 @@ export function SectionFrame({
   const p = element.props as SectionCommonProps;
   const hidden = p.visible === false;
   const label = p._label || def?.label || element.type;
+  // Locked sections (page chrome) can't be removed — hide the delete control.
+  const canDelete = !def?.locked;
 
   function stop(e: React.MouseEvent) {
     e.preventDefault();
@@ -114,9 +116,11 @@ export function SectionFrame({
         <IconBtn title="Settings" onClick={(e) => { stop(e); onSelect(); }}>
           <Settings2 className="h-4 w-4" />
         </IconBtn>
-        <IconBtn title="Delete section" danger onClick={(e) => { stop(e); onDelete(); }}>
-          <Trash2 className="h-4 w-4" />
-        </IconBtn>
+        {canDelete && (
+          <IconBtn title="Delete section" danger onClick={(e) => { stop(e); onDelete(); }}>
+            <Trash2 className="h-4 w-4" />
+          </IconBtn>
+        )}
       </div>
 
       {hidden && (

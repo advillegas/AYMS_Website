@@ -2,7 +2,7 @@
 
 import { Navbar } from "@/components/landing/navbar";
 import { Footer } from "@/components/landing/footer";
-import { FeaturedSpotlight } from "@/components/landing/featured-spotlight";
+import { FeaturedSpotlightSection } from "@/components/sections/featured/featured-spotlight-section";
 import { CmsPageWrapper } from "@/components/admin/cms-page-wrapper";
 
 export default function FeaturedPage() {
@@ -10,7 +10,7 @@ export default function FeaturedPage() {
     <CmsPageWrapper slug="featured">
       <Navbar />
       <main className="canvas-editorial min-h-screen pt-[88px]">
-        <FeaturedSpotlight />
+        <FeaturedSpotlightSection />
       </main>
       <Footer />
     </CmsPageWrapper>

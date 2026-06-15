@@ -24,11 +24,25 @@ export type ElementType =
   | "faq-item"
   | "cta-block";
 
+/**
+ * Section blocks are full-width "big widgets" that render the real marketing
+ * components (Hero, About, Trips, ...). Their type is namespaced `section.*`
+ * and resolved through the section registry, so the page builder can add /
+ * reorder / hide / duplicate / restyle whole sections Elementor-style while
+ * keeping the coded design pixel-faithful.
+ */
+export type SectionType = `section.${string}`;
+
 export interface BuilderElement {
   id: string;
-  type: ElementType;
+  type: ElementType | SectionType;
   props: Record<string, unknown>;
   children?: BuilderElement[];
+}
+
+/** True for namespaced section blocks (vs the generic block-builder widgets). */
+export function isSectionType(type: string): type is SectionType {
+  return type.startsWith("section.");
 }
 
 export interface Template {
@@ -249,7 +263,12 @@ export const useBuilder = create<BuilderState>((set, get) => ({
       const idx = s.elements.findIndex((e) => e.id === id);
       if (idx === -1) return s;
       const orig = s.elements[idx];
-      const dup: BuilderElement = { ...orig, id: uuid(), props: { ...orig.props } };
+      const dup: BuilderElement = {
+        ...orig,
+        id: uuid(),
+        props: JSON.parse(JSON.stringify(orig.props)),
+        ...(orig.children ? { children: JSON.parse(JSON.stringify(orig.children)) } : {}),
+      };
       const els = [...s.elements];
       els.splice(idx + 1, 0, dup);
       return { elements: els, selectedId: dup.id };

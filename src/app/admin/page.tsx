@@ -6,8 +6,9 @@ import { toast } from "sonner";
 import { useAuth } from "@/lib/store";
 import { useHasPermission } from "@/lib/use-roles-store";
 import { useAuthHydrated } from "@/lib/use-auth-hydrated";
-import { useCms } from "@/lib/cms-store";
+import { useCms, systemPageHref } from "@/lib/cms-store";
 import { useInlineEdit } from "@/lib/use-inline-edit";
+import { pageHasSections } from "@/lib/sections/registry";
 import { PageManager } from "@/components/admin/page-manager";
 import { NavEditor } from "@/components/admin/nav-editor";
 import { NewsletterPanel } from "@/components/admin/newsletter-panel";
@@ -85,9 +86,15 @@ export default function AdminPage() {
   const toggleEditMode = useEditMode((s) => s.toggleEditMode);
 
   function handleEditPage(slug: string) {
-    // Each core page opens its *exact* editor — not a generic tab. Pages with
-    // structured content (trips, events, gallery, FAQ) go to their managers;
-    // text-heavy pages (camp, home) open the live page in click-to-edit mode.
+    // Decomposed pages open the full visual SECTION builder over the live page.
+    if (pageHasSections(slug)) {
+      toggleEditMode(slug);
+      router.push(systemPageHref(slug));
+      return;
+    }
+    // Pages not yet sectionized fall back to their structured editors. Pages
+    // with structured content (trips, events, gallery, FAQ) go to managers;
+    // text-heavy pages (camp) open the live page in click-to-edit mode.
     switch (slug) {
       case "trips":
         toast.info("Add, edit & reorder trips here.");

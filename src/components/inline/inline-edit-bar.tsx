@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/store";
 import { useHasPermission } from "@/lib/use-roles-store";
 import { useInlineEdit } from "@/lib/use-inline-edit";
+import { useEditMode } from "@/lib/edit-mode";
 import { Pencil, Check, SlidersHorizontal } from "lucide-react";
 
 /** Routes wired for in-place click-to-edit. Expand as pages get wrapped. */
@@ -34,11 +35,14 @@ export function InlineEditBar() {
   const canEditContent = useHasPermission("manageContent");
   const enabled = useInlineEdit((s) => s.enabled);
   const toggle = useInlineEdit((s) => s.toggle);
+  const isEditMode = useEditMode((s) => s.isEditMode);
   const pathname = usePathname();
 
   if (!isAuthenticated || !(canEditContent || user?.role === "admin")) return null;
   // Hide entirely inside the community app + the block editor dashboard.
   if (pathname.startsWith("/community") || pathname.startsWith("/admin")) return null;
+  // Hide while the full section builder is active (it owns the editing UI).
+  if (isEditMode) return null;
 
   // On pages not yet wired for in-place editing, the button just opens the
   // structured Content/Settings dashboard instead of a no-op edit mode.

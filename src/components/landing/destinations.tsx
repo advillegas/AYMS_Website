@@ -2,12 +2,12 @@
 
 import { useMemo } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { motion, useReducedMotion } from "framer-motion";
 import { MapPin, Plane } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTrips } from "@/lib/use-trips";
 import { EditableText } from "@/components/inline/editable-text";
+import { EditableImage } from "@/components/inline/editable-image";
 
 // Curated, aspirational gallery — imagery is editorial and stays fixed.
 // Live trip counts are layered on top from the CRM (see countByCountry),
@@ -82,7 +82,7 @@ export function Destinations() {
                 >
                   <div className="photo-card-media aspect-[20/19]">
                     <div className={cn("photo-card-zoom grain absolute inset-0 bg-gradient-to-br", dest.gradient)}>
-                      <Image src={dest.image} alt={`${dest.name} — travel destination`} fill unoptimized sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw" className="object-cover" />
+                      <EditableImage id={`home.destinations.${i}.image`} src={dest.image} alt={`${dest.name} — travel destination`} fill sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw" className="object-cover" />
                       <div className="absolute inset-0 pattern-dots opacity-10" aria-hidden="true" />
                       <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-black/5" aria-hidden="true" />
                     </div>

@@ -1,10 +1,23 @@
 "use client";
 
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useState } from "react";
 import { useCms, isSystemSlug } from "@/lib/cms-store";
 import { useEditMode } from "@/lib/edit-mode";
-import { useBuilder, type ElementType, type BuilderElement, getDefaultPropsForType } from "@/lib/builder-store";
+import { useInlineEdit } from "@/lib/use-inline-edit";
+import {
+  useBuilder,
+  type ElementType,
+  type BuilderElement,
+  type SectionType,
+  getDefaultPropsForType,
+} from "@/lib/builder-store";
 import { ElementRenderer } from "@/components/builder/element-renderer";
+import { SectionRenderer } from "@/components/builder/section-renderer";
+import { SectionFrame } from "@/components/admin/section-frame";
+import { SectionToolbar } from "@/components/admin/section-toolbar";
+import { SectionPropsPanel } from "@/components/admin/section-props-panel";
+import { SectionOutline } from "@/components/admin/section-outline";
+import { AddSectionDialog } from "@/components/admin/add-section-dialog";
 import { AdminToolbar } from "@/components/admin/admin-toolbar";
 import { EditableWrapper } from "@/components/admin/editable-wrapper";
 import { InlinePropsPanel } from "@/components/admin/inline-props-panel";
@@ -12,6 +25,9 @@ import { Navbar } from "@/components/landing/navbar";
 import { Footer } from "@/components/landing/footer";
 import { v4 as uuid } from "uuid";
 import { PAGE_SNAPSHOTS } from "@/lib/page-snapshots";
+import { pageHasSections, isSectionList } from "@/lib/sections/registry";
+import { seedSectionsForPage } from "@/lib/sections/seed";
+import { getSectionDef } from "@/lib/sections/registry";
 import {
   DndContext,
   closestCenter,
@@ -34,11 +50,7 @@ interface Props {
   children: React.ReactNode;
 }
 
-/**
- * Drag-to-reorder wrapper for a single builder section in edit mode.
- * The grip handle (left gutter) carries the dnd-kit listeners; the rest of
- * the row stays fully interactive (inline edit, select, toolbar buttons).
- */
+/** Drag wrapper for the GENERIC block builder (custom /p pages). */
 function SortableSection({ id, children }: { id: string; children: React.ReactNode }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   const style: React.CSSProperties = {
@@ -65,6 +77,57 @@ function SortableSection({ id, children }: { id: string; children: React.ReactNo
   );
 }
 
+/** Drag wrapper for the SECTION builder — passes drag handles into the frame. */
+function SortableSectionFrame({
+  element,
+  index,
+  total,
+  selected,
+  onSelect,
+  onMoveUp,
+  onMoveDown,
+  onDuplicate,
+  onDelete,
+  onToggleHide,
+}: {
+  element: BuilderElement;
+  index: number;
+  total: number;
+  selected: boolean;
+  onSelect: () => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+  onDuplicate: () => void;
+  onDelete: () => void;
+  onToggleHide: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: element.id });
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 50 : undefined,
+  };
+  return (
+    <div ref={setNodeRef} style={style} data-section-id={element.id} className="scroll-mt-24">
+      <SectionFrame
+        element={element}
+        index={index}
+        total={total}
+        selected={selected}
+        onSelect={onSelect}
+        onMoveUp={onMoveUp}
+        onMoveDown={onMoveDown}
+        onDuplicate={onDuplicate}
+        onDelete={onDelete}
+        onToggleHide={onToggleHide}
+        dragAttributes={attributes as unknown as Record<string, unknown>}
+        dragListeners={listeners as unknown as Record<string, unknown>}
+      />
+    </div>
+  );
+}
+
 export function CmsPageWrapper({ slug, children }: Props) {
   const hasPublished = useCms((s) => s.hasPublishedPage(slug));
   const page = useCms((s) => s.pages[slug]);
@@ -79,43 +142,60 @@ export function CmsPageWrapper({ slug, children }: Props) {
   const setPreview = useEditMode((s) => s.setPreview);
 
   const elements = useBuilder((s) => s.elements);
-
   const isEditing = isEditMode && pageSlug === slug;
 
-  // Hydrate CMS content from Firestore in realtime so an admin's published
-  // edits are shared across all visitors (not just the editing browser).
-  // Falls back to localStorage when Firebase isn't configured; subscribe()
-  // returns its own unsubscribe fn for cleanup.
+  // This page is a SECTION page if it has registered sections, or its saved/
+  // published content is a section list. Custom /p pages use the generic blocks.
+  const sectionMode = pageHasSections(slug) || isSectionList(page?.elements);
+
+  const [outlineOpen, setOutlineOpen] = useState(true);
+  const [addOpen, setAddOpen] = useState(false);
+
   useEffect(() => {
     const unsubscribe = useCms.getState().subscribe();
     return unsubscribe;
   }, []);
 
+  // Seed the editor canvas when entering edit mode.
   useEffect(() => {
-    if (isEditing) {
-      const pg = useCms.getState().pages[slug];
-      if (pg && pg.elements.length > 0) {
-        useBuilder.setState({ elements: JSON.parse(JSON.stringify(pg.elements)), selectedId: null });
-      } else {
-        const snapFn = PAGE_SNAPSHOTS[slug];
-        const seed = snapFn ? snapFn() : [
-          { id: uuid(), type: "heading" as const, props: getDefaultPropsForType("heading") },
-          { id: uuid(), type: "text" as const, props: getDefaultPropsForType("text") },
-        ];
-        useBuilder.setState({ elements: seed, selectedId: null });
-      }
-      // Fresh undo history per editing session (don't let undo cross back
-      // into the previous page's edits or the initial seed).
-      useBuilder.getState().resetHistory();
+    if (!isEditing) return;
+    const pg = useCms.getState().pages[slug];
+    if (pg && pg.elements.length > 0) {
+      useBuilder.setState({ elements: JSON.parse(JSON.stringify(pg.elements)), selectedId: null });
+    } else if (sectionMode) {
+      useBuilder.setState({ elements: seedSectionsForPage(slug), selectedId: null });
+    } else {
+      const snapFn = PAGE_SNAPSHOTS[slug];
+      const seed = snapFn
+        ? snapFn()
+        : [
+            { id: uuid(), type: "heading" as const, props: getDefaultPropsForType("heading") },
+            { id: uuid(), type: "text" as const, props: getDefaultPropsForType("text") },
+          ];
+      useBuilder.setState({ elements: seed, selectedId: null });
     }
-  }, [isEditing, slug]);
+    useBuilder.getState().resetHistory();
+  }, [isEditing, slug, sectionMode]);
+
+  // In the section builder, also turn on inline click-to-edit so text/photos
+  // are editable directly on the canvas alongside the structural controls.
+  useEffect(() => {
+    if (isEditing && sectionMode) {
+      useInlineEdit.getState().set(true);
+      return () => useInlineEdit.getState().set(false);
+    }
+  }, [isEditing, sectionMode]);
 
   const handleAddElement = useCallback((type: ElementType) => {
     const el: BuilderElement = { id: uuid(), type, props: getDefaultPropsForType(type) };
-    useBuilder.setState((s) => ({
-      elements: [...s.elements, el],
-      selectedId: el.id,
-    }));
+    useBuilder.setState((s) => ({ elements: [...s.elements, el], selectedId: el.id }));
+    useEditMode.setState({ selectedElementId: el.id });
+  }, []);
+
+  const handleAddSection = useCallback((type: SectionType) => {
+    const def = getSectionDef(type);
+    const el: BuilderElement = { id: uuid(), type, props: { visible: true, ...(def?.defaultProps ?? {}) } };
+    useBuilder.setState((s) => ({ elements: [...s.elements, el], selectedId: el.id }));
     useEditMode.setState({ selectedElementId: el.id });
   }, []);
 
@@ -128,39 +208,22 @@ export function CmsPageWrapper({ slug, children }: Props) {
     publishPage(slug);
   }, [slug, setPageElements, publishPage]);
 
-  // Restore the original design (self-recovery). For core/system pages the
-  // true original is the coded React page, so we unpublish to bring it back
-  // live; the editor canvas is also reseeded from the default template so the
-  // admin isn't left staring at their broken draft. Custom pages (no coded
-  // fallback) just reseed the canvas.
   const handleReset = useCallback(() => {
-    const snapFn = PAGE_SNAPSHOTS[slug];
-    useBuilder.setState({
-      elements: snapFn ? snapFn() : [],
-      selectedId: null,
-    });
-    useEditMode.setState({ selectedElementId: null });
-    if (isSystemSlug(slug)) {
-      useCms.getState().unpublishPage(slug);
+    if (sectionMode) {
+      useBuilder.setState({ elements: seedSectionsForPage(slug), selectedId: null });
+    } else {
+      const snapFn = PAGE_SNAPSHOTS[slug];
+      useBuilder.setState({ elements: snapFn ? snapFn() : [], selectedId: null });
     }
-  }, [slug]);
+    useEditMode.setState({ selectedElementId: null });
+    if (isSystemSlug(slug)) useCms.getState().unpublishPage(slug);
+  }, [slug, sectionMode]);
 
-  // Hide this page's override so the original coded page goes live again.
-  const handleUnpublish = useCallback(() => {
-    useCms.getState().unpublishPage(slug);
-  }, [slug]);
-
-  const handleListVersions = useCallback(
-    () => useCms.getState().listVersions(slug),
-    [slug],
-  );
-
+  const handleUnpublish = useCallback(() => useCms.getState().unpublishPage(slug), [slug]);
+  const handleListVersions = useCallback(() => useCms.getState().listVersions(slug), [slug]);
   const handleRestoreVersion = useCallback(
     (els: BuilderElement[]) => {
-      useBuilder.setState({
-        elements: JSON.parse(JSON.stringify(els)),
-        selectedId: null,
-      });
+      useBuilder.setState({ elements: JSON.parse(JSON.stringify(els)), selectedId: null });
       useCms.getState().restoreVersion(slug, els);
     },
     [slug],
@@ -183,7 +246,8 @@ export function CmsPageWrapper({ slug, children }: Props) {
     useBuilder.setState((s) => {
       const idx = s.elements.findIndex((e) => e.id === id);
       if (idx === -1) return s;
-      const dup: BuilderElement = { ...s.elements[idx], id: uuid(), props: { ...s.elements[idx].props } };
+      const orig = s.elements[idx];
+      const dup: BuilderElement = { ...orig, id: uuid(), props: JSON.parse(JSON.stringify(orig.props)) };
       const els = [...s.elements];
       els.splice(idx + 1, 0, dup);
       return { elements: els, selectedId: dup.id };
@@ -210,18 +274,31 @@ export function CmsPageWrapper({ slug, children }: Props) {
     });
   }, []);
 
+  const handleToggleHide = useCallback((id: string) => {
+    useBuilder.setState((s) => ({
+      elements: s.elements.map((e) =>
+        e.id === id
+          ? { ...e, props: { ...e.props, visible: (e.props as { visible?: boolean }).visible === false } }
+          : e,
+      ),
+    }));
+  }, []);
+
   const handleUpdate = useCallback((id: string, props: Record<string, unknown>) => {
     useBuilder.setState((s) => ({
       elements: s.elements.map((e) => (e.id === id ? { ...e, props: { ...e.props, ...props } } : e)),
     }));
   }, []);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-  );
+  const handleOutlineSelect = useCallback((id: string) => {
+    handleSelect(id);
+    if (typeof document !== "undefined") {
+      document.querySelector(`[data-section-id="${id}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [handleSelect]);
 
-  // Reorder sections by drag. Mutates the live builder canvas; the admin
-  // still Saves/Publishes to persist, same as button-based reordering.
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
+
   const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
@@ -233,8 +310,21 @@ export function CmsPageWrapper({ slug, children }: Props) {
     });
   }, []);
 
-  // Published CMS override (NOT editing)
+  // ─────────────────────────── PUBLISHED OVERRIDE (not editing) ───────────────────────────
   if (hasPublished && page && !isEditing) {
+    if (isSectionList(page.elements)) {
+      return (
+        <>
+          <Navbar />
+          <main className="flex-1">
+            {page.elements.map((el) => (
+              <SectionRenderer key={el.id} element={el} />
+            ))}
+          </main>
+          <Footer />
+        </>
+      );
+    }
     return (
       <>
         <Navbar />
@@ -255,28 +345,42 @@ export function CmsPageWrapper({ slug, children }: Props) {
     );
   }
 
-  // PREVIEW-AS-VISITOR — render the working canvas with no edit chrome.
+  // ─────────────────────────── PREVIEW-AS-VISITOR ───────────────────────────
   if (isEditing && isPreview) {
     return (
       <>
-        <Navbar />
-        <main className="min-h-screen pt-[88px]">
-          <section className="grain relative bg-[#FDFCF7]">
-            <div className="absolute inset-0 pattern-dots opacity-[0.04]" aria-hidden="true" />
-            <div className="relative mx-auto max-w-3xl px-4 py-16 sm:px-6 lg:px-8">
-              <div className="space-y-6">
-                {elements.map((el) => (
-                  <ElementRenderer key={el.id} element={el} />
-                ))}
-              </div>
-            </div>
-          </section>
-        </main>
-        <Footer />
+        {sectionMode ? (
+          <>
+            <Navbar />
+            <main className="flex-1">
+              {elements.map((el) => (
+                <SectionRenderer key={el.id} element={el} />
+              ))}
+            </main>
+            <Footer />
+          </>
+        ) : (
+          <>
+            <Navbar />
+            <main className="min-h-screen pt-[88px]">
+              <section className="grain relative bg-[#FDFCF7]">
+                <div className="absolute inset-0 pattern-dots opacity-[0.04]" aria-hidden="true" />
+                <div className="relative mx-auto max-w-3xl px-4 py-16 sm:px-6 lg:px-8">
+                  <div className="space-y-6">
+                    {elements.map((el) => (
+                      <ElementRenderer key={el.id} element={el} />
+                    ))}
+                  </div>
+                </div>
+              </section>
+            </main>
+            <Footer />
+          </>
+        )}
         <button
           type="button"
           onClick={() => setPreview(false)}
-          className="fixed bottom-6 left-1/2 z-[110] -translate-x-1/2 rounded-full bg-[#221019] px-5 py-2.5 text-sm font-semibold text-white shadow-2xl hover:brightness-125 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]"
+          className="fixed bottom-6 left-1/2 z-[110] -translate-x-1/2 rounded-full bg-[#221019] px-5 py-2.5 text-sm font-semibold text-white shadow-2xl hover:brightness-125"
         >
           Exit preview — back to editing
         </button>
@@ -284,7 +388,88 @@ export function CmsPageWrapper({ slug, children }: Props) {
     );
   }
 
-  // EDIT MODE ACTIVE — show editable canvas ON TOP of the live site
+  // ─────────────────────────── SECTION BUILDER (editing) ───────────────────────────
+  if (isEditing && sectionMode) {
+    return (
+      <>
+        <SectionToolbar
+          onAddSection={() => setAddOpen(true)}
+          outlineOpen={outlineOpen}
+          onToggleOutline={() => setOutlineOpen((v) => !v)}
+          onSave={handleSave}
+          onPublish={handlePublish}
+          slug={slug}
+          isSystem={isSystemSlug(slug)}
+          onReset={handleReset}
+          onUnpublish={handleUnpublish}
+          onListVersions={handleListVersions}
+          onRestoreVersion={handleRestoreVersion}
+        />
+
+        {outlineOpen && (
+          <aside className="fixed left-0 top-10 z-[60] hidden h-[calc(100vh-2.5rem)] w-56 border-r border-white/10 bg-[#1A0814] text-white lg:block">
+            <SectionOutline
+              onSelect={handleOutlineSelect}
+              onMoveUp={handleMoveUp}
+              onMoveDown={handleMoveDown}
+              onToggleHide={handleToggleHide}
+            />
+          </aside>
+        )}
+
+        <div
+          className={`pt-10 transition-[padding] ${outlineOpen ? "lg:pl-56" : ""} ${selectedElementId ? "lg:pr-72" : ""}`}
+          onClick={() => setSelectedElement(null)}
+        >
+          <Navbar />
+          <main className="flex-1">
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <SortableContext items={elements.map((e) => e.id)} strategy={verticalListSortingStrategy}>
+                {elements.length === 0 ? (
+                  <div className="flex min-h-[50vh] items-center justify-center p-10">
+                    <button
+                      type="button"
+                      onClick={() => setAddOpen(true)}
+                      className="rounded-full bg-gradient-to-r from-[#FF0099] to-[#B51760] px-6 py-3 text-sm font-semibold text-white shadow-lg hover:brightness-110"
+                    >
+                      + Add your first section
+                    </button>
+                  </div>
+                ) : (
+                  elements.map((el, i) => (
+                    <SortableSectionFrame
+                      key={el.id}
+                      element={el}
+                      index={i}
+                      total={elements.length}
+                      selected={selectedElementId === el.id}
+                      onSelect={() => handleSelect(el.id)}
+                      onMoveUp={() => handleMoveUp(el.id)}
+                      onMoveDown={() => handleMoveDown(el.id)}
+                      onDuplicate={() => handleDuplicate(el.id)}
+                      onDelete={() => handleDelete(el.id)}
+                      onToggleHide={() => handleToggleHide(el.id)}
+                    />
+                  ))
+                )}
+              </SortableContext>
+            </DndContext>
+          </main>
+          <Footer />
+        </div>
+
+        {selectedElementId && <SectionPropsPanel />}
+        <AddSectionDialog
+          open={addOpen}
+          onOpenChange={setAddOpen}
+          presentTypes={elements.map((e) => e.type)}
+          onAdd={handleAddSection}
+        />
+      </>
+    );
+  }
+
+  // ─────────────────────────── GENERIC BLOCK BUILDER (custom /p pages) ───────────────────────────
   if (isEditing) {
     return (
       <>
@@ -299,7 +484,6 @@ export function CmsPageWrapper({ slug, children }: Props) {
           onListVersions={handleListVersions}
           onRestoreVersion={handleRestoreVersion}
         />
-
         <div className="pt-10" onClick={() => setSelectedElement(null)}>
           <Navbar />
           <main className="min-h-screen pt-[88px]">
@@ -339,13 +523,11 @@ export function CmsPageWrapper({ slug, children }: Props) {
           </main>
           <Footer />
         </div>
-
         <InlinePropsPanel />
       </>
     );
   }
 
-  // Normal view (not editing, no CMS override). In-place editing is provided
-  // globally by <InlineEditBar> in the root layout.
+  // Normal view (not editing, no override).
   return <>{children}</>;
 }

@@ -16,16 +16,7 @@ import { ContentManager } from "@/components/admin/content-manager";
 import { SeoPanel } from "@/components/admin/seo-panel";
 import { TripsPanel } from "@/components/admin/trips-panel";
 import { EventsPanel } from "@/components/admin/events-panel";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
 import { useEditMode } from "@/lib/edit-mode";
 import {
   FileText,
@@ -33,26 +24,65 @@ import {
   LayoutTemplate,
   Home,
   Trash2,
-  FolderOpen,
   Users,
   Settings as SettingsIcon,
   Sparkles,
   Search,
   Plane,
   CalendarDays,
+  ExternalLink,
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 
 type Tab = "pages" | "nav" | "content" | "trips" | "events" | "templates" | "audience" | "settings" | "seo";
 
+const VALID_TABS: Tab[] = ["pages", "content", "trips", "events", "nav", "settings", "templates", "audience", "seo"];
+
+interface NavItem {
+  id: Tab;
+  icon: React.ElementType;
+  label: string;
+  desc: string;
+}
+
+const NAV_GROUPS: { group: string; items: NavItem[] }[] = [
+  {
+    group: "Pages",
+    items: [
+      { id: "pages", icon: FileText, label: "Pages", desc: "Edit & build pages" },
+    ],
+  },
+  {
+    group: "Content",
+    items: [
+      { id: "content", icon: Sparkles, label: "Content", desc: "Text, photos & lists" },
+      { id: "trips", icon: Plane, label: "Trips", desc: "Trip listings" },
+      { id: "events", icon: CalendarDays, label: "Events", desc: "Calendar & events" },
+    ],
+  },
+  {
+    group: "Setup",
+    items: [
+      { id: "settings", icon: SettingsIcon, label: "Settings", desc: "Brand, logo & contact" },
+      { id: "seo", icon: Search, label: "SEO", desc: "Search & social previews" },
+      { id: "nav", icon: Navigation, label: "Navigation", desc: "Menu links & order" },
+      { id: "templates", icon: LayoutTemplate, label: "Templates", desc: "Saved blocks" },
+    ],
+  },
+  {
+    group: "Grow",
+    items: [
+      { id: "audience", icon: Users, label: "Audience", desc: "Newsletter signups" },
+    ],
+  },
+];
+
 export default function AdminPage() {
   const user = useAuth((s) => s.user);
   const isAuthenticated = useAuth((s) => s.isAuthenticated);
   const router = useRouter();
   const hydrated = useAuthHydrated();
-  // Access is the manageContent role permission (admins have it by
-  // default; grantable to any role from Admin → Roles & permissions).
   const canEditContent = useHasPermission("manageContent");
   const allowed = canEditContent || user?.role === "admin";
 
@@ -63,19 +93,11 @@ export default function AdminPage() {
   const templates = useCms((s) => s.templates);
   const deleteTemplate = useCms((s) => s.deleteTemplate);
 
-  // Deep-link support: /admin?tab=content|settings|pages|… opens that tab.
   useEffect(() => {
     const t = new URLSearchParams(window.location.search).get("tab");
-    if (t && ["pages", "content", "trips", "events", "nav", "settings", "templates", "audience", "seo"].includes(t)) {
-      setActiveTab(t as Tab);
-    }
+    if (t && VALID_TABS.includes(t as Tab)) setActiveTab(t as Tab);
   }, []);
 
-  // The admin dashboard authors the SHARED CMS, so once the signed-in admin is
-  // confirmed we subscribe to Firestore in realtime — pages/nav/templates
-  // published from any browser appear here, and our writes flow back. Falls
-  // back to localStorage when Firebase isn't configured. subscribe() returns
-  // its ref-counted unsubscribe for cleanup.
   useEffect(() => {
     if (!hydrated) return;
     if (!isAuthenticated || !allowed) {
@@ -89,15 +111,11 @@ export default function AdminPage() {
   const toggleEditMode = useEditMode((s) => s.toggleEditMode);
 
   function handleEditPage(slug: string) {
-    // Decomposed pages open the full visual SECTION builder over the live page.
     if (pageHasSections(slug)) {
       toggleEditMode(slug);
       router.push(systemPageHref(slug));
       return;
     }
-    // Pages not yet sectionized fall back to their structured editors. Pages
-    // with structured content (trips, events, gallery, FAQ) go to managers;
-    // text-heavy pages (camp) open the live page in click-to-edit mode.
     switch (slug) {
       case "trips":
         setActiveTab("trips");
@@ -119,12 +137,10 @@ export default function AdminPage() {
         setActiveTab("content");
         return;
       case "camp":
-        // Camp is pure narrative — open the live page in click-to-edit mode.
         useInlineEdit.getState().set(true);
         router.push("/camp");
         return;
       default:
-        // Custom standalone pages use the block editor.
         toggleEditMode(slug);
         router.push(`/p/${slug}`);
     }
@@ -139,57 +155,94 @@ export default function AdminPage() {
   }
   if (!isAuthenticated || !allowed) return null;
 
+  const activeLabel =
+    NAV_GROUPS.flatMap((g) => g.items).find((i) => i.id === activeTab)?.label ?? "";
+
   return (
-    <div className="dark flex h-screen bg-[#1A0814] text-white overflow-hidden">
-      {/* Sidebar */}
-      <aside className="flex w-72 shrink-0 flex-col border-r border-white/10 bg-[#2A0A1E]">
-        <div className="flex h-14 items-center gap-2 px-4 border-b border-white/10">
+    <div className="dark flex h-screen overflow-hidden bg-[#1A0814] text-white">
+      {/* Sidebar — vertical nav rail */}
+      <aside className="flex w-60 shrink-0 flex-col border-r border-white/10 bg-[#2A0A1E]">
+        <div className="flex h-14 items-center gap-2 border-b border-white/10 px-4">
           <Image src="/ayms-logo.svg" alt="AYMS" width={28} height={28} className="rounded-full" />
-          <span className="text-sm font-bold font-[family-name:var(--font-heading)]">Admin Dashboard</span>
+          <span className="font-[family-name:var(--font-heading)] text-sm font-bold">Admin</span>
         </div>
 
-        {/* Tab switcher */}
-        <div className="flex border-b border-white/10">
-          {([
-            { id: "pages" as Tab, icon: FileText, label: "Pages" },
-            { id: "content" as Tab, icon: Sparkles, label: "Content" },
-            { id: "trips" as Tab, icon: Plane, label: "Trips" },
-            { id: "events" as Tab, icon: CalendarDays, label: "Events" },
-            { id: "nav" as Tab, icon: Navigation, label: "Nav" },
-            { id: "settings" as Tab, icon: SettingsIcon, label: "Settings" },
-            { id: "seo" as Tab, icon: Search, label: "SEO" },
-            { id: "templates" as Tab, icon: LayoutTemplate, label: "Templates" },
-            { id: "audience" as Tab, icon: Users, label: "Audience" },
-          ]).map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 flex flex-col items-center gap-0.5 py-3 text-[10px] font-medium transition-colors border-b-2 ${
-                activeTab === tab.id
-                  ? "border-[#FF0099] text-[#FF0099]"
-                  : "border-transparent text-white/30 hover:text-white/60"
-              }`}
-            >
-              <tab.icon className="h-4 w-4" />
-              {tab.label}
-            </button>
-          ))}
-        </div>
+        <ScrollArea className="flex-1">
+          <nav className="space-y-3 p-2" aria-label="Admin sections">
+            {NAV_GROUPS.map((group) => (
+              <div key={group.group}>
+                <p className="px-3 pb-1 pt-2 text-[10px] font-bold uppercase tracking-wider text-white/25">
+                  {group.group}
+                </p>
+                <div className="space-y-0.5">
+                  {group.items.map((item) => {
+                    const active = activeTab === item.id;
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={() => setActiveTab(item.id)}
+                        aria-current={active ? "page" : undefined}
+                        className={`group flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left transition-colors ${
+                          active ? "bg-[#FF0099]/15 text-white" : "text-white/55 hover:bg-white/5 hover:text-white"
+                        }`}
+                      >
+                        <span
+                          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors ${
+                            active ? "bg-gradient-to-br from-[#FF0099] to-[#B51760] text-white" : "bg-white/5 text-white/50 group-hover:text-white"
+                          }`}
+                        >
+                          <item.icon className="h-4 w-4" aria-hidden="true" />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-sm font-semibold leading-tight">{item.label}</span>
+                          <span className="block truncate text-[11px] text-white/35">{item.desc}</span>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </nav>
+        </ScrollArea>
 
-        {/* Tab content */}
-        <div className="flex-1 overflow-hidden">
-          {activeTab === "pages" && <PageManager onEditPage={handleEditPage} />}
-          {activeTab === "nav" && <NavEditor />}
-          {activeTab === "templates" && (
-            <ScrollArea className="h-full p-3">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-white/30 mb-2 px-1">
-                Saved Templates
-              </p>
-              {templates.length === 0 ? (
-                <p className="text-xs text-white/20 text-center py-8">No templates saved yet.</p>
-              ) : (
-                <div className="space-y-1.5">
-                  {templates.map((t) => (
+        <div className="border-t border-white/10 p-3">
+          <Link
+            href="/"
+            className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs text-white/50 transition-colors hover:bg-white/5 hover:text-white"
+          >
+            <Home className="h-3.5 w-3.5" /> Back to site
+            <ExternalLink className="ml-auto h-3 w-3 text-white/25" aria-hidden="true" />
+          </Link>
+        </div>
+      </aside>
+
+      {/* Main content area — one panel per nav item */}
+      <main className="flex min-w-0 flex-1 flex-col overflow-hidden" aria-label={activeLabel}>
+        {activeTab === "pages" && <PageManager onEditPage={handleEditPage} />}
+        {activeTab === "content" && <ContentManager section={contentSection} />}
+        {activeTab === "trips" && <TripsPanel />}
+        {activeTab === "events" && <EventsPanel />}
+        {activeTab === "settings" && <SiteSettingsPanel />}
+        {activeTab === "seo" && <SeoPanel />}
+        {activeTab === "nav" && <NavEditor />}
+        {activeTab === "audience" && <NewsletterPanel />}
+        {activeTab === "templates" && (
+          <div className="flex h-full flex-col">
+            <div className="flex h-14 items-center border-b border-white/10 px-6">
+              <div>
+                <h2 className="font-[family-name:var(--font-heading)] text-base font-bold">Saved Templates</h2>
+                <p className="text-[11px] text-white/40">Reusable blocks you&apos;ve saved from the builder.</p>
+              </div>
+            </div>
+            <ScrollArea className="flex-1">
+              <div className="mx-auto max-w-2xl space-y-1.5 p-6">
+                {templates.length === 0 ? (
+                  <p className="py-12 text-center text-sm text-white/25">
+                    No templates saved yet. Save a block layout from the page builder to reuse it here.
+                  </p>
+                ) : (
+                  templates.map((t) => (
                     <div key={t.id} className="flex items-center justify-between rounded-lg border border-white/8 bg-white/[0.02] px-3 py-2.5">
                       <div>
                         <p className="text-sm font-medium text-white/70">{t.name}</p>
@@ -197,75 +250,19 @@ export default function AdminPage() {
                       </div>
                       <button
                         onClick={() => deleteTemplate(t.id)}
-                        className="p-1 text-white/20 hover:text-red-400 transition-colors"
+                        aria-label={`Delete template ${t.name}`}
+                        className="p-1 text-white/20 transition-colors hover:text-red-400"
                       >
                         <Trash2 className="h-3 w-3" />
                       </button>
                     </div>
-                  ))}
-                </div>
-              )}
+                  ))
+                )}
+              </div>
             </ScrollArea>
-          )}
-        </div>
-
-        <Separator className="bg-white/10" />
-        <div className="p-3">
-          <Link href="/" className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs text-white/40 hover:text-white hover:bg-white/5 transition-colors">
-            <Home className="h-3.5 w-3.5" /> Back to Site
-          </Link>
-        </div>
-      </aside>
-
-      {/* Main content area */}
-      {activeTab === "settings" ? (
-        <div className="flex-1 overflow-hidden">
-          <SiteSettingsPanel />
-        </div>
-      ) : activeTab === "content" ? (
-        <div className="flex-1 overflow-hidden">
-          <ContentManager section={contentSection} />
-        </div>
-      ) : activeTab === "trips" ? (
-        <div className="flex-1 overflow-hidden">
-          <TripsPanel />
-        </div>
-      ) : activeTab === "events" ? (
-        <div className="flex-1 overflow-hidden">
-          <EventsPanel />
-        </div>
-      ) : activeTab === "audience" ? (
-        <div className="flex-1 overflow-hidden">
-          <NewsletterPanel />
-        </div>
-      ) : activeTab === "seo" ? (
-        <div className="flex-1 overflow-hidden">
-          <SeoPanel />
-        </div>
-      ) : (
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center max-w-md px-8">
-            <div className="mx-auto h-16 w-16 rounded-2xl bg-gradient-to-br from-[#FF0099]/15 to-[#B51760]/10 flex items-center justify-center mb-6">
-              <FileText className="h-8 w-8 text-[#FF0099]/60" />
-            </div>
-            <h2 className="text-xl font-bold font-[family-name:var(--font-heading)] text-white">
-              Manage Your Site
-            </h2>
-            <p className="mt-3 text-sm text-white/40 leading-relaxed">
-              To edit your site&apos;s <strong className="text-white/70">text, photos, FAQ,
-              testimonials, hero headlines, gallery</strong> and more, use the{" "}
-              <strong className="text-white/70">Content</strong> tab. For your{" "}
-              <strong className="text-white/70">logo, announcement bar, contact info, and
-              brand colors</strong>, use the <strong className="text-white/70">Settings</strong> tab.
-              These mirror the live site and save instantly.
-            </p>
-            <p className="mt-4 text-xs text-white/25">
-              The <strong className="text-white/40">Pages</strong> tab is only for building
-              brand-new standalone pages — it doesn&apos;t edit the main marketing pages.
-            </p>
           </div>
-        </div>
-      )}
+        )}
+      </main>
     </div>
   );
 }

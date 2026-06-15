@@ -121,7 +121,7 @@ export function useFirebaseAuthSync(): void {
           return;
         }
         // The server-validated admin keeps its literal "admin" store
-        // identity; the bridge session under admin@ayms.com exists only
+        // identity; the bridge session under admin@amigasymassocial.com exists only
         // to authorise Supabase writes (mirrors the Firebase guard
         // below — roles key off the literal id "admin").
         if (state.user?.id === "admin") return;
@@ -148,7 +148,7 @@ export function useFirebaseAuthSync(): void {
         return;
       }
       // The legacy server-side admin (id "admin") keeps its store identity
-      // even though a Firebase session runs under the admin@ayms.com
+      // even though a Firebase session runs under the admin@amigasymassocial.com
       // account. That session exists ONLY to authorise Firestore writes —
       // it must not replace the app's admin profile, because the roles
       // store keys admin permissions off the literal id "admin".

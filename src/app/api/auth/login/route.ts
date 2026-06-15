@@ -25,8 +25,10 @@ export const runtime = "nodejs";
  * round-trip.
  */
 
-const ADMIN_USERNAMES = new Set(["admin", "admin@ayms.com"]);
-const ADMIN_EMAIL = "admin@ayms.com";
+const ADMIN_USERNAMES = new Set(["admin"]);
+// Hidden Supabase Auth identity backing the "admin" login (owned domain;
+// never shown or typed). Supabase requires an email for password auth.
+const ADMIN_EMAIL = "admin@amigasymassocial.com";
 
 /** Constant-time credential comparison (avoids timing enumeration). */
 function safeEqual(a: string, b: string): boolean {
@@ -38,7 +40,7 @@ function safeEqual(a: string, b: string): boolean {
 /**
  * Neutralize legacy Firebase-era admin profile rows. Every Firebase
  * admin login wrote a Firestore users/{firebaseUid} doc with email
- * admin@ayms.com (writeAdminProfile), and the migration imports it
+ * admin@amigasymassocial.com (writeAdminProfile), and the migration imports it
  * verbatim — so the canonical {id:'admin'} seed below would violate the
  * unique lower(email) index (and users_auth_id_key, once
  * link_auth_identity has bound the admin JWT to the legacy row). Blank
@@ -62,7 +64,7 @@ async function reconcileLegacyAdminRows(svc: SupabaseClient): Promise<void> {
 
 /**
  * Supabase admin bridge: after ADMIN_PASSWORD validates, make sure a
- * real Supabase Auth user exists for admin@ayms.com with that password
+ * real Supabase Auth user exists for admin@amigasymassocial.com with that password
  * (so the client can establish a session RLS can see) and seed the
  * canonical users row with role='admin' — only the service role may
  * write admin roles (users_role_guard trigger). Server-side
@@ -113,8 +115,10 @@ async function provisionSupabaseAdmin(password: string): Promise<boolean> {
       svc.from("users").upsert(
         {
           id: "admin",
-          name: "AYMS Admin",
-          email: ADMIN_EMAIL,
+          name: "Admin",
+          // Profile email intentionally blank — the admin is just "admin",
+          // not an email address. The backing auth identity stays hidden.
+          email: "",
           role: "admin",
           ...(authUserId ? { auth_id: authUserId } : {}),
         },
@@ -220,8 +224,8 @@ export async function POST(request: Request) {
     ...(adminBridge ? { adminBridge } : {}),
     user: {
       id: "admin",
-      name: "AYMS Admin",
-      email: "admin@ayms.com",
+      name: "Admin",
+      email: "",
       avatar: "",
       bio: "Site administrator",
       location: "AYMS HQ",

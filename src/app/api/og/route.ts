@@ -111,7 +111,7 @@ export async function GET(req: Request) {
         // Some sites only return OG tags when they think a real
         // browser is asking.
         "User-Agent":
-          "Mozilla/5.0 (compatible; AYMS-LinkPreview/1.0; +https://ayms.com)",
+          "Mozilla/5.0 (compatible; AYMS-LinkPreview/1.0; +https://amigasymassocial.com)",
         Accept: "text/html,application/xhtml+xml",
       },
       redirect: "follow",

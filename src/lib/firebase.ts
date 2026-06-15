@@ -94,7 +94,7 @@ export function getAuthInstance(): Auth | null {
  *
  * This is NOT always the same as the Zustand store's `user.id`: the
  * server-side admin login keeps the literal id "admin" in the store,
- * while its bridged Firebase session runs under the admin@ayms.com
+ * while its bridged Firebase session runs under the admin@amigasymassocial.com
  * account's real uid. Any write guarded by `== request.auth.uid`
  * (meetup hostId, rsvp doc id, …) must use THIS value, not user.id, or
  * the rules deny it. Returns null when no Firebase session exists.

@@ -174,7 +174,7 @@ function foldIcsLine(line: string): string {
 
 function buildVEvent(event: CalendarEvent, stamp: string): string[] {
   const { allDay, start, end } = resolveTimes(event);
-  const uid = `${event.id}@ayms.com`;
+  const uid = `${event.id}@amigasymassocial.com`;
   // All-day → VALUE=DATE with an exclusive DTEND (day after the last
   // day). Timed → UTC instants with a trailing Z. Never emit an empty
   // or null time.

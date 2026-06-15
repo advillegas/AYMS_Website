@@ -212,7 +212,7 @@ const MOCK_USERS: User[] = [
   {
     id: "1",
     name: "Maria Garcia",
-    email: "maria@ayms.com",
+    email: "maria@amigasymassocial.com",
     avatar: "",
     bio: "Five-year vet who loves long walks watching elephant seals",
     location: "Los Angeles, CA",
@@ -222,7 +222,7 @@ const MOCK_USERS: User[] = [
   {
     id: "2",
     name: "Sofia Rodriguez",
-    email: "sofia@ayms.com",
+    email: "sofia@amigasymassocial.com",
     avatar: "",
     bio: "Travel enthusiast and foodie. Always planning the next adventure!",
     location: "Miami, FL",
@@ -232,7 +232,7 @@ const MOCK_USERS: User[] = [
   {
     id: "3",
     name: "Isabella Martinez",
-    email: "isabella@ayms.com",
+    email: "isabella@amigasymassocial.com",
     avatar: "",
     bio: "Camp counselor and community organizer",
     location: "Austin, TX",
@@ -242,7 +242,7 @@ const MOCK_USERS: User[] = [
   {
     id: "4",
     name: "Valentina Lopez",
-    email: "valentina@ayms.com",
+    email: "valentina@amigasymassocial.com",
     avatar: "",
     bio: "New to the group but already feel like family!",
     location: "New York, NY",
@@ -252,7 +252,7 @@ const MOCK_USERS: User[] = [
   {
     id: "5",
     name: "Camila Torres",
-    email: "camila@ayms.com",
+    email: "camila@amigasymassocial.com",
     avatar: "",
     bio: "Photographer and storyteller. Capturing our memories together.",
     location: "Chicago, IL",
@@ -329,7 +329,7 @@ export const useAuth = create<AuthState>()(
             // Best-effort; the UI identity stays the legacy "admin".
             void ensureFirebaseAdminSession(password);
             // Same bridge for Supabase (dual-run): /api/auth/login has
-            // already provisioned admin@ayms.com server-side; this
+            // already provisioned admin@amigasymassocial.com server-side; this
             // signs in so admin writes carry a JWT RLS can see.
             if (useSupabaseBackend) void ensureSupabaseAdminSession(password);
             return { ok: true };
@@ -410,8 +410,11 @@ export const useAuth = create<AuthState>()(
         if (password.length < 6) {
           return { ok: false, error: "Password must be at least 6 characters" };
         }
-        if (trimmedEmail === "admin@ayms.com" || trimmedEmail === "admin") {
-          return { ok: false, error: "That email address is reserved" };
+        if (
+          trimmedEmail === "admin@amigasymassocial.com" ||
+          trimmedEmail === "admin"
+        ) {
+          return { ok: false, error: "That username is reserved" };
         }
 
         // Preferred path: the configured auth backend (Firebase, or

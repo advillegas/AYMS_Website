@@ -31,7 +31,11 @@ const ROLE_DEFAULT: User["role"] = "amiga";
  * ADMIN_EMAIL and the server-side bridge in /api/auth/login (defined
  * locally to avoid a runtime import cycle with firebase-auth.ts).
  */
-const ADMIN_EMAIL = "admin@ayms.com";
+// Internal Supabase Auth identifier for the password-only "admin" login.
+// Uses the owned amigasymassocial.com domain; never shown or typed (the
+// owner just logs in as "admin"). Supabase Auth requires an email, so this
+// is the hidden backing identity for the admin's real, authenticated session.
+const ADMIN_EMAIL = "admin@amigasymassocial.com";
 
 /** Supabase auth uids are UUIDs; migrated Firebase UIDs are not. */
 const UUID_RE =
@@ -255,7 +259,7 @@ export async function supabaseSendPasswordReset(email: string): Promise<void> {
  * client-side admin writes carry a JWT that RLS (is_app_admin()) can
  * see — the Supabase mirror of ensureFirebaseAdminSession.
  *
- * /api/auth/login provisions the admin@ayms.com auth user (password
+ * /api/auth/login provisions the admin@amigasymassocial.com auth user (password
  * tracking ADMIN_PASSWORD) and seeds the role='admin' users row via the
  * service role BEFORE this runs; here we only sign in. Best-effort:
  * failures are logged loudly and swallowed — the UI keeps working with
@@ -280,7 +284,7 @@ export async function ensureSupabaseAdminSession(
       console.error(
         "[admin-bridge] ADMIN MUTATIONS MAY FAIL: couldn't establish the " +
           "Supabase admin session. If SUPABASE_SERVICE_ROLE_KEY isn't " +
-          "configured the server can't provision admin@ayms.com.",
+          "configured the server can't provision admin@amigasymassocial.com.",
         error,
       );
     }

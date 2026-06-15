@@ -370,7 +370,7 @@ export async function firebaseSendPasswordReset(email: string): Promise<void> {
  * MUST stay in sync with the email hard-coded in firestore.rules
  * `isAdminEmail()`.
  */
-export const ADMIN_EMAIL = "admin@ayms.com";
+export const ADMIN_EMAIL = "admin@amigasymassocial.com";
 
 /**
  * Establish a real Firebase Auth session for the admin so client-side

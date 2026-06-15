@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
     // (so a non-admin role granted calendar management can sync too).
     const email = (verified.email ?? "").trim().toLowerCase();
     const appUser = email ? await resolveAppUserByEmail(email) : null;
-    const isAdmin = email === "admin@ayms.com" || appUser?.role === "admin";
+    const isAdmin = email === "admin@amigasymassocial.com" || appUser?.role === "admin";
     const canManageCalendar =
       isAdmin || (email ? await emailHasPermission(email, "manageCalendar") : false);
     if (!canManageCalendar) {

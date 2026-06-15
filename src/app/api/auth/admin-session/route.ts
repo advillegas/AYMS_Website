@@ -6,7 +6,7 @@ import { rateLimit, clientIp } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
-const ADMIN_EMAIL = "admin@ayms.com";
+const ADMIN_EMAIL = "admin@amigasymassocial.com";
 
 /**
  * Re-mint the admin's Supabase session on demand.

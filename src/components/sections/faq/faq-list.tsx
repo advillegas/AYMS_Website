@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/accordion";
 import { Search, HelpCircle } from "lucide-react";
 import { useFaqContent } from "@/lib/use-site-content";
+import { EditableText } from "@/components/inline/editable-text";
 
 /**
  * Searchable FAQ accordion. Keeps the sticky search box and the categorized
@@ -107,16 +108,16 @@ export function FaqList() {
               <div className="glass-control mx-auto mb-4 flex h-16 w-16 items-center justify-center">
                 <HelpCircle className="h-7 w-7 text-ink-soft/60" aria-hidden="true" />
               </div>
-              <p className="font-display text-lg text-ink">No matches yet, amiga</p>
-              <p className="text-sm text-ink-soft mt-1">
+              <EditableText as="p" id="faq.empty.title" className="font-display text-lg text-ink">No matches yet, amiga</EditableText>
+              <EditableText as="p" id="faq.empty.subtitle" className="text-sm text-ink-soft mt-1">
                 Try another word — or just ask us, we&apos;re here ♡
-              </p>
+              </EditableText>
               {search && (
                 <button
                   onClick={() => setSearch("")}
                   className="mt-5 rounded-full border border-[#221019]/15 px-5 py-1.5 text-sm font-semibold text-[#B51760] transition-colors hover:bg-[#FF0099]/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]"
                 >
-                  Clear search
+                  <EditableText as="span" id="faq.empty.reset">Clear search</EditableText>
                 </button>
               )}
             </motion.div>

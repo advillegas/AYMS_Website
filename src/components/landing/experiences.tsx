@@ -4,6 +4,7 @@ import Image from "next/image";
 import { motion, useReducedMotion } from "framer-motion";
 import { MapPin } from "lucide-react";
 import { useExperiencesContent, type ExperienceItem } from "@/lib/use-site-content";
+import { EditableText } from "@/components/inline/editable-text";
 
 type Experience = ExperienceItem;
 
@@ -64,15 +65,15 @@ export function Experiences() {
           transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
           className="max-w-2xl"
         >
-          <p className="eyebrow text-[var(--magenta)]">Bucket List</p>
+          <EditableText as="p" id="home.experiences.eyebrow" className="eyebrow text-[var(--magenta)]">Bucket List</EditableText>
           <h2 className="text-title mt-3 font-display text-ink text-balance">
-            Unforgettable{" "}
-            <span className="font-display-italic text-[var(--brand-pink)]">experiences</span>
+            <EditableText as="span" id="home.experiences.title.before">Unforgettable</EditableText>{" "}
+            <EditableText as="span" id="home.experiences.title.accent" className="font-display-italic text-[var(--brand-pink)]">experiences</EditableText>
           </h2>
-          <p className="text-lead mt-4 text-ink-soft">
+          <EditableText as="p" id="home.experiences.lead" className="text-lead mt-4 text-ink-soft">
             Every trip is packed with curated activities that you&apos;ll
             remember forever. Here are just a few.
-          </p>
+          </EditableText>
         </motion.div>
       </div>
 

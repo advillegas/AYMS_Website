@@ -21,10 +21,8 @@ export function FaqCta() {
       >
         <div className="glass-strong elevate-3 rounded-3xl px-8 py-12 text-center sm:px-12">
           <h2 className="font-display text-title text-ink">
-            Still have{" "}
-            <span className="font-display-italic marker-swipe text-[#B51760]">
-              questions?
-            </span>
+            <EditableText as="span" id="faq.cta.title">Still have</EditableText>{" "}
+            <EditableText as="span" id="faq.cta.titleAccent" className="font-display-italic marker-swipe text-[#B51760]">questions?</EditableText>
           </h2>
           <EditableText as="p" id="faq.cta.body" className="mt-3 text-ink-soft">
             We&apos;re here to help. Reach out anytime and we&apos;ll get back to
@@ -38,7 +36,7 @@ export function FaqCta() {
                 "lift h-14 rounded-full border-0 bg-gradient-to-r from-[#FF0099] to-[#B51760] px-10 text-base font-semibold tracking-wide text-white shadow-[0_8px_30px_rgb(255_0_153/0.30)] hover:brightness-110"
               )}
             >
-              Contact Us ♡
+              <EditableText as="span" id="faq.cta.contactButton">Contact Us ♡</EditableText>
             </Link>
             <Link
               href="/trips"
@@ -47,7 +45,7 @@ export function FaqCta() {
                 "h-14 rounded-full border-[#221019]/15 bg-white/40 text-ink hover:bg-[#FF0099]/5 px-10 font-semibold"
               )}
             >
-              Browse Trips
+              <EditableText as="span" id="faq.cta.browseButton">Browse Trips</EditableText>
             </Link>
           </div>
         </div>

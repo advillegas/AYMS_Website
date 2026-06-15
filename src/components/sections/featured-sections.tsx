@@ -18,7 +18,7 @@ export const FEATURED_SECTIONS: SectionDef[] = [
     description:
       "Next featured trip, the upcoming-events list and the newsletter capture — all pulled live from the trips & events data.",
     Component: FeaturedSpotlightSection,
-    manageHref: "/community/admin/calendar",
+    manageHref: "/admin?tab=events",
     manageLabel: "Manage events",
   },
 ];

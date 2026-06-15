@@ -9,6 +9,7 @@ import { Calendar, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { useTrips, sortTrips, type Trip } from "@/lib/use-trips";
+import { EditableText } from "@/components/inline/editable-text";
 
 /** Short scarcity/status line for a card, or null when nothing urgent. */
 function urgency(t: Trip): string | null {
@@ -47,15 +48,15 @@ export function Trips() {
           transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
           className="text-center"
         >
-          <p className="eyebrow text-[var(--coral)]">Upcoming Trips</p>
+          <EditableText as="p" id="home.trips.eyebrow" className="eyebrow text-[var(--coral)]">Upcoming Trips</EditableText>
           <h2 className="text-title mt-3 font-display text-ink text-balance">
-            Travel with your{" "}
-            <span className="font-display-italic text-[var(--coral)]">amigas</span>
+            <EditableText as="span" id="home.trips.title.before">Travel with your</EditableText>{" "}
+            <EditableText as="span" id="home.trips.title.accent" className="font-display-italic text-[var(--coral)]">amigas</EditableText>
           </h2>
-          <p className="text-lead mx-auto mt-5 max-w-2xl text-ink-soft">
+          <EditableText as="p" id="home.trips.lead" className="text-lead mx-auto mt-5 max-w-2xl text-ink-soft">
             We organize group trips that create lifelong memories. From beach
             getaways to city adventures, there&apos;s something for every amiga.
-          </p>
+          </EditableText>
         </motion.div>
 
         {showSkeleton ? (
@@ -70,9 +71,9 @@ export function Trips() {
           </div>
         ) : homeTrips.length === 0 ? (
           <div className="mt-14 flex flex-col items-center text-center">
-            <p className="text-lead text-ink-soft">
+            <EditableText as="p" id="home.trips.emptyTitle" className="text-lead text-ink-soft">
               New trips are dropping soon. ♡
-            </p>
+            </EditableText>
             <Link
               href="/trips"
               className={cn(
@@ -80,7 +81,7 @@ export function Trips() {
                 "mt-6 rounded-full bg-[var(--magenta)] font-semibold text-white hover:bg-[var(--brand-pink)]",
               )}
             >
-              Browse all trips
+              <EditableText as="span" id="home.trips.emptyCta">Browse all trips</EditableText>
               <ArrowRight className="ml-1 h-4 w-4" aria-hidden="true" />
             </Link>
           </div>
@@ -180,7 +181,7 @@ export function Trips() {
                 "rounded-full",
               )}
             >
-              See all trips
+              <EditableText as="span" id="home.trips.seeAllCta">See all trips</EditableText>
               <ArrowRight className="ml-1 h-4 w-4" aria-hidden="true" />
             </Link>
           </div>

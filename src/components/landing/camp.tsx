@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Calendar, MapPin, Users, Sun, Star } from "lucide-react";
 import Link from "next/link";
+import { EditableText } from "@/components/inline/editable-text";
 
 const DETAILS = [
   { icon: Calendar, en: "August 28–30, 2026", es: "28–30 de Agosto, 2026" },
@@ -30,28 +31,28 @@ export function Camp() {
             transition={{ duration: 0.6 }}
           >
             <Badge className="mb-5 rounded-full border-0 bg-gradient-to-r from-[var(--coral)] to-[var(--brand-pink)] px-4 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-white shadow-[0_4px_14px_rgb(255_127_80/0.30)]">
-              Summer 2026
+              <EditableText as="span" id="home.camp.badge">Summer 2026</EditableText>
             </Badge>
             <h2 className="text-title font-display text-ink text-balance">
-              Amigas Summer{" "}
-              <span className="font-display-italic marker-magenta">Camp 2026</span>
+              <EditableText as="span" id="home.camp.title.before">Amigas Summer</EditableText>{" "}
+              <EditableText as="span" id="home.camp.title.accent" className="font-display-italic marker-magenta">Camp 2026</EditableText>
             </h2>
-            <p className="text-lead mt-6 leading-relaxed text-ink-soft">
+            <EditableText as="p" id="home.camp.lead" className="text-lead mt-6 leading-relaxed text-ink-soft">
               Three days of bonding, growth, and unforgettable memories. Our
               annual camp brings amigas together for workshops, outdoor
               adventures, and sisterhood.
-            </p>
+            </EditableText>
 
             <div className="mt-8 grid grid-cols-2 gap-3">
-              {DETAILS.map((item) => (
+              {DETAILS.map((item, i) => (
                 <div
                   key={item.en}
                   className="glass lift elevate-2 group flex cursor-default items-center gap-3 rounded-2xl p-4"
                 >
                   <item.icon className="h-5 w-5 shrink-0 text-[var(--coral)]" aria-hidden="true" />
                   <span className="text-sm font-medium text-ink">
-                    <span className="group-hover:hidden">{item.en}</span>
-                    <span className="hidden font-semibold text-[var(--brand-pink)] group-hover:inline">{item.es}</span>
+                    <EditableText as="span" id={`home.camp.detail.${i}.en`} className="group-hover:hidden">{item.en}</EditableText>
+                    <EditableText as="span" id={`home.camp.detail.${i}.es`} className="hidden font-semibold text-[var(--brand-pink)] group-hover:inline">{item.es}</EditableText>
                   </span>
                 </div>
               ))}
@@ -64,7 +65,7 @@ export function Camp() {
                 "lift mt-8 h-14 rounded-full border-0 bg-gradient-to-r from-[var(--magenta)] via-[var(--brand-pink)] to-[var(--magenta)] px-10 text-base font-semibold text-white shadow-[0_8px_30px_rgb(255_0_153/0.30)] hover:brightness-110",
               )}
             >
-              Explore Camp ♡
+              <EditableText as="span" id="home.camp.cta">Explore Camp ♡</EditableText>
             </Link>
           </motion.div>
 
@@ -85,12 +86,12 @@ export function Camp() {
                 >
                   <Sun className="h-14 w-14 text-white" aria-hidden="true" />
                 </motion.div>
-                <p className="mt-6 font-display text-4xl text-gradient-brand">
+                <EditableText as="p" id="home.camp.cardTitle" className="mt-6 font-display text-4xl text-gradient-brand">
                   Camp AYMS
-                </p>
-                <p className="eyebrow mt-3 text-ink-soft">
+                </EditableText>
+                <EditableText as="p" id="home.camp.cardTagline" className="eyebrow mt-3 text-ink-soft">
                   connect · empower · celebrate
-                </p>
+                </EditableText>
                 <div className="mt-4 flex justify-center gap-1" aria-hidden="true">
                   {[...Array(5)].map((_, i) => (
                     <Star key={i} className="h-4 w-4 fill-[var(--coral)] text-[var(--coral)]" />

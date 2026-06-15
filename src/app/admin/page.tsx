@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
 import { useAuth } from "@/lib/store";
 import { useHasPermission } from "@/lib/use-roles-store";
 import { useAuthHydrated } from "@/lib/use-auth-hydrated";
@@ -15,6 +14,8 @@ import { NewsletterPanel } from "@/components/admin/newsletter-panel";
 import { SiteSettingsPanel } from "@/components/admin/site-settings-panel";
 import { ContentManager } from "@/components/admin/content-manager";
 import { SeoPanel } from "@/components/admin/seo-panel";
+import { TripsPanel } from "@/components/admin/trips-panel";
+import { EventsPanel } from "@/components/admin/events-panel";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -37,11 +38,13 @@ import {
   Settings as SettingsIcon,
   Sparkles,
   Search,
+  Plane,
+  CalendarDays,
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 
-type Tab = "pages" | "nav" | "content" | "templates" | "audience" | "settings" | "seo";
+type Tab = "pages" | "nav" | "content" | "trips" | "events" | "templates" | "audience" | "settings" | "seo";
 
 export default function AdminPage() {
   const user = useAuth((s) => s.user);
@@ -63,7 +66,7 @@ export default function AdminPage() {
   // Deep-link support: /admin?tab=content|settings|pages|… opens that tab.
   useEffect(() => {
     const t = new URLSearchParams(window.location.search).get("tab");
-    if (t && ["pages", "content", "nav", "settings", "templates", "audience", "seo"].includes(t)) {
+    if (t && ["pages", "content", "trips", "events", "nav", "settings", "templates", "audience", "seo"].includes(t)) {
       setActiveTab(t as Tab);
     }
   }, []);
@@ -97,13 +100,11 @@ export default function AdminPage() {
     // text-heavy pages (camp) open the live page in click-to-edit mode.
     switch (slug) {
       case "trips":
-        toast.info("Add, edit & reorder trips here.");
-        router.push("/community/admin/trips");
+        setActiveTab("trips");
         return;
       case "events":
       case "featured":
-        toast.info("Manage events & the featured event here.");
-        router.push("/community/admin/calendar");
+        setActiveTab("events");
         return;
       case "gallery":
         setContentSection("gallery");
@@ -139,7 +140,7 @@ export default function AdminPage() {
   if (!isAuthenticated || !allowed) return null;
 
   return (
-    <div className="flex h-screen bg-[#1A0814] text-white overflow-hidden">
+    <div className="dark flex h-screen bg-[#1A0814] text-white overflow-hidden">
       {/* Sidebar */}
       <aside className="flex w-72 shrink-0 flex-col border-r border-white/10 bg-[#2A0A1E]">
         <div className="flex h-14 items-center gap-2 px-4 border-b border-white/10">
@@ -152,6 +153,8 @@ export default function AdminPage() {
           {([
             { id: "pages" as Tab, icon: FileText, label: "Pages" },
             { id: "content" as Tab, icon: Sparkles, label: "Content" },
+            { id: "trips" as Tab, icon: Plane, label: "Trips" },
+            { id: "events" as Tab, icon: CalendarDays, label: "Events" },
             { id: "nav" as Tab, icon: Navigation, label: "Nav" },
             { id: "settings" as Tab, icon: SettingsIcon, label: "Settings" },
             { id: "seo" as Tab, icon: Search, label: "SEO" },
@@ -222,6 +225,14 @@ export default function AdminPage() {
       ) : activeTab === "content" ? (
         <div className="flex-1 overflow-hidden">
           <ContentManager section={contentSection} />
+        </div>
+      ) : activeTab === "trips" ? (
+        <div className="flex-1 overflow-hidden">
+          <TripsPanel />
+        </div>
+      ) : activeTab === "events" ? (
+        <div className="flex-1 overflow-hidden">
+          <EventsPanel />
         </div>
       ) : activeTab === "audience" ? (
         <div className="flex-1 overflow-hidden">

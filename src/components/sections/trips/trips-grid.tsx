@@ -7,6 +7,7 @@ import { useTrips } from "@/lib/use-trips";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { ReserveButton } from "@/components/trips/reserve-button";
+import { EditableText } from "@/components/inline/editable-text";
 import {
   Dialog,
   DialogContent,
@@ -81,7 +82,7 @@ export function TripsGrid() {
       {/* Filters */}
       <section className="glass sticky top-[88px] z-10 border-b border-[#221019]/10">
         <div className="mx-auto flex max-w-7xl items-center gap-2 overflow-x-auto px-4 py-3 sm:px-6 lg:px-8">
-          {FILTERS.map((f) => (
+          {FILTERS.map((f, i) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
@@ -92,7 +93,7 @@ export function TripsGrid() {
                   : "text-ink-soft hover:bg-[#FF0099]/5 hover:text-[#B51760]",
               )}
             >
-              {f}
+              <EditableText as="span" id={`trips.filter.${i}`}>{f}</EditableText>
             </button>
           ))}
           <div className="ml-auto shrink-0 text-sm font-medium text-ink-soft">
@@ -110,9 +111,9 @@ export function TripsGrid() {
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#FF7F50] opacity-75" />
                 <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[#FF7F50]" />
               </span>
-              <h3 className="eyebrow text-[#FF7F50]">
+              <EditableText as="h3" id="trips.limited.title" className="eyebrow text-[#FF7F50]">
                 Limited Spots Left
-              </h3>
+              </EditableText>
             </div>
             <div className="flex gap-4 overflow-x-auto pb-2 snap-x snap-mandatory" style={{ scrollbarWidth: "none" }}>
               {limitedSpots.map((trip) => (
@@ -261,16 +262,18 @@ export function TripsGrid() {
                 <Plane className="h-7 w-7 text-[#B51760]/50" aria-hidden="true" />
               </div>
               <p className="text-lg font-display text-ink">
-                No trips match &ldquo;{filter}&rdquo; right now
+                <EditableText as="span" id="trips.empty.titleBefore">No trips match</EditableText>{" "}
+                &ldquo;{filter}&rdquo;{" "}
+                <EditableText as="span" id="trips.empty.titleAfter">right now</EditableText>
               </p>
-              <p className="text-sm text-ink-soft mt-1">
+              <EditableText as="p" id="trips.empty.subtitle" className="text-sm text-ink-soft mt-1">
                 New destinations drop all the time — try another filter ♡
-              </p>
+              </EditableText>
               <button
                 onClick={() => setFilter("All")}
                 className="mt-5 rounded-full border border-[#221019]/15 px-5 py-1.5 text-sm font-semibold text-ink transition-colors hover:bg-[#FF0099]/5 hover:text-[#B51760] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]"
               >
-                Show all trips
+                <EditableText as="span" id="trips.empty.reset">Show all trips</EditableText>
               </button>
             </motion.div>
           )}
@@ -337,7 +340,7 @@ function TripDetail({ trip }: { trip: Trip }) {
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <h4 className="font-display text-ink text-sm mb-2 flex items-center gap-1.5">
-            <Sparkles className="h-4 w-4 text-[#FF0099]" /> Highlights
+            <Sparkles className="h-4 w-4 text-[#FF0099]" /> <EditableText as="span" id="trips.detail.highlights">Highlights</EditableText>
           </h4>
           <ul className="space-y-1.5">
             {trip.highlights.map((h) => (
@@ -350,7 +353,7 @@ function TripDetail({ trip }: { trip: Trip }) {
         </div>
         <div>
           <h4 className="font-display text-ink text-sm mb-2 flex items-center gap-1.5">
-            <Check className="h-4 w-4 text-green-600" /> Included
+            <Check className="h-4 w-4 text-green-600" /> <EditableText as="span" id="trips.detail.included">Included</EditableText>
           </h4>
           <ul className="space-y-1.5">
             {trip.includes.map((inc) => (
@@ -361,7 +364,7 @@ function TripDetail({ trip }: { trip: Trip }) {
             ))}
           </ul>
           <h4 className="font-display text-ink text-sm mt-4 mb-2 flex items-center gap-1.5">
-            <X className="h-4 w-4 text-red-400" /> Not Included
+            <X className="h-4 w-4 text-red-400" /> <EditableText as="span" id="trips.detail.notIncluded">Not Included</EditableText>
           </h4>
           <ul className="space-y-1.5">
             {trip.notIncluded.map((ni) => (

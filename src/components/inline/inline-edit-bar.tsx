@@ -19,9 +19,9 @@ const INPLACE_ROUTES = ["/", "/camp"];
 const EDIT_DESTINATION: Record<string, string> = {
   "/gallery": "/admin?tab=content&section=gallery",
   "/faq": "/admin?tab=content&section=faq",
-  "/trips": "/community/admin/trips",
-  "/events": "/community/admin/calendar",
-  "/featured": "/community/admin/calendar",
+  "/trips": "/admin?tab=trips",
+  "/events": "/admin?tab=events",
+  "/featured": "/admin?tab=events",
 };
 
 /**

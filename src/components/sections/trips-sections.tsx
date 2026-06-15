@@ -25,7 +25,7 @@ export const TRIPS_SECTIONS: SectionDef[] = [
     group: "Trips",
     description: "Region filters, the limited-spots rail, the live trips grid and the trip-detail dialog.",
     Component: () => <TripsGrid />,
-    manageHref: "/community/admin/trips",
+    manageHref: "/admin?tab=trips",
     manageLabel: "Manage trips",
   },
   {

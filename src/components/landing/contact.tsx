@@ -110,8 +110,9 @@ export function Contact() {
           >
             <EditableText as="p" id="home.contact.eyebrow" className="eyebrow text-[var(--brand-pink)]">Contact Us</EditableText>
             <h2 className="font-display text-title mt-3 text-ink text-balance">
-              Ready to join the{" "}
-              <span className="font-display-italic text-[var(--magenta)]">family</span>?
+              <EditableText as="span" id="home.contact.title.before">Ready to join the</EditableText>{" "}
+              <EditableText as="span" id="home.contact.title.accent" className="font-display-italic text-[var(--magenta)]">family</EditableText>
+              <EditableText as="span" id="home.contact.title.after">?</EditableText>
             </h2>
             <EditableText as="p" id="home.contact.lead" className="text-lead mt-5 text-ink-soft leading-relaxed">
               Have questions about events, trips, or membership? We&apos;d love
@@ -120,7 +121,7 @@ export function Contact() {
             </EditableText>
 
             <div className="mt-8 space-y-4">
-              {CONTACT_ITEMS.map((item) => {
+              {CONTACT_ITEMS.map((item, i) => {
                 const inner = (
                   <>
                     <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${item.gradient} elevate-2`}>
@@ -128,12 +129,12 @@ export function Contact() {
                     </div>
                     <div>
                       <p className="text-sm font-semibold text-ink">
-                        <span className="group-hover:hidden">{item.en.title}</span>
-                        <span className="hidden group-hover:inline text-[var(--magenta)]">{item.es.title}</span>
+                        <EditableText as="span" id={`home.contact.item.${i}.en.title`} className="group-hover:hidden">{item.en.title}</EditableText>
+                        <EditableText as="span" id={`home.contact.item.${i}.es.title`} className="hidden group-hover:inline text-[var(--magenta)]">{item.es.title}</EditableText>
                       </p>
                       <p className="text-xs text-ink-soft">
-                        <span className="group-hover:hidden">{item.en.sub}</span>
-                        <span className="hidden group-hover:inline">{item.es.sub}</span>
+                        <EditableText as="span" id={`home.contact.item.${i}.en.sub`} className="group-hover:hidden">{item.en.sub}</EditableText>
+                        <EditableText as="span" id={`home.contact.item.${i}.es.sub`} className="hidden group-hover:inline">{item.es.sub}</EditableText>
                       </p>
                     </div>
                   </>
@@ -174,8 +175,8 @@ export function Contact() {
               <CardHeader className="relative">
                 <EditableText as="p" id="home.contact.newsletterEyebrow" className="eyebrow text-[var(--brand-pink)]">Newsletter</EditableText>
                 <h3 className="font-display mt-2 text-2xl text-ink">
-                  Stay in the{" "}
-                  <span className="font-display-italic text-[var(--magenta)]">loop</span>
+                  <EditableText as="span" id="home.contact.newsletterTitle.before">Stay in the</EditableText>{" "}
+                  <EditableText as="span" id="home.contact.newsletterTitle.accent" className="font-display-italic text-[var(--magenta)]">loop</EditableText>
                 </h3>
                 <EditableText as="p" id="home.contact.newsletterSub" className="mt-1 text-sm text-ink-soft">
                   Be the first to know about new events, trips, and community

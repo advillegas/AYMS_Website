@@ -5,6 +5,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Star, Quote } from "lucide-react";
 import { FlipCard } from "@/components/ui/flip-card";
 import { useTestimonials, type Testimonial } from "@/lib/use-testimonials";
+import { EditableText } from "@/components/inline/editable-text";
 
 function TestimonialCard({ t, hidden }: { t: Testimonial; hidden?: boolean }) {
   return (
@@ -87,15 +88,15 @@ export function Testimonials() {
           transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
           className="max-w-2xl"
         >
-          <p className="eyebrow text-[var(--brand-pink)]">Testimonials</p>
+          <EditableText as="p" id="home.testimonials.eyebrow" className="eyebrow text-[var(--brand-pink)]">Testimonials</EditableText>
           <h2 className="font-display text-title mt-3 text-ink text-balance">
-            See what it&apos;s{" "}
-            <span className="font-display-italic text-[var(--magenta)]">really like</span>
+            <EditableText as="span" id="home.testimonials.title.before">See what it&apos;s</EditableText>{" "}
+            <EditableText as="span" id="home.testimonials.title.accent" className="font-display-italic text-[var(--magenta)]">really like</EditableText>
           </h2>
-          <p className="text-lead mt-4 max-w-xl text-ink-soft leading-relaxed">
+          <EditableText as="p" id="home.testimonials.lead" className="text-lead mt-4 max-w-xl text-ink-soft leading-relaxed">
             Honest words from amigas who showed up solo and left with a second
             family.
-          </p>
+          </EditableText>
         </motion.div>
       </div>
 

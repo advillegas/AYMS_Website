@@ -33,10 +33,8 @@ export function GalleryHero() {
           Memories for the Books
         </EditableText>
         <h1 className="text-hero font-display text-ink text-balance mt-3">
-          Past{" "}
-          <span className="font-display-italic marker-swipe text-[#B51760]">
-            Trips
-          </span>
+          <EditableText as="span" id="gallery.hero.title">Past</EditableText>{" "}
+          <EditableText as="span" id="gallery.hero.titleAccent" className="font-display-italic marker-swipe text-[#B51760]">Trips</EditableText>
         </h1>
         <EditableText as="p" id="gallery.hero.lead" className="text-lead mx-auto mt-6 max-w-xl text-ink-soft">
           Where we&apos;ve been, who we&apos;ve become. Every trip builds bonds that last a lifetime.

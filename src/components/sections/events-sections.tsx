@@ -25,7 +25,7 @@ export const EVENTS_SECTIONS: SectionDef[] = [
     group: "Events",
     description: "Type filters, the upcoming-events timeline, and the RSVP/detail dialog.",
     Component: () => <EventsBody />,
-    manageHref: "/community/admin/calendar",
+    manageHref: "/admin?tab=events",
     manageLabel: "Manage events",
   },
   {

@@ -60,8 +60,8 @@ export function About() {
           >
             <EditableText as="p" id="home.about.eyebrow" className="eyebrow text-[var(--brand-pink)]">About Us</EditableText>
             <h2 className="text-title mt-4 font-display text-ink text-balance">
-              More than a community —{" "}
-              <span className="font-display-italic marker-swipe">we are family</span>
+              <EditableText as="span" id="home.about.title.before">More than a community —</EditableText>{" "}
+              <EditableText as="span" id="home.about.title.accent" className="font-display-italic marker-swipe">we are family</EditableText>
             </h2>
             <EditableText as="p" id="home.about.lead" className="text-lead mt-6 max-w-xl text-ink-soft">
               Amigas Y Más Social is the Latina travel community built on
@@ -87,14 +87,14 @@ export function About() {
             </span>
             <blockquote className="relative">
               <p className="font-display text-[1.7rem] leading-snug text-ink sm:text-[2rem]">
-                We don&apos;t just travel together — we{" "}
-                <span className="font-display-italic text-[var(--brand-pink)]">belong</span>{" "}
-                together.
+                <EditableText as="span" id="home.about.quote.before">We don&apos;t just travel together — we</EditableText>{" "}
+                <EditableText as="span" id="home.about.quote.accent" className="font-display-italic text-[var(--brand-pink)]">belong</EditableText>{" "}
+                <EditableText as="span" id="home.about.quote.after">together.</EditableText>
               </p>
             </blockquote>
             <figcaption className="mt-5 flex items-center gap-2 text-sm text-ink-soft">
               <span className="h-px w-8 bg-[var(--magenta)]/40" aria-hidden="true" />
-              The AYMS promise
+              <EditableText as="span" id="home.about.promiseLabel">The AYMS promise</EditableText>
             </figcaption>
           </motion.figure>
         </div>
@@ -116,8 +116,8 @@ export function About() {
                     <div className={`flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[var(--magenta)]/12 to-[#FACDE8]/40 ${v.iconColor}`}>
                       <v.icon className="h-6 w-6" aria-hidden="true" />
                     </div>
-                    <h3 className="font-display text-xl text-ink">{v.en.title}</h3>
-                    <p className="text-sm leading-relaxed text-ink-soft">{v.en.description}</p>
+                    <EditableText as="h3" id={`home.about.value.${i}.en.title`} className="font-display text-xl text-ink">{v.en.title}</EditableText>
+                    <EditableText as="p" id={`home.about.value.${i}.en.desc`} className="text-sm leading-relaxed text-ink-soft">{v.en.description}</EditableText>
                   </div>
                 }
                 back={
@@ -125,8 +125,8 @@ export function About() {
                     <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/15 backdrop-blur-sm">
                       <v.icon className="h-6 w-6 text-white" aria-hidden="true" />
                     </div>
-                    <h3 className="font-display text-xl">{v.es.title}</h3>
-                    <p className="text-sm leading-relaxed text-white/85">{v.es.description}</p>
+                    <EditableText as="h3" id={`home.about.value.${i}.es.title`} className="font-display text-xl">{v.es.title}</EditableText>
+                    <EditableText as="p" id={`home.about.value.${i}.es.desc`} className="text-sm leading-relaxed text-white/85">{v.es.description}</EditableText>
                   </div>
                 }
               />
@@ -144,7 +144,7 @@ export function About() {
         >
           <div className="flex flex-col items-center gap-8 text-center sm:flex-row sm:items-start sm:text-left">
             <div className="elevate-float flex h-24 w-24 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[var(--magenta)] via-[var(--brand-pink)] to-[var(--coral)] font-display text-3xl font-semibold text-white">
-              SV
+              <EditableText as="span" id="home.about.founderMonogram">SV</EditableText>
             </div>
             <div className="flex-1">
               <EditableText as="p" id="home.about.founderEyebrow" className="eyebrow text-[var(--magenta)]">Founder &amp; CEO</EditableText>

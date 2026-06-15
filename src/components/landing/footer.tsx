@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Loader2, Send } from "lucide-react";
 import { useNewsletter } from "@/lib/use-newsletter";
 import { useSiteSettings } from "@/lib/use-site-content";
+import { EditableText } from "@/components/inline/editable-text";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -46,19 +47,20 @@ function FooterSignup() {
 
   return (
     <div className="w-full max-w-sm">
-      <p className="eyebrow text-[#FACDE8]">La Carta · The Newsletter</p>
+      <EditableText as="p" id="home.footer.newsletterLabel" className="eyebrow text-[#FACDE8]">La Carta · The Newsletter</EditableText>
       <p className="mt-2 font-display text-xl text-white">
-        Trips &amp; events, <span className="font-display-italic text-[#FACDE8]">in your inbox</span>
+        <EditableText as="span" id="home.footer.newsletterTitle.before">Trips &amp; events,</EditableText>{" "}
+        <EditableText as="span" id="home.footer.newsletterTitle.accent" className="font-display-italic text-[#FACDE8]">in your inbox</EditableText>
       </p>
-      <p className="mt-1.5 text-xs text-white/50">
+      <EditableText as="p" id="home.footer.newsletterFinePrint" className="mt-1.5 text-xs text-white/50">
         No spam, ever. Unsubscribe anytime. ♡
-      </p>
+      </EditableText>
       {done ? (
         <p
           role="status"
           className="mt-3 rounded-2xl border border-[var(--magenta)]/30 bg-[var(--magenta)]/10 px-4 py-3 text-sm font-medium text-[#FFB3D0]"
         >
-          You&apos;re on the list — gracias! ♡
+          <EditableText as="span" id="home.footer.newsletterSuccess">You&apos;re on the list — gracias! ♡</EditableText>
         </p>
       ) : (
         <form onSubmit={handleSubmit} className="mt-3 flex items-center gap-2">
@@ -133,14 +135,14 @@ export function Footer() {
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Big editorial sign-off */}
         <div className="max-w-2xl">
-          <p className="eyebrow text-[#FACDE8]">Connect · Empower · Celebrate</p>
+          <EditableText as="p" id="home.footer.eyebrow" className="eyebrow text-[#FACDE8]">Connect · Empower · Celebrate</EditableText>
           <h2 className="mt-4 font-display text-title leading-[1.05] text-white">
-            Find your new{" "}
-            <span className="font-display-italic text-[#FACDE8]">amigas</span>
-            <span className="text-[var(--magenta)]"> ♡</span>
+            <EditableText as="span" id="home.footer.title.before">Find your new</EditableText>{" "}
+            <EditableText as="span" id="home.footer.title.accent" className="font-display-italic text-[#FACDE8]">amigas</EditableText>{" "}
+            <EditableText as="span" id="home.footer.title.heart" className="text-[var(--magenta)]">♡</EditableText>
           </h2>
           <p className="mt-4 max-w-md text-base leading-relaxed text-white/55">
-            A Latina travel community built on sisterhood, cultura y aventura.{" "}
+            <EditableText as="span" id="home.footer.blurb">A Latina travel community built on sisterhood, cultura y aventura.</EditableText>{" "}
             {settings.tagline}
           </p>
         </div>
@@ -167,21 +169,21 @@ export function Footer() {
             </div>
           </div>
 
-          {FOOTER_COLUMNS.map((col) => (
+          {FOOTER_COLUMNS.map((col, ci) => (
             <nav
               key={col.heading}
               aria-label={col.heading}
               className="md:col-span-2"
             >
-              <p className="eyebrow text-white/40">{col.heading}</p>
+              <EditableText as="p" id={`home.footer.col.${ci}.heading`} className="eyebrow text-white/40">{col.heading}</EditableText>
               <ul className="mt-4 space-y-3">
-                {col.links.map((l) => (
+                {col.links.map((l, li) => (
                   <li key={l.href}>
                     <Link
                       href={l.href}
                       className="text-sm text-white/65 transition-colors hover:text-[#FACDE8] focus-visible:outline-none focus-visible:text-[#FACDE8]"
                     >
-                      {l.label}
+                      <EditableText as="span" id={`home.footer.col.${ci}.link.${li}`}>{l.label}</EditableText>
                     </Link>
                   </li>
                 ))}
@@ -190,7 +192,7 @@ export function Footer() {
           ))}
 
           <div className="md:col-span-3">
-            <p className="eyebrow text-white/40">Follow</p>
+            <EditableText as="p" id="home.footer.followHeading" className="eyebrow text-white/40">Follow</EditableText>
             <a
               href={igUrl}
               target="_blank"
@@ -222,15 +224,15 @@ export function Footer() {
               href="/privacy"
               className="transition-colors hover:text-[#FACDE8] focus-visible:outline-none focus-visible:text-[#FACDE8]"
             >
-              Privacy Policy
+              <EditableText as="span" id="home.footer.legalPrivacy">Privacy Policy</EditableText>
             </Link>
             <Link
               href="/terms"
               className="transition-colors hover:text-[#FACDE8] focus-visible:outline-none focus-visible:text-[#FACDE8]"
             >
-              Terms of Service
+              <EditableText as="span" id="home.footer.legalTerms">Terms of Service</EditableText>
             </Link>
-            <span className="tracking-[0.18em] uppercase">Hecho con cariño</span>
+            <EditableText as="span" id="home.footer.madeWith" className="tracking-[0.18em] uppercase">Hecho con cariño</EditableText>
           </div>
         </div>
       </div>

@@ -20,8 +20,8 @@ export function EventsCta() {
         className="relative mx-auto max-w-2xl px-4 text-center sm:px-6 lg:px-8"
       >
         <h2 className="text-title font-display text-ink">
-          Want to see the{" "}
-          <span className="font-display-italic marker-swipe text-[#B51760]">full calendar?</span>
+          <EditableText as="span" id="events.cta.title">Want to see the</EditableText>{" "}
+          <EditableText as="span" id="events.cta.titleAccent" className="font-display-italic marker-swipe text-[#B51760]">full calendar?</EditableText>
         </h2>
         <EditableText as="p" id="events.cta.lead" className="mt-3 text-ink-soft text-lead">
           Join the community portal for the interactive calendar, RSVP tracking,
@@ -34,7 +34,7 @@ export function EventsCta() {
             "lift mt-8 h-14 rounded-full border-0 bg-gradient-to-r from-[#FF0099] to-[#B51760] px-10 text-base font-semibold tracking-wide text-white shadow-[0_8px_30px_rgb(255_0_153/0.30)] hover:brightness-110"
           )}
         >
-          Open Community Calendar ♡
+          <EditableText as="span" id="events.cta.button">Open Community Calendar ♡</EditableText>
         </Link>
       </motion.div>
     </section>

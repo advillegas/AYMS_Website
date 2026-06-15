@@ -58,7 +58,7 @@ export const HOME_SECTIONS: SectionDef[] = [
     group: "Home",
     description: "Destination gallery with live trip counts.",
     Component: () => <Destinations />,
-    manageHref: "/community/admin/trips",
+    manageHref: "/admin?tab=trips",
     manageLabel: "Manage trips (counts)",
   },
   {
@@ -74,7 +74,7 @@ export const HOME_SECTIONS: SectionDef[] = [
     group: "Home",
     description: "Upcoming trips pulled live from the trips CRM.",
     Component: () => <Trips />,
-    manageHref: "/community/admin/trips",
+    manageHref: "/admin?tab=trips",
     manageLabel: "Manage trips",
   },
   {
@@ -101,7 +101,7 @@ export const HOME_SECTIONS: SectionDef[] = [
     group: "Home",
     description: "Stats, highlights and the upcoming-events ticker.",
     Component: () => <CommunityPreview />,
-    manageHref: "/community/admin/calendar",
+    manageHref: "/admin?tab=events",
     manageLabel: "Manage events",
   },
   {

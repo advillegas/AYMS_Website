@@ -111,11 +111,11 @@ export function CommunityPreview() {
         >
           <p className="eyebrow inline-flex items-center justify-center gap-2 text-[var(--brand-pink)]">
             <Sparkles className="h-3.5 w-3.5 text-[var(--magenta)]" aria-hidden="true" />
-            Join the Family
+            <EditableText as="span" id="home.community.eyebrow">Join the Family</EditableText>
           </p>
           <h2 className="font-display text-title mt-4 text-ink text-balance">
-            Become an{" "}
-            <span className="font-display-italic text-[var(--magenta)]">Amiga</span>
+            <EditableText as="span" id="home.community.title.before">Become an</EditableText>{" "}
+            <EditableText as="span" id="home.community.title.accent" className="font-display-italic text-[var(--magenta)]">Amiga</EditableText>
           </h2>
           <EditableText as="p" id="home.community.lead" className="text-lead mx-auto mt-5 max-w-xl text-ink-soft leading-relaxed">
             Real friendships, bucket-list adventures, and a sisterhood that
@@ -203,7 +203,7 @@ export function CommunityPreview() {
             <div className="mt-4 overflow-hidden rounded-3xl glass-strong elevate-2">
               {upcomingEvents.length === 0 ? (
                 <div className="p-8 text-center text-sm text-ink-soft">
-                  New events are being planned — check the calendar soon. ♡
+                  <EditableText as="span" id="home.community.eventsEmpty">New events are being planned — check the calendar soon. ♡</EditableText>
                 </div>
               ) : (
                 <ul className="divide-y divide-[#FACDE8]/50">
@@ -238,7 +238,7 @@ export function CommunityPreview() {
                   href="/events"
                   className="flex items-center justify-center gap-1.5 text-sm font-semibold text-[var(--magenta)] transition-colors hover:text-[var(--brand-pink)]"
                 >
-                  See the full calendar
+                  <EditableText as="span" id="home.community.calendarCta">See the full calendar</EditableText>
                   <ArrowRight className="h-4 w-4" aria-hidden="true" />
                 </Link>
               </div>
@@ -258,14 +258,14 @@ export function CommunityPreview() {
             href="/register"
             className="lift inline-flex h-12 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[var(--magenta)] to-[var(--brand-pink)] px-8 text-sm font-semibold text-white shadow-[0_6px_24px_rgb(255_0_153/0.30)] transition-all hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--magenta)]/60 focus-visible:ring-offset-2"
           >
-            Become an Amiga — it&apos;s free
+            <EditableText as="span" id="home.community.ctaPrimary">Become an Amiga — it&apos;s free</EditableText>
             <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </Link>
           <Link
             href="/trips"
             className="lift inline-flex h-12 items-center justify-center rounded-full border border-[#221019]/15 px-8 text-sm font-semibold text-ink transition-all hover:border-[var(--magenta)]/50 hover:bg-white/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--magenta)]/40 focus-visible:ring-offset-2"
           >
-            Browse trips
+            <EditableText as="span" id="home.community.ctaSecondary">Browse trips</EditableText>
           </Link>
         </motion.div>
       </div>

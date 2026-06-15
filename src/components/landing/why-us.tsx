@@ -67,8 +67,8 @@ export function WhyUs() {
         >
           <EditableText as="p" id="home.whyus.eyebrow" className="eyebrow text-[var(--magenta)]">Why Travel With Us</EditableText>
           <h2 className="text-title mt-4 font-display text-ink text-balance">
-            Sit back &amp; relax,{" "}
-            <span className="font-display-italic marker-swipe">you&apos;re in good hands</span>
+            <EditableText as="span" id="home.whyus.title.before">Sit back &amp; relax,</EditableText>{" "}
+            <EditableText as="span" id="home.whyus.title.accent" className="font-display-italic marker-swipe">you&apos;re in good hands</EditableText>
           </h2>
           <EditableText as="p" id="home.whyus.lead" className="text-lead mx-auto mt-5 text-ink-soft">
             Unlike big commercial group tours, we prioritize boutique
@@ -92,15 +92,15 @@ export function WhyUs() {
                     <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[var(--magenta)]/12 to-[#FACDE8]/45">
                       <p.icon className="h-6 w-6 text-[var(--magenta)]" aria-hidden="true" />
                     </div>
-                    <h3 className="font-display text-lg text-ink">{p.en.title}</h3>
-                    <p className="text-sm leading-relaxed text-ink-soft">{p.en.desc}</p>
+                    <EditableText as="h3" id={`home.whyus.prop.${i}.en.title`} className="font-display text-lg text-ink">{p.en.title}</EditableText>
+                    <EditableText as="p" id={`home.whyus.prop.${i}.en.desc`} className="text-sm leading-relaxed text-ink-soft">{p.en.desc}</EditableText>
                   </div>
                 }
                 back={
                   <div className={`flex h-full flex-col items-start justify-center gap-3 rounded-3xl bg-gradient-to-br ${p.gradientBack} p-7 text-white`}>
                     <p.icon className="h-7 w-7 text-white/80" aria-hidden="true" />
-                    <h3 className="font-display text-lg">{p.es.title}</h3>
-                    <p className="text-sm leading-relaxed text-white/85">{p.es.desc}</p>
+                    <EditableText as="h3" id={`home.whyus.prop.${i}.es.title`} className="font-display text-lg">{p.es.title}</EditableText>
+                    <EditableText as="p" id={`home.whyus.prop.${i}.es.desc`} className="text-sm leading-relaxed text-white/85">{p.es.desc}</EditableText>
                   </div>
                 }
               />

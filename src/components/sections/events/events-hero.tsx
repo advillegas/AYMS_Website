@@ -30,8 +30,8 @@ export function EventsHero() {
           </EditableText>
         </motion.div>
         <h1 className="text-editorial font-display text-ink text-balance">
-          Upcoming{" "}
-          <span className="font-display-italic marker-swipe text-[#B51760]">Events</span>
+          <EditableText as="span" id="events.hero.title">Upcoming</EditableText>{" "}
+          <EditableText as="span" id="events.hero.titleAccent" className="font-display-italic marker-swipe text-[#B51760]">Events</EditableText>
         </h1>
         <EditableText
           as="p"

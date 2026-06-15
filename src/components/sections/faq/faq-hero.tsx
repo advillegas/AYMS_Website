@@ -32,10 +32,8 @@ export function FaqHero() {
           Got Questions? We&apos;ve Got Answers
         </EditableText>
         <h1 className="text-hero font-display text-ink text-balance mt-3">
-          Frequently{" "}
-          <span className="font-display-italic marker-swipe text-[#B51760]">
-            Asked
-          </span>
+          <EditableText as="span" id="faq.hero.title">Frequently</EditableText>{" "}
+          <EditableText as="span" id="faq.hero.titleAccent" className="font-display-italic marker-swipe text-[#B51760]">Asked</EditableText>
         </h1>
         <EditableText as="p" id="faq.hero.lead" className="text-lead mx-auto mt-6 max-w-xl text-ink-soft">
           Everything you need to know about traveling with AYMS. Can&apos;t find

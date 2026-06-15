@@ -2,6 +2,7 @@
 
 import { motion, useReducedMotion } from "framer-motion";
 import { useGalleryContent } from "@/lib/use-site-content";
+import { EditableText } from "@/components/inline/editable-text";
 
 /**
  * Closing stats band — trip totals derived from the live gallery content,
@@ -33,7 +34,7 @@ export function GalleryStats() {
               <p className="font-display text-4xl text-[#B51760]">
                 {s.value}
               </p>
-              <p className="mt-2 text-xs font-semibold uppercase tracking-wider text-ink-soft">{s.label}</p>
+              <EditableText as="p" id={`gallery.stats.${i}.label`} className="mt-2 text-xs font-semibold uppercase tracking-wider text-ink-soft">{s.label}</EditableText>
             </motion.div>
           ))}
         </div>

@@ -47,10 +47,10 @@ export function TripsHowTo() {
               <div className="text-xs font-bold text-[#FF7F50]/80 uppercase tracking-wider mb-1.5">
                 Step {s.step}
               </div>
-              <h3 className="font-display text-ink text-lg">
+              <EditableText as="h3" id={`trips.howto.step.${i}.title`} className="font-display text-ink text-lg">
                 {s.title}
-              </h3>
-              <p className="mt-1.5 text-sm text-ink-soft leading-relaxed">{s.desc}</p>
+              </EditableText>
+              <EditableText as="p" id={`trips.howto.step.${i}.desc`} className="mt-1.5 text-sm text-ink-soft leading-relaxed">{s.desc}</EditableText>
             </motion.div>
           ))}
         </div>

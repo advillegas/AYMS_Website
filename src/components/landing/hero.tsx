@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { Heart, Users, Sparkles, ArrowDown } from "lucide-react";
 import { FlipCard } from "@/components/ui/flip-card";
 import { useHomeContent, useSiteSettings } from "@/lib/use-site-content";
+import { EditableText } from "@/components/inline/editable-text";
 
 const PILLARS = [
   {
@@ -153,17 +154,17 @@ export function Hero() {
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-[var(--magenta)]" />
               </span>
               <span className="eyebrow text-[var(--brand-pink)]" style={{ fontSize: "0.68rem" }}>
-                Community · Travel · Sisterhood
+                <EditableText as="span" id="home.hero.kicker">Community · Travel · Sisterhood</EditableText>
               </span>
             </motion.div>
 
             <RotatingHeadline />
 
-            <p className="text-lead text-ink-soft mx-auto mt-7 max-w-2xl">
+            <EditableText as="p" id="home.hero.lead" className="text-lead text-ink-soft mx-auto mt-7 max-w-2xl">
               The Latina travel community where sisterhood meets adventure.
               Group trips, local meetups, and lifelong friendships — we&apos;re
               ready to be your new family.
-            </p>
+            </EditableText>
 
             {/* Floating glass stat chips */}
             <motion.div
@@ -197,7 +198,7 @@ export function Hero() {
                 "lift group h-14 rounded-full border-0 bg-gradient-to-r from-[var(--magenta)] to-[var(--brand-pink)] px-10 text-base font-semibold tracking-wide text-white shadow-[0_8px_30px_rgb(255_0_153/0.30)] hover:brightness-110",
               )}
             >
-              Become an Amiga ♡
+              <EditableText as="span" id="home.hero.ctaPrimary">Become an Amiga ♡</EditableText>
             </Link>
             <a
               href="#about"
@@ -206,7 +207,7 @@ export function Hero() {
                 "h-14 rounded-full border border-[#221019]/15 bg-transparent px-10 text-base font-semibold text-ink hover:border-[#221019]/25 hover:bg-[#221019]/[0.04]",
               )}
             >
-              Learn More
+              <EditableText as="span" id="home.hero.ctaSecondary">Learn More</EditableText>
             </a>
           </motion.div>
 
@@ -230,8 +231,8 @@ export function Hero() {
                       <span className={`inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br ${item.accent} shadow-[0_6px_18px_rgb(255_0_153/0.22)]`}>
                         <item.icon className="h-6 w-6 text-white" aria-hidden="true" />
                       </span>
-                      <h3 className="font-display text-lg font-semibold text-ink">{item.en.label}</h3>
-                      <p className="text-sm text-ink-soft">{item.en.desc}</p>
+                      <EditableText as="h3" id={`home.hero.pillar.${i}.en.title`} className="font-display text-lg font-semibold text-ink">{item.en.label}</EditableText>
+                      <EditableText as="p" id={`home.hero.pillar.${i}.en.desc`} className="text-sm text-ink-soft">{item.en.desc}</EditableText>
                     </div>
                   }
                   back={
@@ -239,8 +240,8 @@ export function Hero() {
                       <span className={`inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br ${item.accent} shadow-[0_6px_18px_rgb(255_0_153/0.22)]`}>
                         <item.icon className="h-6 w-6 text-white" aria-hidden="true" />
                       </span>
-                      <h3 className="font-display-italic text-lg text-[var(--brand-pink)]">{item.es.label}</h3>
-                      <p className="text-sm text-ink-soft">{item.es.desc}</p>
+                      <EditableText as="h3" id={`home.hero.pillar.${i}.es.title`} className="font-display-italic text-lg text-[var(--brand-pink)]">{item.es.label}</EditableText>
+                      <EditableText as="p" id={`home.hero.pillar.${i}.es.desc`} className="text-sm text-ink-soft">{item.es.desc}</EditableText>
                     </div>
                   }
                 />
@@ -257,7 +258,7 @@ export function Hero() {
             transition={{ delay: prefersReducedMotion ? 0 : 1.6 }}
             className="mx-auto mt-16 flex w-fit flex-col items-center gap-2 text-ink-soft transition-colors hover:text-ink"
           >
-            <span className="text-[10px] font-medium uppercase tracking-[0.3em]">Scroll</span>
+            <EditableText as="span" id="home.hero.scroll" className="text-[10px] font-medium uppercase tracking-[0.3em]">Scroll</EditableText>
             <motion.span
               animate={prefersReducedMotion ? undefined : { y: [0, 6, 0] }}
               transition={prefersReducedMotion ? undefined : { duration: 1.6, repeat: Infinity, ease: "easeInOut" }}

@@ -55,8 +55,9 @@ export function Destinations() {
         >
           <EditableText as="p" id="home.destinations.eyebrow" className="eyebrow text-[var(--brand-pink)]">Explore by Destination</EditableText>
           <h2 className="text-title mt-3 font-display text-ink text-balance">
-            Where will{" "}
-            <span className="font-display-italic text-[var(--magenta)]">you go</span>?
+            <EditableText as="span" id="home.destinations.title.before">Where will</EditableText>{" "}
+            <EditableText as="span" id="home.destinations.title.accent" className="font-display-italic text-[var(--magenta)]">you go</EditableText>
+            <EditableText as="span" id="home.destinations.title.after">?</EditableText>
           </h2>
         </motion.div>
 

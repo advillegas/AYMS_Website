@@ -6,6 +6,7 @@ import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { useGalleryContent } from "@/lib/use-site-content";
 import { MapPin, Users, Calendar, Images, Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { EditableText } from "@/components/inline/editable-text";
 
 const YEARS = ["All", "2026", "2025", "2024"] as const;
 
@@ -152,11 +153,13 @@ export function GalleryGrid() {
                 <Images className="h-7 w-7 text-ink-soft/60" aria-hidden="true" />
               </div>
               <p className="font-display text-lg text-ink">
-                No trips from {yearFilter} to show yet
+                <EditableText as="span" id="gallery.empty.titleBefore">No trips from</EditableText>{" "}
+                {yearFilter}{" "}
+                <EditableText as="span" id="gallery.empty.titleAfter">to show yet</EditableText>
               </p>
-              <p className="mt-1 text-sm text-ink-soft">
+              <EditableText as="p" id="gallery.empty.subtitle" className="mt-1 text-sm text-ink-soft">
                 Pick another year to relive the memories ♡
-              </p>
+              </EditableText>
             </motion.div>
           )}
         </div>

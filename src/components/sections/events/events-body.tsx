@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { EventRsvp } from "@/components/community/event-rsvp";
+import { EditableText } from "@/components/inline/editable-text";
 
 /** Event types that take RSVPs on the public page (not trips/synced feeds). */
 const RSVP_TYPES = new Set(["social", "meetup", "camp"]);
@@ -79,7 +80,7 @@ export function EventsBody() {
       {/* Filters */}
       <section className="glass sticky top-[88px] z-10 border-b border-[#221019]/10">
         <div className="mx-auto flex max-w-4xl items-center gap-2 overflow-x-auto px-4 py-3 sm:px-6 lg:px-8">
-          {FILTERS.map((f) => (
+          {FILTERS.map((f, i) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
@@ -90,7 +91,7 @@ export function EventsBody() {
                   : "text-ink-soft hover:bg-[#FF0099]/5 hover:text-[#B51760]",
               )}
             >
-              {f}
+              <EditableText as="span" id={`events.filter.${i}`}>{f}</EditableText>
             </button>
           ))}
         </div>
@@ -130,21 +131,25 @@ export function EventsBody() {
                 <Calendar className="h-7 w-7 text-[#B51760]/50" />
               </div>
               <p className="text-lg font-display text-ink">
-                {filter === "All"
-                  ? "Nothing on the calendar yet"
-                  : `No ${filter.toLowerCase()} events coming up`}
+                {filter === "All" ? (
+                  <EditableText as="span" id="events.empty.title">Nothing on the calendar yet</EditableText>
+                ) : (
+                  `No ${filter.toLowerCase()} events coming up`
+                )}
               </p>
               <p className="text-sm text-ink-soft mt-1">
-                {filter === "All"
-                  ? "Check back soon, amiga — new adventures drop often ♡"
-                  : "Try a different filter, or check back soon ♡"}
+                {filter === "All" ? (
+                  <EditableText as="span" id="events.empty.subtitleAll">Check back soon, amiga — new adventures drop often ♡</EditableText>
+                ) : (
+                  <EditableText as="span" id="events.empty.subtitleFiltered">Try a different filter, or check back soon ♡</EditableText>
+                )}
               </p>
               {filter !== "All" && (
                 <button
                   onClick={() => setFilter("All")}
                   className="mt-5 rounded-full border border-[#221019]/15 px-5 py-1.5 text-sm font-semibold text-ink transition-colors hover:bg-[#FF0099]/5 hover:text-[#B51760] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]"
                 >
-                  Show all events
+                  <EditableText as="span" id="events.empty.reset">Show all events</EditableText>
                 </button>
               )}
             </motion.div>

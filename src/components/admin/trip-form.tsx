@@ -40,7 +40,6 @@ interface TripDraft {
   image: string;
   bookingUrl: string;
   bookingLabel: string;
-  reserveLabel: string;
   published: boolean;
   featured: boolean;
   order: string;
@@ -112,7 +111,6 @@ export function TripFormDialog({
   const [image, setImage] = useState("");
   const [bookingUrl, setBookingUrl] = useState("");
   const [bookingLabel, setBookingLabel] = useState("");
-  const [reserveLabel, setReserveLabel] = useState("");
   const [published, setPublished] = useState(true);
   const [featured, setFeatured] = useState(false);
   const [order, setOrder] = useState("");
@@ -127,7 +125,7 @@ export function TripFormDialog({
   const data: TripDraft = {
     title, destination, country, dates, duration, price, deposit, spots, spotsLeft,
     status, description, highlights, includes, notIncluded, emoji, gradient, image,
-    bookingUrl, bookingLabel, reserveLabel, published, featured, order,
+    bookingUrl, bookingLabel, published, featured, order,
   };
   const dataJson = JSON.stringify(data);
   const latestRef = useRef<TripDraft>(data);
@@ -141,7 +139,6 @@ export function TripFormDialog({
     setDescription(d.description); setHighlights(d.highlights); setIncludes(d.includes);
     setNotIncluded(d.notIncluded); setEmoji(d.emoji); setGradient(d.gradient);
     setImage(d.image); setBookingUrl(d.bookingUrl); setBookingLabel(d.bookingLabel);
-    setReserveLabel(d.reserveLabel);
     setPublished(d.published); setFeatured(d.featured); setOrder(d.order);
   }
 
@@ -182,7 +179,6 @@ export function TripFormDialog({
     setImage(trip?.image ?? "");
     setBookingUrl(trip?.bookingUrl ?? "");
     setBookingLabel(trip?.bookingLabel ?? "");
-    setReserveLabel(trip?.reserveLabel ?? "");
     // `undefined` published counts as published (legacy seeds).
     setPublished(trip ? trip.published !== false : true);
     setFeatured(trip ? !!trip.featured : false);
@@ -199,7 +195,6 @@ export function TripFormDialog({
       includes: arrayToLines(trip?.includes), notIncluded: arrayToLines(trip?.notIncluded),
       emoji: trip?.emoji ?? "", gradient: trip?.gradient || DEFAULT_GRADIENT, image: trip?.image ?? "",
       bookingUrl: trip?.bookingUrl ?? "", bookingLabel: trip?.bookingLabel ?? "",
-      reserveLabel: trip?.reserveLabel ?? "",
       published: trip ? trip.published !== false : true, featured: trip ? !!trip.featured : false,
       order: trip && typeof trip.order === "number" ? String(trip.order) : "",
     } satisfies TripDraft);
@@ -229,7 +224,6 @@ export function TripFormDialog({
     setImage("");
     setBookingUrl("");
     setBookingLabel("");
-    setReserveLabel("");
     setPublished(true);
     setFeatured(false);
     setOrder("");
@@ -284,7 +278,6 @@ export function TripFormDialog({
         image: image.trim(),
         bookingUrl: ensureHttp(bookingUrl) || undefined,
         bookingLabel: bookingLabel.trim() || undefined,
-        reserveLabel: reserveLabel.trim() || undefined,
         published,
         featured,
       };
@@ -531,7 +524,7 @@ export function TripFormDialog({
           </div>
 
           <div className="grid gap-1.5">
-            <Label>&ldquo;Book Now&rdquo; link</Label>
+            <Label>Booking link</Label>
             <Input
               type="url"
               inputMode="url"
@@ -540,37 +533,23 @@ export function TripFormDialog({
               placeholder="https://your-payment-or-details-page.com"
             />
             <p className="text-[11px] text-muted-foreground">
-              Paste a payment or details page URL. When set, the trip shows a
-              &ldquo;Book Now&rdquo; button that opens it in a new tab.
+              The trip&apos;s button opens this payment or details page in a new
+              tab. Leave blank to use the in-app &ldquo;reserve a spot&rdquo; hold instead.
             </p>
           </div>
 
-          {bookingUrl.trim() ? (
-            <div className="grid gap-1.5">
-              <Label>&ldquo;Book Now&rdquo; button text</Label>
-              <Input
-                value={bookingLabel}
-                onChange={(e) => setBookingLabel(e.target.value)}
-                placeholder="Book Now"
-              />
-              <p className="text-[11px] text-muted-foreground">
-                Defaults to &ldquo;Book Now&rdquo;. Try &ldquo;Reserve &amp; Pay&rdquo; or &ldquo;View &amp; Book&rdquo;.
-              </p>
-            </div>
-          ) : (
-            <div className="grid gap-1.5">
-              <Label>&ldquo;Reserve&rdquo; button text</Label>
-              <Input
-                value={reserveLabel}
-                onChange={(e) => setReserveLabel(e.target.value)}
-                placeholder="Reserve my spot ♡"
-              />
-              <p className="text-[11px] text-muted-foreground">
-                Shown on the in-app reserve button (used when there&apos;s no
-                &ldquo;Book Now&rdquo; link above). Defaults to &ldquo;Reserve my spot ♡&rdquo;.
-              </p>
-            </div>
-          )}
+          <div className="grid gap-1.5">
+            <Label>Button text</Label>
+            <Input
+              value={bookingLabel}
+              onChange={(e) => setBookingLabel(e.target.value)}
+              placeholder="Book Now"
+            />
+            <p className="text-[11px] text-muted-foreground">
+              The single call-to-action shown on the card &amp; details. Defaults
+              to &ldquo;Book Now&rdquo;. Try &ldquo;Reserve &amp; Pay&rdquo; or &ldquo;Get Tickets&rdquo;.
+            </p>
+          </div>
 
           <div className="grid gap-1.5">
             <Label>Gradient</Label>

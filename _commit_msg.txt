@@ -1,0 +1,13 @@
+fix(trips): unify trip CTA to a single editable "Book Now" button
+
+- Persist booking link/label: add booking_url + booking_label columns and
+  wire them through the Supabase + Firestore trip mappings (they were
+  silently dropped on save/load, so links never appeared or worked).
+- Collapse the redundant "Reserve my spot" vs "Book Now" duality into one
+  editable button label (defaults to "Book Now"). Links out when a booking
+  URL is set; otherwise does the in-app hold using the same label.
+- Make the grid-card Book Now genuinely clickable: full-card overlay button
+  opens details behind the content, while the Book Now link sits in the
+  price row (where the deposit text was) with pointer-events re-enabled.
+- Rename the green "Book Now" status badge to "Spots Open" so it's no longer
+  mistaken for a (non-clickable) button.

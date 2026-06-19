@@ -35,6 +35,8 @@ interface TripRow {
   published: boolean | null;
   featured: boolean | null;
   sort_order: number | null;
+  booking_url: string | null;
+  booking_label: string | null;
   created_by: string | null;
   created_at: string | null;
   updated_at: string | null;
@@ -67,6 +69,8 @@ function rowToTrip(r: TripRow): Trip {
     published: r.published ?? undefined,
     featured: r.featured ?? undefined,
     order: r.sort_order ?? undefined,
+    bookingUrl: r.booking_url ?? undefined,
+    bookingLabel: r.booking_label ?? undefined,
     createdBy: r.created_by ?? undefined,
     createdAt: tsToIso(r.created_at),
     updatedAt: tsToIso(r.updated_at),
@@ -95,6 +99,8 @@ const COL: Record<string, string> = {
   published: "published",
   featured: "featured",
   order: "sort_order",
+  bookingUrl: "booking_url",
+  bookingLabel: "booking_label",
   createdBy: "created_by",
 };
 

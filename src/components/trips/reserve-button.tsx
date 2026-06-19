@@ -63,9 +63,12 @@ export function ReserveButton({
   // Admin-provided booking link → a direct "Book Now" CTA to their payment or
   // details page. Takes priority over the free in-app hold and works for
   // logged-out viewers too.
+  // Single, editable CTA label for the whole trip (default "Book Now").
+  const ctaLabel = trip.bookingLabel?.trim() || "Book Now";
+
   const bookingUrl = ensureHttp(trip.bookingUrl);
   if (bookingUrl) {
-    const label = trip.bookingLabel?.trim() || "Book Now";
+    const label = ctaLabel;
     return (
       <div className={cn(variant === "full" ? "space-y-2" : "space-y-1", className)}>
         <a
@@ -216,7 +219,7 @@ export function ReserveButton({
         ) : isFull ? (
           <Clock className="h-4 w-4" />
         ) : null}
-        {isFull ? "Join waitlist" : (trip.reserveLabel?.trim() || "Reserve my spot ♡")}
+        {isFull ? "Join waitlist" : ctaLabel}
       </Button>
       {statusLine}
       {variant === "full" && (

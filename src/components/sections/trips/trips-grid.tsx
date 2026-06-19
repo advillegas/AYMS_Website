@@ -31,7 +31,7 @@ import {
 import Image from "next/image";
 
 const STATUS_STYLE: Record<string, { label: string; cls: string }> = {
-  available: { label: "Book Now", cls: "bg-white/90 text-green-700 border-white/50 backdrop-blur-sm shadow-sm" },
+  available: { label: "Spots Open", cls: "bg-white/90 text-green-700 border-white/50 backdrop-blur-sm shadow-sm" },
   "sold-out": { label: "Sold Out", cls: "bg-white/90 text-red-600 border-white/50 backdrop-blur-sm shadow-sm" },
   waitlist: { label: "Join Waitlist", cls: "bg-white/90 text-amber-700 border-white/50 backdrop-blur-sm shadow-sm" },
   "coming-soon": { label: "Coming Soon", cls: "bg-white/90 text-blue-600 border-white/50 backdrop-blur-sm shadow-sm" },
@@ -185,83 +185,91 @@ export function TripsGrid() {
                     transition={{ delay: reduceMotion ? 0 : i * 0.05, ease: [0.16, 1, 0.3, 1] }}
                     className="relative flex h-full flex-col"
                   >
-                    <button
-                      onClick={() => setSelected(trip)}
-                      aria-label={`View ${trip.title} trip details — ${trip.dates}, $${trip.price.toLocaleString()} per person`}
-                      className="photo-card group block w-full flex-1 text-left elevate-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]"
-                    >
-                      <div className="photo-card-media p-2.5">
-                        <div className={`photo-card-zoom grain relative h-44 overflow-hidden rounded-[1.1rem] bg-gradient-to-br ${trip.gradient}`}>
-                          <Image
-                            src={trip.image}
-                            alt={`${trip.destination}, ${trip.country}`}
-                            fill
-                            sizes="(max-width: 640px) 100vw, (max-width: 1280px) 33vw, 25vw"
-                            className="object-cover"
-                          />
-                          {/* scrim so white status badge + heart stay legible over any photo */}
-                          <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/25 via-transparent to-black/15" aria-hidden="true" />
-                          <span className="glass-control absolute top-3 right-3 h-9 w-9" aria-hidden="true">
-                            <span className="text-base leading-none text-white">♡</span>
-                          </span>
-                          <Badge className={`absolute top-3 left-3 text-[10px] font-bold ${st.cls}`}>
-                            {st.label}
-                          </Badge>
-                          {trip.status === "available" && trip.spotsLeft <= 5 && (
-                            <Badge className="absolute bottom-3 left-3 bg-[#FF7F50] text-white border-0 text-[10px] font-bold">
-                              Only {trip.spotsLeft} left!
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                      <div className="px-4 pb-5 pt-2">
-                        <h3 className="text-lg font-display text-ink group-hover:text-[#B51760] transition-colors">
-                          {trip.title}
-                        </h3>
-                        <div className="mt-2 flex items-center gap-1.5 text-xs text-ink-soft">
-                          <MapPin className="h-3.5 w-3.5 text-[#FF7F50]" aria-hidden="true" />
-                          {trip.destination}
-                        </div>
-                        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-soft">
-                          <span className="flex items-center gap-1.5">
-                            <Calendar className="h-3.5 w-3.5 text-[#FF7F50]" aria-hidden="true" />
-                            {trip.dates}
-                          </span>
-                          <span className="flex items-center gap-1.5">
-                            <Clock className="h-3.5 w-3.5 text-[#FF7F50]" aria-hidden="true" />
-                            {trip.duration}
-                          </span>
-                        </div>
-                        <div className="mt-3 flex items-end justify-between">
-                          <div>
-                            <span className="text-xl font-bold text-[#FF0099]">
-                              ${trip.price.toLocaleString()}
+                    <div className="photo-card group relative flex h-full flex-col elevate-2">
+                      {/* Full-card overlay button opens the details dialog. It sits
+                          BEHIND the content so the Book Now link stays clickable. */}
+                      <button
+                        type="button"
+                        onClick={() => setSelected(trip)}
+                        aria-label={`View ${trip.title} trip details — ${trip.dates}, $${trip.price.toLocaleString()} per person`}
+                        className="absolute inset-0 z-0 rounded-[var(--radius-2xl)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]"
+                      />
+                      {/* Content is non-interactive so clicks fall through to the
+                          overlay — except the Book Now link, re-enabled below. */}
+                      <div className="pointer-events-none relative z-[1] flex h-full flex-col">
+                        <div className="photo-card-media p-2.5">
+                          <div className={`photo-card-zoom grain relative h-44 overflow-hidden rounded-[1.1rem] bg-gradient-to-br ${trip.gradient}`}>
+                            <Image
+                              src={trip.image}
+                              alt={`${trip.destination}, ${trip.country}`}
+                              fill
+                              sizes="(max-width: 640px) 100vw, (max-width: 1280px) 33vw, 25vw"
+                              className="object-cover"
+                            />
+                            {/* scrim so white status badge + heart stay legible over any photo */}
+                            <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/25 via-transparent to-black/15" aria-hidden="true" />
+                            <span className="glass-control absolute top-3 right-3 h-9 w-9" aria-hidden="true">
+                              <span className="text-base leading-none text-white">♡</span>
                             </span>
-                            <span className="text-xs text-ink-soft ml-1">
-                              /person
+                            <Badge className={`absolute top-3 left-3 text-[10px] font-bold ${st.cls}`}>
+                              {st.label}
+                            </Badge>
+                            {trip.status === "available" && trip.spotsLeft <= 5 && (
+                              <Badge className="absolute bottom-3 left-3 bg-[#FF7F50] text-white border-0 text-[10px] font-bold">
+                                Only {trip.spotsLeft} left!
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex flex-1 flex-col px-4 pb-5 pt-2">
+                          <h3 className="text-lg font-display text-ink group-hover:text-[#B51760] transition-colors">
+                            {trip.title}
+                          </h3>
+                          <div className="mt-2 flex items-center gap-1.5 text-xs text-ink-soft">
+                            <MapPin className="h-3.5 w-3.5 text-[#FF7F50]" aria-hidden="true" />
+                            {trip.destination}
+                          </div>
+                          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-soft">
+                            <span className="flex items-center gap-1.5">
+                              <Calendar className="h-3.5 w-3.5 text-[#FF7F50]" aria-hidden="true" />
+                              {trip.dates}
+                            </span>
+                            <span className="flex items-center gap-1.5">
+                              <Clock className="h-3.5 w-3.5 text-[#FF7F50]" aria-hidden="true" />
+                              {trip.duration}
                             </span>
                           </div>
-                          {!booking && trip.status === "available" && (
-                            <span className="text-[10px] text-ink-soft">
-                              from ${trip.deposit} deposit
-                            </span>
-                          )}
+                          <div className="mt-3 flex items-end justify-between gap-2">
+                            <div>
+                              <span className="text-xl font-bold text-[#FF0099]">
+                                ${trip.price.toLocaleString()}
+                              </span>
+                              <span className="text-xs text-ink-soft ml-1">
+                                /person
+                              </span>
+                            </div>
+                            {booking ? (
+                              <a
+                                href={booking}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                aria-label={`${bookLabel} — ${trip.title}`}
+                                className="pointer-events-auto relative z-10 inline-flex shrink-0 items-center gap-1 rounded-full bg-gradient-to-r from-[#FF0099] to-[#B51760] px-3.5 py-1.5 text-xs font-semibold text-white shadow-[0_4px_14px_rgb(255_0_153/0.28)] transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099] focus-visible:ring-offset-2"
+                              >
+                                {bookLabel}
+                                <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                              </a>
+                            ) : (
+                              trip.status === "available" && (
+                                <span className="text-[10px] text-ink-soft">
+                                  from ${trip.deposit} deposit
+                                </span>
+                              )
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </button>
-                    {booking && (
-                      <a
-                        href={booking}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        aria-label={`${bookLabel} — ${trip.title}`}
-                        className="absolute bottom-[1.15rem] right-4 z-10 inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-[#FF0099] to-[#B51760] px-3.5 py-1.5 text-xs font-semibold text-white shadow-[0_4px_14px_rgb(255_0_153/0.28)] transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099] focus-visible:ring-offset-2"
-                      >
-                        {bookLabel}
-                        <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
-                      </a>
-                    )}
+                    </div>
                   </motion.div>
                 );
               })}

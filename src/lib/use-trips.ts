@@ -66,6 +66,8 @@ interface FirestoreTripDoc {
   published?: boolean;
   featured?: boolean;
   order?: number;
+  bookingUrl?: string;
+  bookingLabel?: string;
   createdBy?: string;
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
@@ -106,6 +108,8 @@ function docToTrip(
     published: data.published ?? undefined,
     featured: data.featured ?? undefined,
     order: data.order ?? undefined,
+    bookingUrl: data.bookingUrl ?? undefined,
+    bookingLabel: data.bookingLabel ?? undefined,
     createdBy: data.createdBy,
     createdAt: tsToIso(data.createdAt),
     updatedAt: tsToIso(data.updatedAt),
@@ -135,6 +139,8 @@ function tripToDoc(t: Partial<Trip>): Record<string, unknown> {
     published: t.published ?? true,
     featured: t.featured ?? false,
     order: t.order ?? 0,
+    ...(t.bookingUrl !== undefined ? { bookingUrl: t.bookingUrl } : {}),
+    ...(t.bookingLabel !== undefined ? { bookingLabel: t.bookingLabel } : {}),
   };
 }
 

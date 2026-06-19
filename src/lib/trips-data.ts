@@ -35,10 +35,10 @@ export interface Trip {
    * that opens this URL in a new tab.
    */
   bookingUrl?: string;
-  /** Custom label for the booking button (defaults to "Book Now"). */
+  /** Text for the trip's single call-to-action button (defaults to "Book Now").
+   *  If `bookingUrl` is set the button links there; otherwise it does the
+   *  in-app reservation hold. */
   bookingLabel?: string;
-  /** Custom label for the in-app reserve button (defaults to "Reserve my spot ♡"). */
-  reserveLabel?: string;
   /** Firebase uid of the admin who created the trip in the live store. */
   createdBy?: string;
   /** ISO timestamps populated by the live store. */

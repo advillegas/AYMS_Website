@@ -394,22 +394,55 @@ export const useChannels = create<ChannelsState>()(
   ),
 );
 
-// Auto-write to Firestore whenever channels change. Debounced by
-// 300ms so rapid mutations (e.g. drag-drop renumbering) coalesce
-// into a single write.
+// Auto-write whenever channels change, then keep the realtime echo from
+// clobbering the optimistic local list while that write is in flight.
+//
+// The race this fixes ("create a channel, it appears, then disappears"):
+// a mutation updates local state instantly, but the cloud write was
+// debounced 300ms; meanwhile a stale realtime/poll snapshot (which doesn't
+// yet contain the new channel) could replace the whole list and wipe it.
+// We now write fast (120ms) and ignore incoming snapshots until our own
+// write is acknowledged, so what the admin does and what's stored stay in
+// lockstep with near-zero perceived latency.
 let writeTimer: ReturnType<typeof setTimeout> | null = null;
 let channelsSyncListenerStarted = false;
+let applyingRemote = false;
+let pendingWrites = 0;
+let lastLocalEditAt = 0;
 
 useChannels.subscribe((state) => {
   if (!isFirebaseConfigured && !useSupabaseBackend) return;
+  // Don't echo a snapshot we just applied back to the backend.
+  if (applyingRemote) return;
+  // Mark the edit immediately (before the debounce) so a snapshot landing in
+  // the gap before the write fires can't clobber the optimistic change.
+  lastLocalEditAt = Date.now();
   if (writeTimer) clearTimeout(writeTimer);
   writeTimer = setTimeout(() => {
-    void writeChannelsToFirestore(state.channels);
-  }, 300);
+    pendingWrites += 1;
+    void writeChannelsToFirestore(state.channels).finally(() => {
+      // Brief hold after the write so its own realtime echo lands while we
+      // still trust local state, then resume accepting remote snapshots.
+      setTimeout(() => {
+        pendingWrites = Math.max(0, pendingWrites - 1);
+      }, 600);
+    });
+  }, 120);
 });
 
-const setChannelsState = (channels: RichChannel[]) =>
-  useChannels.setState({ channels });
+const setChannelsState = (channels: RichChannel[]) => {
+  // A local write is in flight (or just settled), or the admin edited within
+  // the last moment — keep the optimistic list so a stale snapshot can't make
+  // a fresh channel vanish.
+  if (pendingWrites > 0) return;
+  if (Date.now() - lastLocalEditAt < 1500) return;
+  applyingRemote = true;
+  try {
+    useChannels.setState({ channels });
+  } finally {
+    applyingRemote = false;
+  }
+};
 
 export function useChannelsSync(): void {
   return useSupabaseBackend
@@ -432,7 +465,7 @@ function useChannelsSyncFirebase(): void {
         if (!snap.exists()) return;
         const data = snap.data() as { channels?: RichChannel[] };
         if (data.channels) {
-          useChannels.setState({ channels: data.channels });
+          setChannelsState(data.channels);
         }
       },
       (err) => console.warn("[channels] snapshot failed", err),

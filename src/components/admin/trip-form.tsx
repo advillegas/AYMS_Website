@@ -37,6 +37,8 @@ interface TripDraft {
   emoji: string;
   gradient: string;
   image: string;
+  bookingUrl: string;
+  bookingLabel: string;
   published: boolean;
   featured: boolean;
   order: string;
@@ -106,6 +108,8 @@ export function TripFormDialog({
   const [emoji, setEmoji] = useState("");
   const [gradient, setGradient] = useState(DEFAULT_GRADIENT);
   const [image, setImage] = useState("");
+  const [bookingUrl, setBookingUrl] = useState("");
+  const [bookingLabel, setBookingLabel] = useState("");
   const [published, setPublished] = useState(true);
   const [featured, setFeatured] = useState(false);
   const [order, setOrder] = useState("");
@@ -120,7 +124,7 @@ export function TripFormDialog({
   const data: TripDraft = {
     title, destination, country, dates, duration, price, deposit, spots, spotsLeft,
     status, description, highlights, includes, notIncluded, emoji, gradient, image,
-    published, featured, order,
+    bookingUrl, bookingLabel, published, featured, order,
   };
   const dataJson = JSON.stringify(data);
   const latestRef = useRef<TripDraft>(data);
@@ -133,7 +137,8 @@ export function TripFormDialog({
     setSpots(d.spots); setSpotsLeft(d.spotsLeft); setStatus(d.status);
     setDescription(d.description); setHighlights(d.highlights); setIncludes(d.includes);
     setNotIncluded(d.notIncluded); setEmoji(d.emoji); setGradient(d.gradient);
-    setImage(d.image); setPublished(d.published); setFeatured(d.featured); setOrder(d.order);
+    setImage(d.image); setBookingUrl(d.bookingUrl); setBookingLabel(d.bookingLabel);
+    setPublished(d.published); setFeatured(d.featured); setOrder(d.order);
   }
 
   function handleRestore() {
@@ -171,6 +176,8 @@ export function TripFormDialog({
     setEmoji(trip?.emoji ?? "");
     setGradient(trip?.gradient || DEFAULT_GRADIENT);
     setImage(trip?.image ?? "");
+    setBookingUrl(trip?.bookingUrl ?? "");
+    setBookingLabel(trip?.bookingLabel ?? "");
     // `undefined` published counts as published (legacy seeds).
     setPublished(trip ? trip.published !== false : true);
     setFeatured(trip ? !!trip.featured : false);
@@ -186,6 +193,7 @@ export function TripFormDialog({
       description: trip?.description ?? "", highlights: arrayToLines(trip?.highlights),
       includes: arrayToLines(trip?.includes), notIncluded: arrayToLines(trip?.notIncluded),
       emoji: trip?.emoji ?? "", gradient: trip?.gradient || DEFAULT_GRADIENT, image: trip?.image ?? "",
+      bookingUrl: trip?.bookingUrl ?? "", bookingLabel: trip?.bookingLabel ?? "",
       published: trip ? trip.published !== false : true, featured: trip ? !!trip.featured : false,
       order: trip && typeof trip.order === "number" ? String(trip.order) : "",
     } satisfies TripDraft);
@@ -213,6 +221,8 @@ export function TripFormDialog({
     setEmoji("");
     setGradient(DEFAULT_GRADIENT);
     setImage("");
+    setBookingUrl("");
+    setBookingLabel("");
     setPublished(true);
     setFeatured(false);
     setOrder("");
@@ -265,6 +275,8 @@ export function TripFormDialog({
         emoji: emoji.trim(),
         gradient: gradient.trim() || DEFAULT_GRADIENT,
         image: image.trim(),
+        bookingUrl: bookingUrl.trim() || undefined,
+        bookingLabel: bookingLabel.trim() || undefined,
         published,
         featured,
       };
@@ -509,6 +521,35 @@ export function TripFormDialog({
               />
             </div>
           </div>
+
+          <div className="grid gap-1.5">
+            <Label>&ldquo;Book Now&rdquo; link</Label>
+            <Input
+              type="url"
+              inputMode="url"
+              value={bookingUrl}
+              onChange={(e) => setBookingUrl(e.target.value)}
+              placeholder="https://your-payment-or-details-page.com"
+            />
+            <p className="text-[11px] text-muted-foreground">
+              Paste a payment or details page URL. When set, the trip shows a
+              &ldquo;Book Now&rdquo; button that opens it in a new tab.
+            </p>
+          </div>
+
+          {bookingUrl.trim() && (
+            <div className="grid gap-1.5">
+              <Label>Button label (optional)</Label>
+              <Input
+                value={bookingLabel}
+                onChange={(e) => setBookingLabel(e.target.value)}
+                placeholder="Book Now"
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Defaults to &ldquo;Book Now&rdquo;. Try &ldquo;Reserve &amp; Pay&rdquo; or &ldquo;View &amp; Book&rdquo;.
+              </p>
+            </div>
+          )}
 
           <div className="grid gap-1.5">
             <Label>Gradient</Label>

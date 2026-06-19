@@ -29,6 +29,14 @@ export interface Trip {
   featured?: boolean;
   /** Manual sort order in listings (ascending; falls back to seed order). */
   order?: number;
+  /**
+   * Optional external "Book Now" link — a payment page or details page the
+   * admin wants viewers sent to. When set, the trip shows a Book Now button
+   * that opens this URL in a new tab.
+   */
+  bookingUrl?: string;
+  /** Custom label for the booking button (defaults to "Book Now"). */
+  bookingLabel?: string;
   /** Firebase uid of the admin who created the trip in the live store. */
   createdBy?: string;
   /** ISO timestamps populated by the live store. */

@@ -18,7 +18,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Check, Loader2, LogIn, Clock, Users } from "lucide-react";
+import { Check, Loader2, LogIn, Clock, Users, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -58,6 +58,32 @@ export function ReserveButton({
 
   // Trips that are marketed as fully closed don't take reservations.
   const closed = trip.status === "sold-out" && !isFirebase;
+
+  // Admin-provided booking link → a direct "Book Now" CTA to their payment or
+  // details page. Takes priority over the free in-app hold and works for
+  // logged-out viewers too.
+  const bookingUrl = trip.bookingUrl?.trim();
+  if (bookingUrl) {
+    const label = trip.bookingLabel?.trim() || "Book Now";
+    return (
+      <div className={cn(variant === "full" ? "space-y-2" : "space-y-1", className)}>
+        <a
+          href={bookingUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex h-12 items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-[#FF0099] via-[#B51760] to-[#FF0099] px-8 font-semibold text-white shadow-[0_8px_30px_rgb(255_0_153/0.30)] transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099] focus-visible:ring-offset-2"
+        >
+          {label}
+          <ArrowRight className="h-4 w-4" aria-hidden="true" />
+        </a>
+        {variant === "full" && (
+          <p className="text-[11px] text-muted-foreground">
+            Opens the booking page in a new tab.
+          </p>
+        )}
+      </div>
+    );
+  }
 
   if (!user) {
     return (

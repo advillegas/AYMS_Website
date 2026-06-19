@@ -31,6 +31,8 @@ interface MeetupRow {
   host_name: string | null;
   host_avatar: string | null;
   capacity: number | null;
+  link: string | null;
+  link_label: string | null;
   created_at: string | null;
 }
 
@@ -48,6 +50,8 @@ function rowToMeetup(r: MeetupRow): Meetup {
     hostName: r.host_name ?? "Amiga",
     hostAvatar: r.host_avatar ?? undefined,
     capacity: r.capacity ?? undefined,
+    link: r.link ?? undefined,
+    linkLabel: r.link_label ?? undefined,
     createdAt: tsToIso(r.created_at),
   };
 }
@@ -82,6 +86,7 @@ export function useMeetupsSupabase(): UseMeetupsResult {
     async (input: MeetupInput): Promise<string | null> => {
       const sb = getSupabase();
       if (!sb || !user) return null;
+      await ensureSupabaseSession(sb);
 
       // Resolve coordinates: use supplied lat/lng, else geocode the
       // free-text location. A failed geocode still creates the meetup
@@ -113,6 +118,8 @@ export function useMeetupsSupabase(): UseMeetupsResult {
         host_name: user.name,
         host_avatar: user.avatar ?? null,
         capacity: input.capacity ?? null,
+        link: input.link?.trim() || null,
+        link_label: input.linkLabel?.trim() || null,
         created_at: nowIso(),
       });
       if (error) {
@@ -128,6 +135,7 @@ export function useMeetupsSupabase(): UseMeetupsResult {
     async (id: string, patch: Partial<MeetupInput>): Promise<boolean> => {
       const sb = getSupabase();
       if (!sb) return false;
+      await ensureSupabaseSession(sb);
       const row: Record<string, unknown> = {};
       if (patch.title !== undefined) row.title = patch.title.trim();
       if (patch.description !== undefined)
@@ -136,6 +144,9 @@ export function useMeetupsSupabase(): UseMeetupsResult {
       if (patch.startTime !== undefined)
         row.start_time = patch.startTime?.trim() || null;
       if (patch.capacity !== undefined) row.capacity = patch.capacity ?? null;
+      if (patch.link !== undefined) row.link = patch.link?.trim() || null;
+      if (patch.linkLabel !== undefined)
+        row.link_label = patch.linkLabel?.trim() || null;
       // Re-geocode when the location changes.
       if (patch.location !== undefined) {
         row.location = patch.location.trim();

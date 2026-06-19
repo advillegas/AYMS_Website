@@ -31,11 +31,13 @@ import {
   Loader2,
   List,
   Map as MapIcon,
+  ExternalLink,
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { format, parseISO, isValid } from "date-fns";
 import { toast } from "sonner";
 import { cn, initials } from "@/lib/utils";
+import { ensureHttp } from "@/lib/url";
 import { useAuth } from "@/lib/store";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { getUserCoords, haversineDistance } from "@/lib/geo";
@@ -423,6 +425,19 @@ function MeetupCard({
         <p className="mt-3 whitespace-pre-line text-sm text-foreground/80">
           {meetup.description}
         </p>
+      )}
+
+      {/* External link — RSVP / tickets / details / payment page */}
+      {meetup.link && (
+        <a
+          href={ensureHttp(meetup.link)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground transition hover:brightness-110"
+        >
+          <ExternalLink className="h-3.5 w-3.5" />
+          {meetup.linkLabel?.trim() || "Open link"}
+        </a>
       )}
 
       {/* RSVP — hidden on past meetups, where it no longer makes sense */}

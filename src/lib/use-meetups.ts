@@ -59,6 +59,10 @@ export interface Meetup {
   hostName: string;
   hostAvatar?: string;
   capacity?: number;
+  /** Optional external link (RSVP / tickets / details / payment page). */
+  link?: string;
+  /** Custom label for the link button (defaults to "Open link"). */
+  linkLabel?: string;
   createdAt: string;
 }
 
@@ -70,6 +74,8 @@ export interface MeetupInput {
   startTime?: string;
   location: string;
   capacity?: number;
+  link?: string;
+  linkLabel?: string;
   /**
    * Optional pre-resolved coordinates. When omitted the hook geocodes
    * `location` for you. Provided when the host picked from an
@@ -91,6 +97,8 @@ interface MeetupDoc {
   hostName?: string;
   hostAvatar?: string | null;
   capacity?: number | null;
+  link?: string | null;
+  linkLabel?: string | null;
   createdAt?: Timestamp;
 }
 
@@ -120,6 +128,8 @@ function docToMeetup(
     hostName: data.hostName ?? "Amiga",
     hostAvatar: data.hostAvatar ?? undefined,
     capacity: data.capacity ?? undefined,
+    link: data.link ?? undefined,
+    linkLabel: data.linkLabel ?? undefined,
     createdAt: tsToIso(data.createdAt),
   };
 }

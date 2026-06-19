@@ -79,6 +79,8 @@ const MeetupSchema = z.object({
     .min(0)
     .max(10000)
     .optional(),
+  link: z.string().trim().max(500).optional().or(z.literal("")),
+  linkLabel: z.string().trim().max(60).optional().or(z.literal("")),
 });
 
 /* ------------------------------------------------------------------ */
@@ -110,6 +112,8 @@ export function MeetupForm({ open, onOpenChange, onCreated }: MeetupFormProps) {
   );
   const [pinnedLabel, setPinnedLabel] = useState("");
   const [capacity, setCapacity] = useState("");
+  const [link, setLink] = useState("");
+  const [linkLabel, setLinkLabel] = useState("");
   const [busy, setBusy] = useState(false);
 
   function reset() {
@@ -121,6 +125,8 @@ export function MeetupForm({ open, onOpenChange, onCreated }: MeetupFormProps) {
     setCoords(null);
     setPinnedLabel("");
     setCapacity("");
+    setLink("");
+    setLinkLabel("");
   }
 
   function handlePick(result: LocationResult) {
@@ -152,6 +158,8 @@ export function MeetupForm({ open, onOpenChange, onCreated }: MeetupFormProps) {
       startTime: startTime || undefined,
       location,
       capacity: Number.isNaN(capNum) ? undefined : capNum,
+      link: link || undefined,
+      linkLabel: linkLabel || undefined,
     });
     if (!parsed.success) {
       toast.error(parsed.error.issues[0]?.message ?? "Please check the form.");
@@ -165,6 +173,8 @@ export function MeetupForm({ open, onOpenChange, onCreated }: MeetupFormProps) {
       startTime: parsed.data.startTime || undefined,
       location: parsed.data.location,
       capacity: parsed.data.capacity,
+      link: parsed.data.link?.trim() || undefined,
+      linkLabel: parsed.data.linkLabel?.trim() || undefined,
       // Pass coords only while the text still matches the picked result;
       // otherwise let the hook geocode the free text.
       ...(isPinned ? { lat: coords!.lat, lng: coords!.lng } : {}),
@@ -289,6 +299,23 @@ export function MeetupForm({ open, onOpenChange, onCreated }: MeetupFormProps) {
               onChange={(e) => setCapacity(e.target.value)}
               placeholder="Leave blank for no limit"
               className="max-w-[180px]"
+            />
+          </div>
+
+          <div className="grid gap-1.5">
+            <Label htmlFor="meetup-link">Link (optional)</Label>
+            <Input
+              id="meetup-link"
+              type="url"
+              inputMode="url"
+              value={link}
+              onChange={(e) => setLink(e.target.value)}
+              placeholder="https://tickets, RSVP, or details page"
+            />
+            <Input
+              value={linkLabel}
+              onChange={(e) => setLinkLabel(e.target.value)}
+              placeholder="Link button text (e.g. RSVP, Get tickets)"
             />
           </div>
         </div>

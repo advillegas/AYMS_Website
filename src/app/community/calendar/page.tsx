@@ -61,6 +61,8 @@ import { useMeetups } from "@/lib/use-meetups";
 import { useHasPermission } from "@/lib/use-roles-store";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { ensureHttp } from "@/lib/url";
+import { useAuth } from "@/lib/store";
+import { getUserCoords, haversineDistance } from "@/lib/geo";
 import dynamic from "next/dynamic";
 
 // Leaflet touches window at import; load the map client-only.
@@ -135,6 +137,10 @@ export default function CalendarPage() {
       type: "meetup",
       location: m.location,
       capacity: m.capacity,
+      lat: m.lat ?? undefined,
+      lng: m.lng ?? undefined,
+      link: m.link,
+      linkLabel: m.linkLabel,
     }));
     // Members aren't admins — admin drafts (published === false) must not
     // leak onto the shared calendar. Member meetups have no publish gate.
@@ -176,9 +182,47 @@ export default function CalendarPage() {
     }
   }
 
-  // The calendar shows every event. (A "Nearby" radius filter was removed:
-  // events aren't geocoded yet, so it couldn't actually filter anything.)
-  const filteredEvents = events;
+  // Per-member proximity filter. Events + meetups now carry coordinates, so a
+  // member can choose to see only what's near them. Preference is per-device.
+  const user = useAuth((s) => s.user);
+  const myCoords = useMemo(() => getUserCoords(user), [user]);
+  const [nearMe, setNearMe] = useState(false);
+  const [radiusMiles, setRadiusMiles] = useState(50);
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("ayms-calendar-proximity");
+      if (raw) {
+        const p = JSON.parse(raw) as { nearMe?: boolean; radiusMiles?: number };
+        if (typeof p.nearMe === "boolean") setNearMe(p.nearMe);
+        if (typeof p.radiusMiles === "number") setRadiusMiles(p.radiusMiles);
+      }
+    } catch {
+      /* ignore corrupt prefs */
+    }
+  }, []);
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        "ayms-calendar-proximity",
+        JSON.stringify({ nearMe, radiusMiles }),
+      );
+    } catch {
+      /* storage unavailable — preference is best-effort */
+    }
+  }, [nearMe, radiusMiles]);
+
+  const filteredEvents = useMemo(() => {
+    if (!nearMe || !myCoords) return events;
+    return events.filter((e) => {
+      // Events without coordinates (e.g. virtual/online) can't be distance-
+      // filtered, so they always stay visible.
+      if (e.lat == null || e.lng == null) return true;
+      return (
+        haversineDistance(myCoords.lat, myCoords.lng, e.lat, e.lng) <=
+        radiusMiles
+      );
+    });
+  }, [events, nearMe, myCoords, radiusMiles]);
 
   const days = useMemo(() => getCalendarDays(month), [month]);
 
@@ -232,6 +276,49 @@ export default function CalendarPage() {
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
+            {/* Proximity filter — show only events/meetups near the member */}
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => {
+                  if (!myCoords) {
+                    toast.error("Add your location in your profile to filter by distance.");
+                    return;
+                  }
+                  setNearMe((v) => !v);
+                }}
+                aria-pressed={nearMe}
+                title={
+                  myCoords
+                    ? "Show only events near you"
+                    : "Set your location in your profile to use this"
+                }
+                className={cn(
+                  "flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors",
+                  nearMe
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-rosa/30 bg-background text-foreground/70 hover:bg-primary/10",
+                  !myCoords && "opacity-50",
+                )}
+              >
+                <MapPin className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Near me</span>
+              </button>
+              {nearMe && (
+                <select
+                  value={radiusMiles}
+                  onChange={(e) => setRadiusMiles(Number(e.target.value))}
+                  aria-label="Distance radius"
+                  className="h-[30px] rounded-lg border border-rosa/30 bg-background px-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary/30"
+                >
+                  {[10, 25, 50, 100, 250].map((r) => (
+                    <option key={r} value={r}>
+                      {r} mi
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
             {/* View toggle */}
             <div
               className="flex rounded-lg border border-rosa/30 overflow-hidden"

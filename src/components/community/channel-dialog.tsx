@@ -237,7 +237,7 @@ export function ChannelDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-[family-name:var(--font-heading)] text-[#B51760]">
             {isEdit ? `Edit #${channel?.name}` : "Create channel"}

@@ -32,6 +32,7 @@ import {
   Plane,
 } from "lucide-react";
 import { type Trip } from "@/lib/trips-data";
+import { ensureHttp } from "@/lib/url";
 import { useTrips } from "@/lib/use-trips";
 import { useEvents } from "@/lib/use-events";
 import { useNewsletter } from "@/lib/use-newsletter";
@@ -299,13 +300,25 @@ export function FeaturedSpotlight() {
                       / from ${trip.deposit.toLocaleString()} deposit
                     </span>
                   </div>
-                  <Link
-                    href="/trips"
-                    className="lift sm:ml-auto inline-flex h-11 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[var(--magenta)] via-[var(--brand-pink)] to-[var(--magenta)] px-6 text-sm font-semibold text-white shadow-[0_6px_24px_rgb(255_0_153/0.30)] transition-all hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--magenta)]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#1A0814]"
-                  >
-                    View trip details
-                    <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                  </Link>
+                  {ensureHttp(trip.bookingUrl) ? (
+                    <a
+                      href={ensureHttp(trip.bookingUrl)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="lift sm:ml-auto inline-flex h-11 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[var(--magenta)] via-[var(--brand-pink)] to-[var(--magenta)] px-6 text-sm font-semibold text-white shadow-[0_6px_24px_rgb(255_0_153/0.30)] transition-all hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--magenta)]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#1A0814]"
+                    >
+                      {trip.bookingLabel?.trim() || "Book Now"}
+                      <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                    </a>
+                  ) : (
+                    <Link
+                      href="/trips"
+                      className="lift sm:ml-auto inline-flex h-11 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[var(--magenta)] via-[var(--brand-pink)] to-[var(--magenta)] px-6 text-sm font-semibold text-white shadow-[0_6px_24px_rgb(255_0_153/0.30)] transition-all hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--magenta)]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#1A0814]"
+                    >
+                      View trip details
+                      <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                    </Link>
+                  )}
                 </div>
               </div>
             </div>

@@ -25,6 +25,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/store";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { useTripReservations } from "@/lib/use-trip-reservations";
+import { ensureHttp } from "@/lib/url";
 import type { Trip } from "@/lib/trips-data";
 
 interface ReserveButtonProps {
@@ -62,7 +63,7 @@ export function ReserveButton({
   // Admin-provided booking link → a direct "Book Now" CTA to their payment or
   // details page. Takes priority over the free in-app hold and works for
   // logged-out viewers too.
-  const bookingUrl = trip.bookingUrl?.trim();
+  const bookingUrl = ensureHttp(trip.bookingUrl);
   if (bookingUrl) {
     const label = trip.bookingLabel?.trim() || "Book Now";
     return (

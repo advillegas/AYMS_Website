@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { ReserveButton } from "@/components/trips/reserve-button";
 import { EditableText } from "@/components/inline/editable-text";
+import { ensureHttp } from "@/lib/url";
 import {
   Dialog,
   DialogContent,
@@ -180,11 +181,12 @@ export function TripsGrid() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.95 }}
                     transition={{ delay: reduceMotion ? 0 : i * 0.05, ease: [0.16, 1, 0.3, 1] }}
+                    className="flex h-full flex-col"
                   >
                     <button
                       onClick={() => setSelected(trip)}
                       aria-label={`View ${trip.title} trip details — ${trip.dates}, $${trip.price.toLocaleString()} per person`}
-                      className="photo-card group block w-full text-left elevate-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]"
+                      className="photo-card group block w-full flex-1 text-left elevate-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]"
                     >
                       <div className="photo-card-media p-2.5">
                         <div className={`photo-card-zoom grain relative h-44 overflow-hidden rounded-[1.1rem] bg-gradient-to-br ${trip.gradient}`}>
@@ -245,6 +247,18 @@ export function TripsGrid() {
                         </div>
                       </div>
                     </button>
+                    {ensureHttp(trip.bookingUrl) && (
+                      <a
+                        href={ensureHttp(trip.bookingUrl)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={`${trip.bookingLabel?.trim() || "Book"} ${trip.title}`}
+                        className="mt-2 inline-flex h-11 items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-[#FF0099] to-[#B51760] text-sm font-semibold text-white shadow-[0_6px_20px_rgb(255_0_153/0.28)] transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099] focus-visible:ring-offset-2"
+                      >
+                        {trip.bookingLabel?.trim() || "Book Now"}
+                        <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                      </a>
+                    )}
                   </motion.div>
                 );
               })}

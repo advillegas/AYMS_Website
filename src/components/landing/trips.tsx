@@ -9,6 +9,7 @@ import { Calendar, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { useTrips, sortTrips, type Trip } from "@/lib/use-trips";
+import { ensureHttp } from "@/lib/url";
 import { EditableText } from "@/components/inline/editable-text";
 
 /** Short scarcity/status line for a card, or null when nothing urgent. */
@@ -100,11 +101,12 @@ export function Trips() {
                     duration: 0.6,
                     ease: [0.16, 1, 0.3, 1],
                   }}
+                  className="flex h-full flex-col"
                 >
                   <Link
                     href="/trips"
                     aria-label={`${trip.title} — ${trip.dates}`}
-                    className="photo-card group flex h-full flex-col rounded-2xl elevate-2"
+                    className="photo-card group flex flex-1 flex-col rounded-2xl elevate-2"
                   >
                     <div className="photo-card-media h-48">
                       <div
@@ -165,6 +167,18 @@ export function Trips() {
                       </div>
                     </div>
                   </Link>
+                  {ensureHttp(trip.bookingUrl) && (
+                    <a
+                      href={ensureHttp(trip.bookingUrl)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={`${trip.bookingLabel?.trim() || "Book"} ${trip.title}`}
+                      className="lift mt-2 inline-flex h-11 items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-[var(--magenta)] to-[var(--brand-pink)] text-sm font-semibold text-white shadow-[0_6px_20px_rgb(255_0_153/0.28)] transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--magenta)] focus-visible:ring-offset-2"
+                    >
+                      {trip.bookingLabel?.trim() || "Book Now"}
+                      <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                    </a>
+                  )}
                 </motion.div>
               );
             })}

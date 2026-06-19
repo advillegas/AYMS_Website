@@ -41,6 +41,7 @@ import {
 import { getDb, isFirebaseConfigured } from "./firebase";
 import { getSupabase, useSupabaseBackend } from "./supabase";
 import { subscribeQuery } from "./supabase-helpers";
+import { ensureSupabaseSession } from "./ensure-session";
 import { useAuth } from "./store";
 
 /* ------------------------------------------------------------------ */
@@ -358,13 +359,20 @@ function usePushedNotificationsSupabase(): UsePushedNotificationsResult {
       if (!uid) return;
       const sb = getSupabase();
       if (!sb) return;
-      void sb
-        .from("notifications")
-        .update({ read: true })
-        .eq("id", id)
-        .then(({ error }) => {
-          if (error) console.warn("[notify:sb] markRead failed", error.message);
-        });
+      // Clear the badge instantly; persist behind a guaranteed session so a
+      // lapsed token can't silently fail and let the realtime refetch revive
+      // the unread row.
+      setItems((prev) =>
+        prev.map((it) => (it.id === id ? { ...it, read: true } : it)),
+      );
+      void (async () => {
+        await ensureSupabaseSession(sb);
+        const { error } = await sb
+          .from("notifications")
+          .update({ read: true })
+          .eq("id", id);
+        if (error) console.warn("[notify:sb] markRead failed", error.message);
+      })();
     },
     [uid],
   );
@@ -373,14 +381,20 @@ function usePushedNotificationsSupabase(): UsePushedNotificationsResult {
     if (!uid) return;
     const sb = getSupabase();
     if (!sb) return;
-    void sb
-      .from("notifications")
-      .update({ read: true })
-      .eq("recipient_id", uid)
-      .eq("read", false)
-      .then(({ error }) => {
-        if (error) console.warn("[notify:sb] markAllRead failed", error.message);
-      });
+    setItems((prev) =>
+      prev.some((it) => !it.read)
+        ? prev.map((it) => ({ ...it, read: true }))
+        : prev,
+    );
+    void (async () => {
+      await ensureSupabaseSession(sb);
+      const { error } = await sb
+        .from("notifications")
+        .update({ read: true })
+        .eq("recipient_id", uid)
+        .eq("read", false);
+      if (error) console.warn("[notify:sb] markAllRead failed", error.message);
+    })();
   }, [uid]);
 
   return { items, unreadCount, markRead, markAllRead };

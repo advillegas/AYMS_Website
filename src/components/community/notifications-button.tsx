@@ -139,7 +139,7 @@ export function NotificationsButton() {
       <button
         ref={triggerRef}
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => (open ? handleClose() : setOpen(true))}
         className="relative inline-flex h-9 w-9 items-center justify-center rounded-full text-foreground/70 hover:bg-primary/10 hover:text-primary transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         aria-label={
           totalUnread > 0

@@ -10,6 +10,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { toast } from "sonner";
 import { Loader2, Save, Plus, Trash2, Upload } from "lucide-react";
+import { useFormDraft } from "@/lib/use-form-draft";
+import { DraftBanner, DraftSavedHint } from "@/components/admin/draft-banner";
 
 const inputCls = "bg-white/5 border-white/10 text-white text-sm h-9 focus-visible:ring-[#FF0099]/30";
 
@@ -65,6 +67,36 @@ export function ExperiencesPanel() {
     if (!dirty) setForm(items);
   }, [items, dirty]);
 
+  // Draft autosave so switching admin tabs (which unmounts this panel) never
+  // loses unsaved edits. Gate on `dirty` so a pristine panel writes no draft.
+  const draft = useFormDraft<ExperienceItem[]>("panel:experiences");
+  const latestRef = useRef(form);
+  latestRef.current = form;
+  const dirtyRef = useRef(dirty);
+  dirtyRef.current = dirty;
+
+  useEffect(() => {
+    if (dirty) draft.save(form);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form, dirty]);
+
+  useEffect(
+    () => () => {
+      if (dirtyRef.current) draft.saveNow(latestRef.current);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+
+  function handleRestore() {
+    const d = draft.getDraft();
+    if (d) {
+      setForm(d);
+      setDirty(true);
+    }
+    draft.dismiss();
+  }
+
   function mut(next: ExperienceItem[]) {
     setDirty(true);
     setForm(next);
@@ -76,6 +108,7 @@ export function ExperiencesPanel() {
     setSaving(false);
     if (ok) {
       setDirty(false);
+      draft.clear();
       toast.success("Experiences saved — live now.");
     } else {
       toast.error("Save failed.");
@@ -89,13 +122,24 @@ export function ExperiencesPanel() {
           <h2 className="font-[family-name:var(--font-heading)] text-base font-bold">Bucket-List Experiences</h2>
           <p className="text-[11px] text-white/40">The auto-scrolling experience cards on the homepage.</p>
         </div>
-        <Button onClick={save} disabled={saving || !dirty} className="h-8 gap-1.5 bg-gradient-to-r from-[#FF0099] to-[#B51760] text-xs text-white hover:brightness-110 disabled:opacity-40">
-          {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-          {dirty ? "Save changes" : "Saved"}
-        </Button>
+        <div className="flex items-center gap-3">
+          {dirty && <DraftSavedHint savedAt={draft.draftSavedAt} />}
+          <Button onClick={save} disabled={saving || !dirty} className="h-8 gap-1.5 bg-gradient-to-r from-[#FF0099] to-[#B51760] text-xs text-white hover:brightness-110 disabled:opacity-40">
+            {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+            {dirty ? "Save changes" : "Saved"}
+          </Button>
+        </div>
       </div>
       <ScrollArea className="flex-1">
         <div className="mx-auto max-w-2xl space-y-3 p-6">
+          {draft.hasDraft && (
+            <DraftBanner
+              savedAt={draft.draftSavedAt}
+              label="experiences edit"
+              onRestore={handleRestore}
+              onDiscard={draft.clear}
+            />
+          )}
           {form.map((it, i) => (
             <ExpRow
               key={i}

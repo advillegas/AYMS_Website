@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   useHomeContent,
   saveSiteContent,
@@ -13,6 +13,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { toast } from "sonner";
 import { Loader2, Save, Plus, Trash2, RotateCcw, Type, Hash } from "lucide-react";
+import { useFormDraft } from "@/lib/use-form-draft";
+import { DraftBanner, DraftSavedHint } from "@/components/admin/draft-banner";
 
 const labelCls = "text-[11px] font-semibold uppercase tracking-wider text-white/40";
 const inputCls = "bg-white/5 border-white/10 text-white text-sm h-9 focus-visible:ring-[#FF0099]/30";
@@ -28,6 +30,37 @@ export function HomeContentPanel() {
     if (!dirty) setForm(live);
   }, [live, dirty]);
 
+  // Draft autosave so switching admin tabs (which unmounts this panel) never
+  // loses unsaved edits. The panel only mounts when its tab is active, so we
+  // just gate on `dirty` to keep a pristine panel from writing a draft.
+  const draft = useFormDraft<HomeContent>("panel:home");
+  const latestRef = useRef(form);
+  latestRef.current = form;
+  const dirtyRef = useRef(dirty);
+  dirtyRef.current = dirty;
+
+  useEffect(() => {
+    if (dirty) draft.save(form);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form, dirty]);
+
+  useEffect(
+    () => () => {
+      if (dirtyRef.current) draft.saveNow(latestRef.current);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+
+  function handleRestore() {
+    const d = draft.getDraft();
+    if (d) {
+      setForm(d);
+      setDirty(true);
+    }
+    draft.dismiss();
+  }
+
   function mutate(next: HomeContent) {
     setDirty(true);
     setForm(next);
@@ -39,6 +72,7 @@ export function HomeContentPanel() {
     setSaving(false);
     if (ok) {
       setDirty(false);
+      draft.clear();
       toast.success("Homepage content saved — live now.");
     } else {
       toast.error("Save failed. Make sure you're signed in as an admin.");
@@ -52,14 +86,25 @@ export function HomeContentPanel() {
           <h2 className="font-[family-name:var(--font-heading)] text-base font-bold">Homepage Content</h2>
           <p className="text-[11px] text-white/40">Rotating hero headlines &amp; the stat chips.</p>
         </div>
-        <Button onClick={handleSave} disabled={saving || !dirty} className="h-8 gap-1.5 bg-gradient-to-r from-[#FF0099] to-[#B51760] text-xs text-white hover:brightness-110 disabled:opacity-40">
-          {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-          {dirty ? "Save changes" : "Saved"}
-        </Button>
+        <div className="flex items-center gap-3">
+          {dirty && <DraftSavedHint savedAt={draft.draftSavedAt} />}
+          <Button onClick={handleSave} disabled={saving || !dirty} className="h-8 gap-1.5 bg-gradient-to-r from-[#FF0099] to-[#B51760] text-xs text-white hover:brightness-110 disabled:opacity-40">
+            {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+            {dirty ? "Save changes" : "Saved"}
+          </Button>
+        </div>
       </div>
 
       <ScrollArea className="flex-1">
         <div className="mx-auto max-w-2xl space-y-8 p-6">
+          {draft.hasDraft && (
+            <DraftBanner
+              savedAt={draft.draftSavedAt}
+              label="homepage edit"
+              onRestore={handleRestore}
+              onDiscard={draft.clear}
+            />
+          )}
           {/* Rotating headlines */}
           <section className="space-y-3">
             <div className="flex items-center justify-between">

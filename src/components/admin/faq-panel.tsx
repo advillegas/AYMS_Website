@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useFaqContent, saveSiteContent, type FaqCategory } from "@/lib/use-site-content";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { toast } from "sonner";
 import { Loader2, Save, Plus, Trash2 } from "lucide-react";
+import { useFormDraft } from "@/lib/use-form-draft";
+import { DraftBanner, DraftSavedHint } from "@/components/admin/draft-banner";
 
 const inputCls = "bg-white/5 border-white/10 text-white text-sm h-9 focus-visible:ring-[#FF0099]/30";
 const taCls = "w-full rounded-md border border-white/10 bg-white/5 p-2 text-sm text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]/30";
@@ -23,6 +25,36 @@ export function FaqPanel() {
     if (!dirty) setForm(categories);
   }, [categories, dirty]);
 
+  // Draft autosave so switching admin tabs (which unmounts this panel) never
+  // loses unsaved edits. Gate on `dirty` so a pristine panel writes no draft.
+  const draft = useFormDraft<FaqCategory[]>("panel:faq");
+  const latestRef = useRef(form);
+  latestRef.current = form;
+  const dirtyRef = useRef(dirty);
+  dirtyRef.current = dirty;
+
+  useEffect(() => {
+    if (dirty) draft.save(form);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form, dirty]);
+
+  useEffect(
+    () => () => {
+      if (dirtyRef.current) draft.saveNow(latestRef.current);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+
+  function handleRestore() {
+    const d = draft.getDraft();
+    if (d) {
+      setForm(d);
+      setDirty(true);
+    }
+    draft.dismiss();
+  }
+
   function mut(next: FaqCategory[]) {
     setDirty(true);
     setForm(next);
@@ -34,6 +66,7 @@ export function FaqPanel() {
     setSaving(false);
     if (ok) {
       setDirty(false);
+      draft.clear();
       toast.success("FAQ saved — live now.");
     } else {
       toast.error("Save failed.");
@@ -47,13 +80,24 @@ export function FaqPanel() {
           <h2 className="font-[family-name:var(--font-heading)] text-base font-bold">FAQ</h2>
           <p className="text-[11px] text-white/40">Categories &amp; questions on the /faq page.</p>
         </div>
-        <Button onClick={save} disabled={saving || !dirty} className="h-8 gap-1.5 bg-gradient-to-r from-[#FF0099] to-[#B51760] text-xs text-white hover:brightness-110 disabled:opacity-40">
-          {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-          {dirty ? "Save changes" : "Saved"}
-        </Button>
+        <div className="flex items-center gap-3">
+          {dirty && <DraftSavedHint savedAt={draft.draftSavedAt} />}
+          <Button onClick={save} disabled={saving || !dirty} className="h-8 gap-1.5 bg-gradient-to-r from-[#FF0099] to-[#B51760] text-xs text-white hover:brightness-110 disabled:opacity-40">
+            {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+            {dirty ? "Save changes" : "Saved"}
+          </Button>
+        </div>
       </div>
       <ScrollArea className="flex-1">
         <div className="mx-auto max-w-2xl space-y-6 p-6">
+          {draft.hasDraft && (
+            <DraftBanner
+              savedAt={draft.draftSavedAt}
+              label="FAQ edit"
+              onRestore={handleRestore}
+              onDiscard={draft.clear}
+            />
+          )}
           {form.map((cat, ci) => (
             <div key={ci} className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
               <div className="mb-3 flex items-center gap-2">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSeoContent, saveSiteContent, type SeoMap } from "@/lib/use-site-content";
 import { SEO_PAGES } from "@/lib/seo-config";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { Loader2, Save, Search } from "lucide-react";
+import { useFormDraft } from "@/lib/use-form-draft";
+import { DraftBanner, DraftSavedHint } from "@/components/admin/draft-banner";
 
 const labelCls = "text-[11px] font-semibold uppercase tracking-wider text-white/40";
 const inputCls =
@@ -25,6 +27,36 @@ export function SeoPanel() {
     if (!dirty) setForm(seo);
   }, [seo, dirty]);
 
+  // Draft autosave so switching admin tabs (which unmounts this panel) never
+  // loses unsaved edits. Gate on `dirty` so a pristine panel writes no draft.
+  const draft = useFormDraft<SeoMap>("panel:seo");
+  const latestRef = useRef(form);
+  latestRef.current = form;
+  const dirtyRef = useRef(dirty);
+  dirtyRef.current = dirty;
+
+  useEffect(() => {
+    if (dirty) draft.save(form);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form, dirty]);
+
+  useEffect(
+    () => () => {
+      if (dirtyRef.current) draft.saveNow(latestRef.current);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+
+  function handleRestore() {
+    const d = draft.getDraft();
+    if (d) {
+      setForm(d);
+      setDirty(true);
+    }
+    draft.dismiss();
+  }
+
   function set(slug: string, field: "title" | "description", value: string) {
     setDirty(true);
     setForm((f) => ({ ...f, [slug]: { ...f[slug], [field]: value } }));
@@ -36,6 +68,7 @@ export function SeoPanel() {
     setSaving(false);
     if (ok) {
       setDirty(false);
+      draft.clear();
       toast.success("SEO saved — search listings update within a couple minutes.");
     } else {
       toast.error("Save failed. Make sure you're signed in as an admin.");
@@ -53,22 +86,33 @@ export function SeoPanel() {
             The title &amp; description Google and social shares show for each page.
           </p>
         </div>
-        <Button
-          onClick={handleSave}
-          disabled={saving || !dirty}
-          className="h-8 gap-1.5 bg-gradient-to-r from-[#FF0099] to-[#B51760] text-xs text-white hover:brightness-110 disabled:opacity-40"
-        >
-          {saving ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : (
-            <Save className="h-3.5 w-3.5" />
-          )}
-          {dirty ? "Save changes" : "Saved"}
-        </Button>
+        <div className="flex items-center gap-3">
+          {dirty && <DraftSavedHint savedAt={draft.draftSavedAt} />}
+          <Button
+            onClick={handleSave}
+            disabled={saving || !dirty}
+            className="h-8 gap-1.5 bg-gradient-to-r from-[#FF0099] to-[#B51760] text-xs text-white hover:brightness-110 disabled:opacity-40"
+          >
+            {saving ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Save className="h-3.5 w-3.5" />
+            )}
+            {dirty ? "Save changes" : "Saved"}
+          </Button>
+        </div>
       </div>
 
       <ScrollArea className="flex-1">
         <div className="mx-auto max-w-2xl space-y-7 p-6">
+          {draft.hasDraft && (
+            <DraftBanner
+              savedAt={draft.draftSavedAt}
+              label="SEO edit"
+              onRestore={handleRestore}
+              onDiscard={draft.clear}
+            />
+          )}
           {SEO_PAGES.map(({ slug, label }) => {
             const entry = form[slug] ?? {};
             const titleLen = (entry.title ?? "").length;

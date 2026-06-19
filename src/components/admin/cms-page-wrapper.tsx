@@ -26,6 +26,8 @@ import { InlinePropsPanel } from "@/components/admin/inline-props-panel";
 import { Navbar } from "@/components/landing/navbar";
 import { Footer } from "@/components/landing/footer";
 import { v4 as uuid } from "uuid";
+import { toast } from "sonner";
+import { useFormDraft } from "@/lib/use-form-draft";
 import { PAGE_SNAPSHOTS } from "@/lib/page-snapshots";
 import { pageHasSections, isSectionList } from "@/lib/sections/registry";
 import { seedSectionsForPage } from "@/lib/sections/seed";
@@ -228,7 +230,14 @@ export function CmsPageWrapper({ slug, children }: Props) {
   const setPreview = useEditMode((s) => s.setPreview);
 
   const elements = useBuilder((s) => s.elements);
+  const canUndo = useBuilder((s) => s.canUndo);
   const isEditing = isEditMode && pageSlug === slug;
+
+  // Autosave the in-progress canvas so an accidental Exit / page-switch / refresh
+  // doesn't lose unsaved layout work. Stable methods (useCallback) so effects
+  // don't re-fire every render.
+  const canvasDraft = useFormDraft<BuilderElement[]>(isEditing ? `builder:${slug}` : null);
+  const { save: saveCanvasDraft, saveNow: flushCanvasDraft, clear: clearCanvasDraft, getDraft: getCanvasDraft } = canvasDraft;
 
   // This page is a SECTION page if it has registered sections, or its saved/
   // published content is a section list. Custom /p pages use the generic blocks.
@@ -269,7 +278,41 @@ export function CmsPageWrapper({ slug, children }: Props) {
       useBuilder.setState({ elements: seed, selectedId: null });
     }
     useBuilder.getState().resetHistory();
+
+    // Recover unsaved canvas work from a prior interrupted session.
+    const recovered = getCanvasDraft();
+    if (recovered && recovered.length) {
+      const current = JSON.stringify(useBuilder.getState().elements);
+      if (JSON.stringify(recovered) !== current) {
+        toast("You have unsaved layout changes from a previous session.", {
+          duration: 12000,
+          action: {
+            label: "Restore",
+            onClick: () =>
+              useBuilder.setState({
+                elements: JSON.parse(JSON.stringify(recovered)),
+                selectedId: null,
+              }),
+          },
+        });
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEditing, slug, sectionMode]);
+
+  // Debounced autosave of the canvas while editing (only after a real change).
+  useEffect(() => {
+    if (!isEditing || !canUndo) return;
+    saveCanvasDraft(useBuilder.getState().elements);
+  }, [isEditing, elements, canUndo, saveCanvasDraft]);
+
+  // Flush the latest canvas the moment edit mode ends (debounce-safe).
+  useEffect(() => {
+    if (!isEditing) return;
+    return () => {
+      if (useBuilder.getState().canUndo) flushCanvasDraft(useBuilder.getState().elements);
+    };
+  }, [isEditing, flushCanvasDraft]);
 
   // In the section builder, also turn on inline click-to-edit so text/photos
   // are editable directly on the canvas alongside the structural controls.
@@ -300,15 +343,18 @@ export function CmsPageWrapper({ slug, children }: Props) {
     useEditMode.setState({ selectedElementId: el.id });
   }, []);
 
-  const handleSave = useCallback(() => {
-    return setPageElements(slug, useBuilder.getState().elements);
-  }, [slug, setPageElements]);
+  const handleSave = useCallback(async () => {
+    const ok = await setPageElements(slug, useBuilder.getState().elements);
+    if (ok) clearCanvasDraft(); // persisted — the recovery draft is no longer needed
+    return ok;
+  }, [slug, setPageElements, clearCanvasDraft]);
 
   const handlePublish = useCallback(async () => {
     const okSave = await setPageElements(slug, useBuilder.getState().elements);
     const okPublish = await publishPage(slug);
+    if (okSave && okPublish) clearCanvasDraft();
     return okSave && okPublish;
-  }, [slug, setPageElements, publishPage]);
+  }, [slug, setPageElements, publishPage, clearCanvasDraft]);
 
   const handleReset = useCallback(() => {
     if (sectionMode) {
@@ -318,8 +364,9 @@ export function CmsPageWrapper({ slug, children }: Props) {
       useBuilder.setState({ elements: snapFn ? snapFn() : [], selectedId: null });
     }
     useEditMode.setState({ selectedElementId: null });
+    clearCanvasDraft(); // discard recovered/in-progress edits
     if (isSystemSlug(slug)) useCms.getState().unpublishPage(slug);
-  }, [slug, sectionMode]);
+  }, [slug, sectionMode, clearCanvasDraft]);
 
   const handleUnpublish = useCallback(() => useCms.getState().unpublishPage(slug), [slug]);
   const handleListVersions = useCallback(() => useCms.getState().listVersions(slug), [slug]);

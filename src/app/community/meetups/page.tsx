@@ -297,7 +297,7 @@ export default function MeetupsPage() {
           if (!open) setSelected(null);
         }}
       >
-        <DialogContent className="max-w-lg">
+        <DialogContent className="sm:max-w-lg">
           {selected && (
             <>
               <DialogTitle className="sr-only">{selected.title}</DialogTitle>

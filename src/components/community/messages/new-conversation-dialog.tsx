@@ -153,7 +153,7 @@ export function NewConversationDialog({
         onOpenChange(next);
       }}
     >
-      <DialogContent className="max-w-md">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 font-[family-name:var(--font-heading)] text-[#B51760]">
             {isGroup ? (

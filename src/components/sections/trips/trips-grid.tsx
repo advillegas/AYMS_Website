@@ -295,7 +295,10 @@ export function TripsGrid() {
 
       {/* Trip detail dialog */}
       <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
-        <DialogContent className="max-w-2xl max-h-[90vh] gap-0 overflow-y-auto glass-strong border-rosa/30 elevate-4">
+        {/* `sm:max-w-2xl` (not bare `max-w-2xl`) so it beats the base
+            DialogContent's `sm:max-w-sm` at ≥640px — otherwise the wide
+            2-column detail content overflows a 384px popup and clips. */}
+        <DialogContent className="w-[calc(100vw-2rem)] gap-0 overflow-x-hidden overflow-y-auto border-rosa/30 glass-strong elevate-4 sm:max-w-2xl max-h-[90vh]">
           {selected && <TripDetail trip={selected} />}
         </DialogContent>
       </Dialog>

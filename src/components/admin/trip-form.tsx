@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import type { Trip } from "@/lib/trips-data";
 import { useFormDraft } from "@/lib/use-form-draft";
 import { DraftBanner, DraftSavedHint } from "@/components/admin/draft-banner";
+import { EmojiField } from "@/components/admin/emoji-field";
 import { resolveBooking } from "@/lib/url";
 
 /** All editable fields, captured as a draft so interruptions don't lose work. */
@@ -512,11 +513,10 @@ export function TripFormDialog({
           <div className="grid grid-cols-2 gap-3">
             <div className="grid gap-1.5">
               <Label>Emoji</Label>
-              <Input
-                value={emoji}
-                onChange={(e) => setEmoji(e.target.value)}
-                placeholder="🇲🇽"
-              />
+              <EmojiField value={emoji} onChange={setEmoji} />
+              <p className="text-[11px] text-muted-foreground">
+                Optional — shown on the trip card. Remove it to show none.
+              </p>
             </div>
             <div className="grid gap-1.5">
               <Label>Image path</Label>

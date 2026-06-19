@@ -32,7 +32,7 @@ interface PickerComponentProps {
   navPosition?: "top" | "bottom" | "none";
 }
 
-type LoadedPicker = {
+export type LoadedPicker = {
   Picker: React.ComponentType<PickerComponentProps>;
   data: unknown;
 };
@@ -42,7 +42,7 @@ type LoadedPicker = {
 let cachedPicker: LoadedPicker | null = null;
 let pendingImport: Promise<LoadedPicker> | null = null;
 
-function loadPicker(): Promise<LoadedPicker> {
+export function loadPicker(): Promise<LoadedPicker> {
   if (cachedPicker) return Promise.resolve(cachedPicker);
   if (pendingImport) return pendingImport;
   pendingImport = (async () => {

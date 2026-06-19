@@ -244,6 +244,7 @@ export function FeaturedSpotlight() {
                   fill
                   sizes="(max-width: 1024px) 100vw, 60vw"
                   className="object-cover"
+                  style={{ objectPosition: trip.imagePosition || "center" }}
                 />
                 <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-black/10" aria-hidden="true" />
                 <span className="absolute bottom-3 left-4 text-3xl drop-shadow-lg" aria-hidden="true">

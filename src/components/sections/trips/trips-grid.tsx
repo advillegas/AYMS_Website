@@ -207,6 +207,7 @@ export function TripsGrid() {
                               fill
                               sizes="(max-width: 640px) 100vw, (max-width: 1280px) 33vw, 25vw"
                               className="object-cover"
+                              style={{ objectPosition: trip.imagePosition || "center" }}
                             />
                             {/* scrim so white status badge + heart stay legible over any photo */}
                             <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/25 via-transparent to-black/15" aria-hidden="true" />
@@ -331,6 +332,7 @@ function TripDetail({ trip }: { trip: Trip }) {
           priority
           sizes="(max-width: 768px) 100vw, 672px"
           className="object-cover"
+          style={{ objectPosition: trip.imagePosition || "center" }}
         />
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-transparent" aria-hidden="true" />
         <span className="absolute bottom-3 left-4 text-4xl drop-shadow-lg" aria-hidden="true">{trip.emoji}</span>

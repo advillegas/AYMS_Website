@@ -107,6 +107,7 @@ export function Trips() {
                           fill
                           sizes="(max-width: 768px) 100vw, 33vw"
                           className="object-cover"
+                          style={{ objectPosition: trip.imagePosition || "center" }}
                         />
                         <div className="absolute inset-0 pattern-dots opacity-10" aria-hidden="true" />
                         <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/25 via-transparent to-black/20" aria-hidden="true" />

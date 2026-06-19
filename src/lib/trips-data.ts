@@ -19,6 +19,12 @@ export interface Trip {
   /** Representative location photo (self-hosted under /public/trips). */
   image: string;
   /**
+   * CSS object-position for `image` (e.g. "50% 30%"). Lets the admin pick a
+   * focal point so an off-center photo crops nicely in the card's fixed-height
+   * media area. Defaults to "50% 50%" (centered) when unset.
+   */
+  imagePosition?: string;
+  /**
    * Admin publish gate. Only published trips render on the public
    * marketing site; drafts are visible to admins in the CRM only.
    * `undefined` counts as published so the legacy static seeds (and any

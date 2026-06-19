@@ -32,6 +32,7 @@ interface TripRow {
   emoji: string;
   gradient: string;
   image: string;
+  image_position: string | null;
   published: boolean | null;
   featured: boolean | null;
   sort_order: number | null;
@@ -66,6 +67,7 @@ function rowToTrip(r: TripRow): Trip {
     emoji: r.emoji ?? "",
     gradient: r.gradient ?? "",
     image: r.image ?? "",
+    imagePosition: r.image_position ?? undefined,
     published: r.published ?? undefined,
     featured: r.featured ?? undefined,
     order: r.sort_order ?? undefined,
@@ -96,6 +98,7 @@ const COL: Record<string, string> = {
   emoji: "emoji",
   gradient: "gradient",
   image: "image",
+  imagePosition: "image_position",
   published: "published",
   featured: "featured",
   order: "sort_order",

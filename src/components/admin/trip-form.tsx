@@ -18,6 +18,7 @@ import type { Trip } from "@/lib/trips-data";
 import { useFormDraft } from "@/lib/use-form-draft";
 import { DraftBanner, DraftSavedHint } from "@/components/admin/draft-banner";
 import { EmojiField } from "@/components/admin/emoji-field";
+import { ImagePositioner } from "@/components/admin/image-positioner";
 import { uploadCmsMedia } from "@/lib/supabase-storage";
 import { resolveBooking } from "@/lib/url";
 
@@ -40,6 +41,7 @@ interface TripDraft {
   emoji: string;
   gradient: string;
   image: string;
+  imagePosition: string;
   bookingUrl: string;
   bookingLabel: string;
   published: boolean;
@@ -111,6 +113,7 @@ export function TripFormDialog({
   const [emoji, setEmoji] = useState("");
   const [gradient, setGradient] = useState(DEFAULT_GRADIENT);
   const [image, setImage] = useState("");
+  const [imagePosition, setImagePosition] = useState("");
   const [bookingUrl, setBookingUrl] = useState("");
   const [bookingLabel, setBookingLabel] = useState("");
   const [published, setPublished] = useState(true);
@@ -149,7 +152,7 @@ export function TripFormDialog({
   const data: TripDraft = {
     title, destination, country, dates, duration, price, deposit, spots, spotsLeft,
     status, description, highlights, includes, notIncluded, emoji, gradient, image,
-    bookingUrl, bookingLabel, published, featured, order,
+    imagePosition, bookingUrl, bookingLabel, published, featured, order,
   };
   const dataJson = JSON.stringify(data);
   const latestRef = useRef<TripDraft>(data);
@@ -162,7 +165,7 @@ export function TripFormDialog({
     setSpots(d.spots); setSpotsLeft(d.spotsLeft); setStatus(d.status);
     setDescription(d.description); setHighlights(d.highlights); setIncludes(d.includes);
     setNotIncluded(d.notIncluded); setEmoji(d.emoji); setGradient(d.gradient);
-    setImage(d.image); setBookingUrl(d.bookingUrl); setBookingLabel(d.bookingLabel);
+    setImage(d.image); setImagePosition(d.imagePosition ?? ""); setBookingUrl(d.bookingUrl); setBookingLabel(d.bookingLabel);
     setPublished(d.published); setFeatured(d.featured); setOrder(d.order);
   }
 
@@ -201,6 +204,7 @@ export function TripFormDialog({
     setEmoji(trip?.emoji ?? "");
     setGradient(trip?.gradient || DEFAULT_GRADIENT);
     setImage(trip?.image ?? "");
+    setImagePosition(trip?.imagePosition ?? "");
     setBookingUrl(trip?.bookingUrl ?? "");
     setBookingLabel(trip?.bookingLabel ?? "");
     // `undefined` published counts as published (legacy seeds).
@@ -218,6 +222,7 @@ export function TripFormDialog({
       description: trip?.description ?? "", highlights: arrayToLines(trip?.highlights),
       includes: arrayToLines(trip?.includes), notIncluded: arrayToLines(trip?.notIncluded),
       emoji: trip?.emoji ?? "", gradient: trip?.gradient || DEFAULT_GRADIENT, image: trip?.image ?? "",
+      imagePosition: trip?.imagePosition ?? "",
       bookingUrl: trip?.bookingUrl ?? "", bookingLabel: trip?.bookingLabel ?? "",
       published: trip ? trip.published !== false : true, featured: trip ? !!trip.featured : false,
       order: trip && typeof trip.order === "number" ? String(trip.order) : "",
@@ -246,6 +251,7 @@ export function TripFormDialog({
     setEmoji("");
     setGradient(DEFAULT_GRADIENT);
     setImage("");
+    setImagePosition("");
     setBookingUrl("");
     setBookingLabel("");
     setPublished(true);
@@ -300,6 +306,7 @@ export function TripFormDialog({
         emoji: emoji.trim(),
         gradient: gradient.trim() || DEFAULT_GRADIENT,
         image: image.trim(),
+        imagePosition: imagePosition.trim() || undefined,
         // Normalize so a link pasted into the wrong field still works and a
         // raw URL never ends up as the button text.
         bookingUrl: resolveBooking(bookingUrl, bookingLabel).url || undefined,
@@ -602,6 +609,16 @@ export function TripFormDialog({
             <p className="text-[11px] text-muted-foreground">
               Upload a photo (stored in your media library) or paste a link.
             </p>
+            {image.trim() && (
+              <div className="mt-1 grid gap-1.5">
+                <Label className="text-xs text-muted-foreground">Position &amp; preview</Label>
+                <ImagePositioner
+                  src={image.trim()}
+                  value={imagePosition}
+                  onChange={setImagePosition}
+                />
+              </div>
+            )}
           </div>
 
           <div className="grid gap-1.5">

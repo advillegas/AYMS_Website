@@ -63,6 +63,7 @@ interface FirestoreTripDoc {
   emoji?: string;
   gradient?: string;
   image?: string;
+  imagePosition?: string;
   published?: boolean;
   featured?: boolean;
   order?: number;
@@ -105,6 +106,7 @@ function docToTrip(
     emoji: data.emoji ?? "",
     gradient: data.gradient ?? "",
     image: data.image ?? "",
+    imagePosition: data.imagePosition ?? undefined,
     published: data.published ?? undefined,
     featured: data.featured ?? undefined,
     order: data.order ?? undefined,
@@ -141,6 +143,7 @@ function tripToDoc(t: Partial<Trip>): Record<string, unknown> {
     order: t.order ?? 0,
     ...(t.bookingUrl !== undefined ? { bookingUrl: t.bookingUrl } : {}),
     ...(t.bookingLabel !== undefined ? { bookingLabel: t.bookingLabel } : {}),
+    ...(t.imagePosition !== undefined ? { imagePosition: t.imagePosition } : {}),
   };
 }
 

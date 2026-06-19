@@ -123,11 +123,11 @@ export default function AdminPage() {
     return unsubscribe;
   }, [hydrated, isAuthenticated, allowed, router]);
 
-  const toggleEditMode = useEditMode((s) => s.toggleEditMode);
+  const setEditPage = useEditMode((s) => s.setEditPage);
 
   function handleEditPage(slug: string) {
     if (pageHasSections(slug)) {
-      toggleEditMode(slug);
+      setEditPage(slug);
       router.push(systemPageHref(slug));
       return;
     }
@@ -156,7 +156,7 @@ export default function AdminPage() {
         router.push("/camp");
         return;
       default:
-        toggleEditMode(slug);
+        setEditPage(slug);
         router.push(`/p/${slug}`);
     }
   }

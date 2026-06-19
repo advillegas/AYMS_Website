@@ -9,6 +9,7 @@
 import { useEffect } from "react";
 import { getSupabase } from "./supabase";
 import { subscribeQuery } from "./supabase-helpers";
+import { ensureSupabaseSession } from "./ensure-session";
 import type { RichChannel } from "./use-channels-store";
 
 interface ChannelRow {
@@ -68,20 +69,34 @@ function channelToRow(c: RichChannel): ChannelRow {
 
 export async function writeChannelsToSupabase(
   channels: RichChannel[],
-): Promise<void> {
+): Promise<boolean> {
   const sb = getSupabase();
-  if (!sb) return;
+  if (!sb) return false;
   try {
-    await sb.from("channels").upsert(channels.map(channelToRow));
+    // Guarantee an authenticated session first — a lapsed token drops the
+    // client to `anon` and RLS silently rejects the write, so a newly
+    // created channel never persists ("attempts fail and changes aren't saved").
+    await ensureSupabaseSession(sb);
+    const { error: upErr } = await sb
+      .from("channels")
+      .upsert(channels.map(channelToRow));
+    if (upErr) {
+      console.warn("[channels:sb] upsert failed", upErr.message);
+      return false;
+    }
     const keep = channels.map((c) => c.id);
     if (keep.length > 0) {
-      await sb
+      // Best-effort prune of removed channels; never fail the create on this.
+      const { error: delErr } = await sb
         .from("channels")
         .delete()
         .not("id", "in", `(${keep.map((id) => `"${id}"`).join(",")})`);
+      if (delErr) console.warn("[channels:sb] prune failed", delErr.message);
     }
+    return true;
   } catch (err) {
     console.warn("[channels:sb] write failed", err);
+    return false;
   }
 }
 

@@ -155,7 +155,12 @@ export function ElementRenderer({ element, editable, onUpdate, onClick, isSelect
               }}
               contentEditable={!!editable}
               suppressContentEditableWarning
-              onBlur={(e) => onUpdate?.({ text: e.currentTarget.textContent || "" })}
+              // innerText (not textContent) preserves the line breaks the user
+              // types — textContent flattens <div>/<br> into one block, which
+              // is what collapsed multi-paragraph text into a giant block.
+              onBlur={(e) =>
+                onUpdate?.({ text: e.currentTarget.innerText.replace(/\n{3,}/g, "\n\n") })
+              }
             >
               {p.text as string}
             </p>,

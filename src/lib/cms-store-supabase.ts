@@ -15,6 +15,7 @@
 
 import { getSupabase } from "./supabase";
 import { subscribeQuery } from "./supabase-helpers";
+import { ensureSupabaseSession } from "./ensure-session";
 import type { BuilderElement, Template } from "./builder-store";
 import type { CmsPage, NavLink } from "./cms-store";
 
@@ -69,6 +70,9 @@ function rowToTemplate(r: TemplateRow): Template {
 export async function sbWritePage(page: CmsPage): Promise<boolean> {
   const sb = getSupabase();
   if (!sb) return false;
+  // Guarantee an authenticated session — a lapsed token makes RLS reject the
+  // write, so new pages / edits silently fail to save.
+  await ensureSupabaseSession(sb);
   const { error } = await sb
     .from("cms_pages")
     .upsert(
@@ -89,58 +93,56 @@ export async function sbWritePage(page: CmsPage): Promise<boolean> {
 export function sbDeletePage(slug: string): void {
   const sb = getSupabase();
   if (!sb) return;
-  void sb
-    .from("cms_pages")
-    .delete()
-    .eq("slug", slug)
-    .then(({ error }) => {
-      if (error) console.warn("[cms:sb] page delete failed", slug, error.message);
-    });
+  void (async () => {
+    await ensureSupabaseSession(sb);
+    const { error } = await sb.from("cms_pages").delete().eq("slug", slug);
+    if (error) console.warn("[cms:sb] page delete failed", slug, error.message);
+  })();
 }
 
 export function sbWriteNav(navLinks: NavLink[]): void {
   const sb = getSupabase();
   if (!sb) return;
-  void sb
-    .from("cms_config")
-    .upsert(
-      { key: NAV_KEY, value: { links: navLinks }, updated_at: new Date().toISOString() },
-      { onConflict: "key" },
-    )
-    .then(({ error }) => {
-      if (error) console.warn("[cms:sb] nav write failed", error.message);
-    });
+  void (async () => {
+    await ensureSupabaseSession(sb);
+    const { error } = await sb
+      .from("cms_config")
+      .upsert(
+        { key: NAV_KEY, value: { links: navLinks }, updated_at: new Date().toISOString() },
+        { onConflict: "key" },
+      );
+    if (error) console.warn("[cms:sb] nav write failed", error.message);
+  })();
 }
 
 export function sbWriteTemplate(t: Template): void {
   const sb = getSupabase();
   if (!sb) return;
-  void sb
-    .from("cms_templates")
-    .upsert(
-      {
-        id: t.id,
-        name: t.name,
-        elements: t.elements ?? [],
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "id" },
-    )
-    .then(({ error }) => {
-      if (error) console.warn("[cms:sb] template write failed", t.id, error.message);
-    });
+  void (async () => {
+    await ensureSupabaseSession(sb);
+    const { error } = await sb
+      .from("cms_templates")
+      .upsert(
+        {
+          id: t.id,
+          name: t.name,
+          elements: t.elements ?? [],
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "id" },
+      );
+    if (error) console.warn("[cms:sb] template write failed", t.id, error.message);
+  })();
 }
 
 export function sbDeleteTemplate(id: string): void {
   const sb = getSupabase();
   if (!sb) return;
-  void sb
-    .from("cms_templates")
-    .delete()
-    .eq("id", id)
-    .then(({ error }) => {
-      if (error) console.warn("[cms:sb] template delete failed", id, error.message);
-    });
+  void (async () => {
+    await ensureSupabaseSession(sb);
+    const { error } = await sb.from("cms_templates").delete().eq("id", id);
+    if (error) console.warn("[cms:sb] template delete failed", id, error.message);
+  })();
 }
 
 /* ----------------------------- version history --------------------- */
@@ -171,6 +173,7 @@ export async function sbWriteVersion(
   if (!sb) return;
   const id = `ver-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
   try {
+    await ensureSupabaseSession(sb);
     const { error } = await sb
       .from("cms_page_versions")
       .insert({ id, slug, title, elements: elements ?? [] });

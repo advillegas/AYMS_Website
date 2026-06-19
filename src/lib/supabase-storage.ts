@@ -8,6 +8,7 @@
 
 import { getSupabase } from "./supabase";
 import { useAuth } from "./store";
+import { ensureSupabaseSession } from "./ensure-session";
 import { recordMediaAsset, kindFromMime } from "./use-media-library";
 
 /**
@@ -24,6 +25,9 @@ export async function uploadToSupabaseStorage(
 ): Promise<string | null> {
   const sb = getSupabase();
   if (!sb) return null;
+  // Storage RLS checks the path's owner segment against the authed user, so a
+  // lapsed session makes uploads fail. Guarantee a session first.
+  await ensureSupabaseSession(sb);
   const safeName = file.name.replace(/[^a-zA-Z0-9.]/g, "_");
   const path = `${folder}/${Date.now()}-${Math.random()
     .toString(36)

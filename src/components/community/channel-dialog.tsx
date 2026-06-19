@@ -26,6 +26,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { EmojiField } from "@/components/admin/emoji-field";
 import { Hash, Mic, Video, Lock, MapPin, X } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -271,35 +272,29 @@ export function ChannelDialog({
             />
           </div>
 
-          <div className="grid grid-cols-3 gap-1.5">
-            <div className="col-span-1 grid gap-1.5">
-              <Label htmlFor="ch-icon">Emoji</Label>
-              <Input
-                id="ch-icon"
-                value={icon}
-                onChange={(e) => setIcon(e.target.value)}
-                placeholder="💬"
-                maxLength={4}
-                className="text-center"
-              />
-            </div>
-            <div className="col-span-2 grid gap-1.5">
-              <Label htmlFor="ch-cat">Category</Label>
-              <select
-                id="ch-cat"
-                value={category}
-                onChange={(e) =>
-                  setCategory(e.target.value as RichChannel["category"])
-                }
-                className="h-9 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-              >
-                {CATEGORY_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </div>
+          <div className="grid gap-1.5">
+            <Label>Channel emoji</Label>
+            <EmojiField value={icon} onChange={setIcon} />
+            <p className="text-[11px] text-muted-foreground">
+              Shows next to the channel name (like Discord). Optional.
+            </p>
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="ch-cat">Category</Label>
+            <select
+              id="ch-cat"
+              value={category}
+              onChange={(e) =>
+                setCategory(e.target.value as RichChannel["category"])
+              }
+              className="h-9 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+            >
+              {CATEGORY_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="grid gap-1.5">

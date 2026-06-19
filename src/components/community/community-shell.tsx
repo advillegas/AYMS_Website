@@ -253,7 +253,13 @@ function ChannelRow({
                   : undefined
           }
         >
-          <TypeIcon className="h-3.5 w-3.5 shrink-0 opacity-60" />
+          {ch.icon && ch.icon.trim() && ch.icon !== "#" ? (
+            <span className="shrink-0 text-sm leading-none" aria-hidden="true">
+              {ch.icon}
+            </span>
+          ) : (
+            <TypeIcon className="h-3.5 w-3.5 shrink-0 opacity-60" />
+          )}
           <span className="truncate flex-1">{ch.name}</span>
           {restricted && (
             <Lock className="h-2.5 w-2.5 shrink-0 opacity-50" />

@@ -928,7 +928,13 @@ export default function ChatPage() {
     <div className="flex h-full flex-col">
       {/* Channel header */}
       <div className="flex h-12 shrink-0 items-center gap-2 border-b border-[#FACDE8]/25 px-4 glass elevate-2">
-        <Hash className="h-4 w-4 text-[#FF0099]/80" />
+        {channel?.icon && channel.icon.trim() && channel.icon !== "#" ? (
+          <span className="text-base leading-none" aria-hidden="true">
+            {channel.icon}
+          </span>
+        ) : (
+          <Hash className="h-4 w-4 text-[#FF0099]/80" />
+        )}
         <h2 className="font-semibold font-[family-name:var(--font-heading)] text-[#B51760]">
           {channel?.name || "General"}
         </h2>

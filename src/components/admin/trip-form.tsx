@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,12 +12,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Loader2 } from "lucide-react";
+import { Loader2, Upload, ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import type { Trip } from "@/lib/trips-data";
 import { useFormDraft } from "@/lib/use-form-draft";
 import { DraftBanner, DraftSavedHint } from "@/components/admin/draft-banner";
 import { EmojiField } from "@/components/admin/emoji-field";
+import { uploadCmsMedia } from "@/lib/supabase-storage";
 import { resolveBooking } from "@/lib/url";
 
 /** All editable fields, captured as a draft so interruptions don't lose work. */
@@ -116,6 +117,28 @@ export function TripFormDialog({
   const [featured, setFeatured] = useState(false);
   const [order, setOrder] = useState("");
   const [busy, setBusy] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const imageFileRef = useRef<HTMLInputElement>(null);
+
+  async function handleImageUpload(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please choose an image file.");
+      return;
+    }
+    setUploadingImage(true);
+    try {
+      const url = await uploadCmsMedia(file);
+      setImage(url);
+      toast.success("Image uploaded.");
+    } catch {
+      toast.error("Upload failed. Try again or paste an image URL.");
+    } finally {
+      setUploadingImage(false);
+    }
+  }
 
   // Draft autosave so an accidental close / refresh never loses the form.
   const draftKey = open ? (trip ? `trip:${trip.id}` : "trip:new") : null;
@@ -510,22 +533,75 @@ export function TripFormDialog({
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="grid gap-1.5">
-              <Label>Emoji</Label>
-              <EmojiField value={emoji} onChange={setEmoji} />
-              <p className="text-[11px] text-muted-foreground">
-                Optional — shown on the trip card. Remove it to show none.
-              </p>
-            </div>
-            <div className="grid gap-1.5">
-              <Label>Image path</Label>
-              <Input
-                value={image}
-                onChange={(e) => setImage(e.target.value)}
-                placeholder="/trips/your-trip.jpg"
+          <div className="grid gap-1.5">
+            <Label>Emoji</Label>
+            <EmojiField value={emoji} onChange={setEmoji} />
+            <p className="text-[11px] text-muted-foreground">
+              Optional — shown on the trip card. Remove it to show none.
+            </p>
+          </div>
+
+          <div className="grid gap-1.5">
+            <Label>Image</Label>
+            <div className="flex items-center gap-3">
+              {image ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={image}
+                  alt="Trip cover preview"
+                  className="h-16 w-24 shrink-0 rounded-md border border-input object-cover"
+                />
+              ) : (
+                <div className="flex h-16 w-24 shrink-0 items-center justify-center rounded-md border border-dashed border-input text-muted-foreground">
+                  <ImageIcon className="h-5 w-5" aria-hidden="true" />
+                </div>
+              )}
+              <div className="flex flex-col items-start gap-1.5">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={uploadingImage}
+                  onClick={() => imageFileRef.current?.click()}
+                  className="gap-1.5"
+                >
+                  {uploadingImage ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                  ) : (
+                    <Upload className="h-3.5 w-3.5" aria-hidden="true" />
+                  )}
+                  {uploadingImage
+                    ? "Uploading…"
+                    : image
+                      ? "Replace image"
+                      : "Upload image"}
+                </Button>
+                {image && (
+                  <button
+                    type="button"
+                    onClick={() => setImage("")}
+                    className="text-xs font-medium text-muted-foreground underline-offset-2 hover:text-destructive hover:underline"
+                  >
+                    Remove image
+                  </button>
+                )}
+              </div>
+              <input
+                ref={imageFileRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleImageUpload}
               />
             </div>
+            <Input
+              value={image}
+              onChange={(e) => setImage(e.target.value)}
+              placeholder="…or paste an image URL / path"
+            />
+            <p className="text-[11px] text-muted-foreground">
+              Upload a photo (stored in your media library) or paste a link.
+            </p>
           </div>
 
           <div className="grid gap-1.5">

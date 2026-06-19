@@ -13,6 +13,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { getSupabase } from "./supabase";
 import { subscribeQuery, tsToIso, nowIso } from "./supabase-helpers";
+import { ensureSupabaseSession } from "./ensure-session";
 import { useAuth } from "./store";
 import { geocodeLocation } from "./geo";
 import type { Meetup, MeetupInput, UseMeetupsResult } from "./use-meetups";
@@ -157,6 +158,7 @@ export function useMeetupsSupabase(): UseMeetupsResult {
   const deleteMeetup = useCallback(async (id: string): Promise<boolean> => {
     const sb = getSupabase();
     if (!sb) return false;
+    await ensureSupabaseSession(sb);
     const { error } = await sb.from("meetups").delete().eq("id", id);
     if (error) {
       console.error("[meetups:sb] delete failed", error.message);

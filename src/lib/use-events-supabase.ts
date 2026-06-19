@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { getSupabase } from "./supabase";
 import { subscribeQuery, tsToIso } from "./supabase-helpers";
+import { ensureSupabaseSession } from "./ensure-session";
 import {
   COMMUNITY_EVENTS,
   type CalendarEvent,
@@ -181,6 +182,7 @@ export function useEventsSupabase(): UseEventsResult {
         const col = map[k];
         if (col) row[col] = v === undefined ? null : v;
       }
+      await ensureSupabaseSession(sb);
       const { error } = await sb.from("events").update(row).eq("id", id);
       if (error) {
         console.error("[events:sb] update failed", error.message);
@@ -194,6 +196,9 @@ export function useEventsSupabase(): UseEventsResult {
   const deleteEvent = useCallback(async (id: string): Promise<boolean> => {
     const sb = getSupabase();
     if (!sb) return false;
+    // Guarantee an authenticated session so RLS doesn't silently reject the
+    // delete on a lapsed token.
+    await ensureSupabaseSession(sb);
     const { error } = await sb.from("events").delete().eq("id", id);
     if (error) {
       console.error("[events:sb] delete failed", error.message);

@@ -27,6 +27,7 @@ import {
   List,
   Grid3X3,
   Loader2,
+  Trash2,
 } from "lucide-react";
 import {
   format,
@@ -57,6 +58,8 @@ import { cn } from "@/lib/utils";
 import { EventComments } from "@/components/community/event-comments";
 import { EventRsvp } from "@/components/community/event-rsvp";
 import { useMeetups } from "@/lib/use-meetups";
+import { useHasPermission } from "@/lib/use-roles-store";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { useReminderScheduler } from "@/lib/use-event-reminders";
 
 const TYPE_COLORS: Record<string, string> = {
@@ -93,8 +96,10 @@ function getCalendarDays(month: Date): Date[] {
 type ViewMode = "calendar" | "list";
 
 export default function CalendarPage() {
-  const { events: rawEvents, loading: eventsLoading } = useEvents();
-  const { meetups, loading: meetupsLoading } = useMeetups();
+  const { events: rawEvents, loading: eventsLoading, deleteEvent } = useEvents();
+  const { meetups, loading: meetupsLoading, deleteMeetup } = useMeetups();
+  const canManageCalendar = useHasPermission("manageCalendar");
+  const confirmDialog = useConfirm();
 
   // Sweep due reminders while the member browses the calendar.
   useReminderScheduler();
@@ -134,6 +139,30 @@ export default function CalendarPage() {
   useEffect(() => {
     if (typeof window !== "undefined") setOrigin(window.location.origin);
   }, []);
+
+  async function handleDeleteDetail() {
+    if (!detail) return;
+    const isMeetup = meetupIds.has(detail.id);
+    const kind = isMeetup ? "meetup" : "event";
+    const ok = await confirmDialog({
+      title: `Delete "${detail.title}"?`,
+      description: `This removes the ${kind} from the community calendar for everyone. This can't be undone.`,
+      confirmText: "Delete",
+      destructive: true,
+    });
+    if (!ok) return;
+    const done = isMeetup
+      ? await deleteMeetup(detail.id)
+      : await deleteEvent(detail.id);
+    if (done) {
+      toast.success(`${kind === "meetup" ? "Meetup" : "Event"} deleted.`);
+      setDetail(null);
+    } else {
+      toast.error("Couldn't delete", {
+        description: "Check your connection or sign in again, then retry.",
+      });
+    }
+  }
 
   // The calendar shows every event. (A "Nearby" radius filter was removed:
   // events aren't geocoded yet, so it couldn't actually filter anything.)
@@ -560,6 +589,25 @@ export default function CalendarPage() {
               </div>
               <Separator />
               <EventComments eventId={detail.id} />
+              {canManageCalendar && (
+                <>
+                  <Separator />
+                  <div className="flex items-center justify-between gap-2 rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2">
+                    <span className="text-[11px] text-muted-foreground">
+                      Admin: remove this {meetupIds.has(detail.id) ? "meetup" : "event"} from the calendar.
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleDeleteDetail}
+                      className="h-8 shrink-0 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    >
+                      <Trash2 className="mr-1 h-3.5 w-3.5" />
+                      Delete
+                    </Button>
+                  </div>
+                </>
+              )}
             </div>
           )}
         </DialogContent>

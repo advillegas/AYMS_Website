@@ -37,6 +37,8 @@ export interface Trip {
   bookingUrl?: string;
   /** Custom label for the booking button (defaults to "Book Now"). */
   bookingLabel?: string;
+  /** Custom label for the in-app reserve button (defaults to "Reserve my spot ♡"). */
+  reserveLabel?: string;
   /** Firebase uid of the admin who created the trip in the live store. */
   createdBy?: string;
   /** ISO timestamps populated by the live store. */

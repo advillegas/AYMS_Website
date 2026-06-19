@@ -216,7 +216,7 @@ export function ReserveButton({
         ) : isFull ? (
           <Clock className="h-4 w-4" />
         ) : null}
-        {isFull ? "Join waitlist" : "Reserve my spot ♡"}
+        {isFull ? "Join waitlist" : (trip.reserveLabel?.trim() || "Reserve my spot ♡")}
       </Button>
       {statusLine}
       {variant === "full" && (

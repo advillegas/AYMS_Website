@@ -90,24 +90,11 @@ export function Trips() {
           <div className="mt-14 grid grid-cols-1 gap-6 md:grid-cols-3">
             {homeTrips.map((trip, i) => {
               const u = urgency(trip);
-              return (
-                <motion.div
-                  key={trip.id}
-                  initial={prefersReducedMotion ? false : { opacity: 0, y: 28 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{
-                    delay: prefersReducedMotion ? 0 : i * 0.12,
-                    duration: 0.6,
-                    ease: [0.16, 1, 0.3, 1],
-                  }}
-                  className="flex h-full flex-col"
-                >
-                  <Link
-                    href="/trips"
-                    aria-label={`${trip.title} — ${trip.dates}`}
-                    className="photo-card group flex flex-1 flex-col rounded-2xl elevate-2"
-                  >
+              const booking = ensureHttp(trip.bookingUrl);
+              const bookLabel = trip.bookingLabel?.trim() || "Book Now";
+              const cardCls = "photo-card group flex h-full flex-col rounded-2xl elevate-2";
+              const cardInner = (
+                <>
                     <div className="photo-card-media h-48">
                       <div
                         className={`photo-card-zoom grain absolute inset-0 bg-gradient-to-br ${trip.gradient}`}
@@ -160,24 +147,47 @@ export function Trips() {
                             </span>
                           ) : null}
                         </div>
-                        <span className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-[var(--coral)]">
-                          View
-                          <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
-                        </span>
+                        {booking ? (
+                          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-gradient-to-r from-[var(--magenta)] to-[var(--brand-pink)] px-3.5 py-1.5 text-xs font-semibold text-white shadow-[0_4px_14px_rgb(255_0_153/0.25)]">
+                            {bookLabel}
+                            <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+                          </span>
+                        ) : (
+                          <span className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-[var(--coral)]">
+                            View
+                            <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+                          </span>
+                        )}
                       </div>
                     </div>
-                  </Link>
-                  {ensureHttp(trip.bookingUrl) && (
+                </>
+              );
+              return (
+                <motion.div
+                  key={trip.id}
+                  initial={prefersReducedMotion ? false : { opacity: 0, y: 28 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{
+                    delay: prefersReducedMotion ? 0 : i * 0.12,
+                    duration: 0.6,
+                    ease: [0.16, 1, 0.3, 1],
+                  }}
+                >
+                  {booking ? (
                     <a
-                      href={ensureHttp(trip.bookingUrl)}
+                      href={booking}
                       target="_blank"
                       rel="noopener noreferrer"
-                      aria-label={`${trip.bookingLabel?.trim() || "Book"} ${trip.title}`}
-                      className="lift mt-2 inline-flex h-11 items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-[var(--magenta)] to-[var(--brand-pink)] text-sm font-semibold text-white shadow-[0_6px_20px_rgb(255_0_153/0.28)] transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--magenta)] focus-visible:ring-offset-2"
+                      aria-label={`${bookLabel} — ${trip.title}`}
+                      className={cardCls}
                     >
-                      {trip.bookingLabel?.trim() || "Book Now"}
-                      <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                      {cardInner}
                     </a>
+                  ) : (
+                    <Link href="/trips" aria-label={`${trip.title} — ${trip.dates}`} className={cardCls}>
+                      {cardInner}
+                    </Link>
                   )}
                 </motion.div>
               );

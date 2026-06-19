@@ -173,6 +173,8 @@ export function TripsGrid() {
             <AnimatePresence mode="popLayout">
               {filtered.map((trip, i) => {
                 const st = statusStyle(trip.status);
+                const booking = ensureHttp(trip.bookingUrl);
+                const bookLabel = trip.bookingLabel?.trim() || "Book Now";
                 return (
                   <motion.div
                     key={trip.id}
@@ -181,7 +183,7 @@ export function TripsGrid() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.95 }}
                     transition={{ delay: reduceMotion ? 0 : i * 0.05, ease: [0.16, 1, 0.3, 1] }}
-                    className="flex h-full flex-col"
+                    className="relative flex h-full flex-col"
                   >
                     <button
                       onClick={() => setSelected(trip)}
@@ -239,7 +241,7 @@ export function TripsGrid() {
                               /person
                             </span>
                           </div>
-                          {trip.status === "available" && (
+                          {!booking && trip.status === "available" && (
                             <span className="text-[10px] text-ink-soft">
                               from ${trip.deposit} deposit
                             </span>
@@ -247,16 +249,17 @@ export function TripsGrid() {
                         </div>
                       </div>
                     </button>
-                    {ensureHttp(trip.bookingUrl) && (
+                    {booking && (
                       <a
-                        href={ensureHttp(trip.bookingUrl)}
+                        href={booking}
                         target="_blank"
                         rel="noopener noreferrer"
-                        aria-label={`${trip.bookingLabel?.trim() || "Book"} ${trip.title}`}
-                        className="mt-2 inline-flex h-11 items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-[#FF0099] to-[#B51760] text-sm font-semibold text-white shadow-[0_6px_20px_rgb(255_0_153/0.28)] transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099] focus-visible:ring-offset-2"
+                        onClick={(e) => e.stopPropagation()}
+                        aria-label={`${bookLabel} — ${trip.title}`}
+                        className="absolute bottom-[1.15rem] right-4 z-10 inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-[#FF0099] to-[#B51760] px-3.5 py-1.5 text-xs font-semibold text-white shadow-[0_4px_14px_rgb(255_0_153/0.28)] transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099] focus-visible:ring-offset-2"
                       >
-                        {trip.bookingLabel?.trim() || "Book Now"}
-                        <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                        {bookLabel}
+                        <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
                       </a>
                     )}
                   </motion.div>

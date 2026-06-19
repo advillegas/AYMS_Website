@@ -31,13 +31,7 @@ export default function UserProfilePage() {
       <ProfileView
         profile={profile}
         isSelf={isSelf}
-        onSave={
-          isSelf
-            ? async (patch) => {
-                await updateProfile(patch);
-              }
-            : undefined
-        }
+        onSave={isSelf ? (patch) => updateProfile(patch) : undefined}
       />
     </div>
   );

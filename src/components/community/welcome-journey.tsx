@@ -52,6 +52,16 @@ export function WelcomeJourney() {
     router.push("/community/home");
   }
 
+  // Skipping/closing permanently marks the member onboarded so the popup never
+  // reappears (the "only show once" requirement). It also skips the guided
+  // tour — someone who opts out of setup shouldn't be handed a walkthrough.
+  // updateProfile flips the store flags synchronously, so the overlay hides
+  // immediately while the backend write happens in the background.
+  function handleClose() {
+    void updateProfile({ onboarded: true, tourDone: true });
+    dismiss();
+  }
+
   // Draft answers seeded from any existing profile data so re-runs don't
   // wipe a member who already filled things in.
   const [interests, setInterests] = useState<string[]>(user?.interests ?? []);
@@ -89,11 +99,12 @@ export function WelcomeJourney() {
     }
     setSaving(true);
     try {
-      // Persist profile answers (only fields the member touched).
+      // Persist profile answers + mark onboarded so it never auto-shows again.
       await updateProfile({
         interests,
         languages,
         headline: headline.trim(),
+        onboarded: true,
       });
 
       // Persist the chosen first stamp, if any.
@@ -241,7 +252,7 @@ export function WelcomeJourney() {
       <div
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
         aria-hidden
-        onClick={dismiss}
+        onClick={handleClose}
       />
 
       {/* Card */}
@@ -255,9 +266,9 @@ export function WelcomeJourney() {
         <div className="relative bg-gradient-to-r from-[#FF0099] to-[#B51760] px-5 py-4 text-white">
           <button
             type="button"
-            onClick={dismiss}
-            aria-label="Skip for now"
-            title="Skip for now"
+            onClick={handleClose}
+            aria-label="Close and don't show again"
+            title="Close — you won't see this again"
             className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full bg-white/15 text-white/90 transition-colors hover:bg-white/25"
           >
             <X className="h-3.5 w-3.5" />
@@ -309,11 +320,11 @@ export function WelcomeJourney() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={dismiss}
+                onClick={handleClose}
                 disabled={saving}
                 className="text-muted-foreground"
               >
-                Skip for now
+                Skip &amp; don&apos;t show again
               </Button>
             )}
           </div>

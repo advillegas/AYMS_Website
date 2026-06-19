@@ -79,6 +79,10 @@ export interface User {
   localRadiusMiles?: number;
   eventRadiusMiles?: number;
   localChatVisibility?: "everyone" | "radius";
+  /** Member has finished (or dismissed) the welcome journey — show it once. */
+  onboarded?: boolean;
+  /** Member has seen the guided community tour — show it once. */
+  tourDone?: boolean;
 }
 
 export interface Message {
@@ -148,6 +152,8 @@ type ProfilePatch = Partial<
     | "localRadiusMiles"
     | "eventRadiusMiles"
     | "localChatVisibility"
+    | "onboarded"
+    | "tourDone"
   >
 >;
 
@@ -163,7 +169,9 @@ interface AuthState {
     password: string,
   ) => Promise<AuthResult>;
   logout: () => Promise<void>;
-  updateProfile: (patch: ProfilePatch) => Promise<void>;
+  /** Persist a profile patch. Resolves true when the backend write
+   *  succeeded, false if it failed (so the UI can show an honest error). */
+  updateProfile: (patch: ProfilePatch) => Promise<boolean>;
   /**
    * Send a Firebase password reset email. Resolves with `{ ok: true }`
    * on success, or `{ ok: false, error }` with a UI-ready message.
@@ -555,8 +563,9 @@ export const useAuth = create<AuthState>()(
           return { user: next, registry };
         });
         if (updated) {
-          await upsertUserProfile(updated);
+          return await upsertUserProfile(updated);
         }
+        return false;
       },
     }),
     {

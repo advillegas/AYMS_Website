@@ -50,6 +50,8 @@ export interface SupabaseUserRow {
   local_radius_miles: number | null;
   event_radius_miles: number | null;
   local_chat_visibility: string | null;
+  onboarded: boolean | null;
+  tour_done: boolean | null;
   status: string | null;
   manual_override: boolean | null;
   last_active_at: string | null;
@@ -189,6 +191,8 @@ export function userToRow(user: User): Record<string, unknown> {
     ["localRadiusMiles", "local_radius_miles"],
     ["eventRadiusMiles", "event_radius_miles"],
     ["localChatVisibility", "local_chat_visibility"],
+    ["onboarded", "onboarded"],
+    ["tourDone", "tour_done"],
   ];
   for (const [k, col] of opt) {
     if (user[k] !== undefined) row[col] = user[k];
@@ -231,5 +235,7 @@ export function mapUserRowToUser(r: SupabaseUserRow): User {
     localRadiusMiles: d.localRadiusMiles,
     eventRadiusMiles: d.eventRadiusMiles,
     localChatVisibility: d.localChatVisibility,
+    onboarded: r.onboarded ?? undefined,
+    tourDone: r.tour_done ?? undefined,
   };
 }

@@ -22,6 +22,7 @@ import {
   isFirebaseConfigured,
 } from "./firebase";
 import { useSupabaseBackend, getSupabase } from "./supabase";
+import { ensureSupabaseSession } from "./ensure-session";
 import { userToRow, type SupabaseUserRow } from "./supabase-user-map";
 import {
   supabaseSignUp,
@@ -186,19 +187,24 @@ export async function readUserProfile(uid: string): Promise<FirestoreUserDoc | n
  * Write (merge) a user's profile to Firestore. Used on sign-up,
  * sign-in, profile-edit, and after server-side admin login.
  */
-export async function upsertUserProfile(user: User): Promise<void> {
+export async function upsertUserProfile(user: User): Promise<boolean> {
   if (useSupabaseBackend) {
     const sb = getSupabase();
-    if (!sb) return;
-    try {
-      await sb.from("users").upsert(userToRow(user), { onConflict: "id" });
-    } catch (e) {
-      console.warn("[supabase-auth] upsertUserProfile failed", e);
+    if (!sb) return false;
+    // Guarantee an authenticated session first, otherwise the write runs as
+    // `anon` and RLS silently rejects it (the original "edits don't save" bug).
+    await ensureSupabaseSession(sb);
+    const { error } = await sb
+      .from("users")
+      .upsert(userToRow(user), { onConflict: "id" });
+    if (error) {
+      console.warn("[supabase-auth] upsertUserProfile failed", error.message);
+      return false;
     }
-    return;
+    return true;
   }
   const db = getDb();
-  if (!db) return;
+  if (!db) return false;
   try {
     const data: Record<string, unknown> = {
       id: user.id,
@@ -238,8 +244,10 @@ export async function upsertUserProfile(user: User): Promise<void> {
     if (user.localChatVisibility !== undefined) data.localChatVisibility = user.localChatVisibility;
 
     await setDoc(doc(db, "users", user.id), data, { merge: true });
+    return true;
   } catch (e) {
     console.warn("[firebase-auth] upsertUserProfile failed", e);
+    return false;
   }
 }
 

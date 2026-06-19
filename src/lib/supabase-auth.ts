@@ -146,7 +146,8 @@ async function resolveCanonicalUser(
       console.warn("[supabase-auth] canonical lookup failed", e);
     }
   }
-  // New member — seed a row keyed by the auth uid.
+  // New member — seed a row keyed by the auth uid. Explicit false flags so
+  // the welcome journey + guided tour run once for genuinely new members.
   const user: User = {
     id: fallbackId,
     name: seed.name || email.split("@")[0] || "Amiga",
@@ -156,6 +157,8 @@ async function resolveCanonicalUser(
     location: "",
     joinedDate: today,
     role: ROLE_DEFAULT,
+    onboarded: false,
+    tourDone: false,
   };
   if (sb) {
     try {

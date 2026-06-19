@@ -48,8 +48,14 @@ export function AvatarUploader({
     reset();
     const url = await upload(file, user.id);
     if (url) {
-      updateProfile({ avatar: url });
-      toast.success("Profile photo updated!");
+      const ok = await updateProfile({ avatar: url });
+      if (ok) {
+        toast.success("Profile photo updated!");
+      } else {
+        toast.error("Couldn't save your photo", {
+          description: "The upload worked but saving it failed. Try again or sign in again.",
+        });
+      }
     } else if (error) {
       toast.error(error);
     }
@@ -63,8 +69,12 @@ export function AvatarUploader({
       destructive: true,
     });
     if (!ok) return;
-    updateProfile({ avatar: "" });
-    toast.success("Profile photo removed.");
+    const saved = await updateProfile({ avatar: "" });
+    if (saved) {
+      toast.success("Profile photo removed.");
+    } else {
+      toast.error("Couldn't update your photo. Please try again.");
+    }
   }
 
   return (

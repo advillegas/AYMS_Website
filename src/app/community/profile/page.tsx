@@ -14,9 +14,7 @@ export default function ProfilePage() {
       <ProfileView
         profile={user}
         isSelf
-        onSave={async (patch) => {
-          await updateProfile(patch);
-        }}
+        onSave={(patch) => updateProfile(patch)}
       />
     </div>
   );

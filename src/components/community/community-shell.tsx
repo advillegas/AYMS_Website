@@ -42,6 +42,7 @@ import {
   Trash2,
   Copy,
   Settings,
+  Compass,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn, initials } from "@/lib/utils";
@@ -71,6 +72,7 @@ import { useSearchParams } from "next/navigation";
 import { AvatarStatusOverlay } from "./status-indicator";
 import { StatusMenuItems } from "./status-menu";
 import { useUnreadConversations } from "@/lib/use-conversations";
+import { useOnboarding } from "@/lib/use-onboarding";
 import { CommunityErrorBoundary } from "./community-error-boundary";
 
 const BASE_TABS = [
@@ -460,7 +462,7 @@ function TopBarTabs({ onNavigate }: { onNavigate?: () => void }) {
   const tabs = hasPermission("viewAdminPanel") ? [...BASE_TABS, ADMIN_TAB] : BASE_TABS;
   const unreadDms = useUnreadConversations();
   return (
-    <nav aria-label="Community sections" className="flex items-center gap-1 shrink-0">
+    <nav data-tour="nav" aria-label="Community sections" className="flex items-center gap-1 shrink-0">
       {tabs.map((tab) => {
         const active =
           pathname === tab.href ||
@@ -501,6 +503,7 @@ export function CommunityShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const user = useAuth((s) => s.user);
   const logout = useAuth((s) => s.logout);
+  const startTour = useOnboarding((s) => s.startTour);
 
   const pathname = usePathname();
   const selectedProfile = useCommunityUI((s) => s.selectedProfile);
@@ -571,6 +574,7 @@ export function CommunityShell({ children }: { children: React.ReactNode }) {
           className="lg:hidden"
           onClick={() => setDrawerOpen(true)}
           aria-label="Open channel menu"
+          data-tour="channels-mobile"
         >
           <Menu className="h-5 w-5" />
         </Button>
@@ -592,11 +596,14 @@ export function CommunityShell({ children }: { children: React.ReactNode }) {
           <TopBarTabs />
         </div>
 
-        <NotificationsButton />
+        <span data-tour="notifications" className="inline-flex">
+          <NotificationsButton />
+        </span>
 
         <DropdownMenu>
           <DropdownMenuTrigger
             aria-label="Account menu"
+            data-tour="profile-menu"
             className="flex items-center gap-2 rounded-full px-2 py-1 hover:bg-primary/10 transition-colors"
           >
             <span className="relative inline-flex">
@@ -634,6 +641,9 @@ export function CommunityShell({ children }: { children: React.ReactNode }) {
             <DropdownMenuItem onClick={() => router.push("/community/profile")}>
               <User className="mr-2 h-4 w-4" /> My Profile
             </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => startTour()}>
+              <Compass className="mr-2 h-4 w-4" /> Take a tour
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={() => router.push("/")}>
               <Home className="mr-2 h-4 w-4" /> Back to Site
             </DropdownMenuItem>
@@ -662,6 +672,7 @@ export function CommunityShell({ children }: { children: React.ReactNode }) {
 
         {/* LEFT: channel list (always visible on lg+, drawer on mobile) */}
         <aside
+          data-tour="channels"
           className={cn(
             "fixed inset-y-0 left-0 z-50 w-60 bg-card/95 backdrop-blur-xl border-r border-[#FACDE8]/20 transition-transform shrink-0",
             "lg:static lg:translate-x-0 lg:top-0 lg:bottom-0",
@@ -702,7 +713,7 @@ export function CommunityShell({ children }: { children: React.ReactNode }) {
         </aside>
 
         {/* CENTER: page content */}
-        <main className="flex-1 min-w-0 overflow-hidden bg-background">
+        <main data-tour="main" className="flex-1 min-w-0 overflow-hidden bg-background">
           {children}
         </main>
 

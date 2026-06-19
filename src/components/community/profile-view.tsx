@@ -46,7 +46,9 @@ import { format, parseISO, isValid } from "date-fns";
 interface ProfileViewProps {
   profile: User;
   isSelf: boolean;
-  onSave?: (patch: Partial<User>) => Promise<void>;
+  /** Persist the patch. Resolve `false` to signal the save failed so the
+   *  editor can keep unsaved changes and show an honest error. */
+  onSave?: (patch: Partial<User>) => Promise<boolean | void>;
 }
 
 export function ProfileView({ profile, isSelf, onSave }: ProfileViewProps) {
@@ -119,7 +121,7 @@ export function ProfileView({ profile, isSelf, onSave }: ProfileViewProps) {
     if (!onSave) return;
     setSaving(true);
     try {
-      await onSave({
+      const ok = await onSave({
         name: name.trim() || profile.name,
         bio: bio.trim(),
         bioLong: bioLong.trim(),
@@ -141,6 +143,13 @@ export function ProfileView({ profile, isSelf, onSave }: ProfileViewProps) {
         eventRadiusMiles,
         localChatVisibility,
       });
+      if (ok === false) {
+        // Backend write was rejected — keep edit mode so nothing is lost.
+        toast.error("Couldn't save your profile", {
+          description: "Your changes weren't saved. Check your connection or sign in again, then retry.",
+        });
+        return;
+      }
       toast.success("Profile updated!");
       setEditing(false);
     } catch (err) {

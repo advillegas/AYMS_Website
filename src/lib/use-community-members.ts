@@ -263,39 +263,49 @@ export function useCommunityMembers(): {
 
     const byId = new Map<string, MemberWithStatus>();
 
-    function upsert(base: User, fb?: FirestoreUserDoc, isLive = false) {
+    function upsert(
+      base: User,
+      fb?: FirestoreUserDoc,
+      isLive = false,
+      preferBase = false,
+    ) {
+      // For the signed-in user, the auth store holds the freshest edits (it
+      // updates instantly on save, before the DB row echoes back over
+      // realtime), so prefer it over the DB snapshot for self-editable fields.
+      const pick = <T,>(b: T | undefined, f: T | undefined): T | undefined =>
+        preferBase ? (b ?? f) : (f ?? b);
       const merged: User = {
         ...base,
-        name: fb?.name ?? base.name,
-        avatar: fb?.avatar ?? base.avatar,
-        bio: fb?.bio ?? base.bio,
-        location: fb?.location ?? base.location,
+        name: pick(base.name, fb?.name) ?? base.name,
+        avatar: pick(base.avatar, fb?.avatar) ?? base.avatar,
+        bio: pick(base.bio, fb?.bio) ?? base.bio,
+        location: pick(base.location, fb?.location) ?? base.location,
         role: fb?.role ?? base.role,
         joinedDate: fb?.joinedDate ?? base.joinedDate,
         email: fb?.email ?? base.email,
-        nameDisplay: fb?.nameDisplay ?? base.nameDisplay,
-        dmPrivacy: fb?.dmPrivacy ?? base.dmPrivacy,
-        pronouns: fb?.pronouns ?? base.pronouns,
-        headline: fb?.headline ?? base.headline,
-        coverPhoto: fb?.coverPhoto ?? base.coverPhoto,
-        bioLong: fb?.bioLong ?? base.bioLong,
-        instagram: fb?.instagram ?? base.instagram,
-        tiktok: fb?.tiktok ?? base.tiktok,
-        twitter: fb?.twitter ?? base.twitter,
-        linkedin: fb?.linkedin ?? base.linkedin,
-        website: fb?.website ?? base.website,
-        interests: fb?.interests ?? base.interests,
-        languages: fb?.languages ?? base.languages,
-        topFriendIds: fb?.topFriendIds ?? base.topFriendIds,
-        galleryPhotos: fb?.galleryPhotos ?? base.galleryPhotos,
-        emailVisibility: fb?.emailVisibility ?? base.emailVisibility,
-        profileVisibility: fb?.profileVisibility ?? base.profileVisibility,
+        nameDisplay: pick(base.nameDisplay, fb?.nameDisplay),
+        dmPrivacy: pick(base.dmPrivacy, fb?.dmPrivacy),
+        pronouns: pick(base.pronouns, fb?.pronouns),
+        headline: pick(base.headline, fb?.headline),
+        coverPhoto: pick(base.coverPhoto, fb?.coverPhoto),
+        bioLong: pick(base.bioLong, fb?.bioLong),
+        instagram: pick(base.instagram, fb?.instagram),
+        tiktok: pick(base.tiktok, fb?.tiktok),
+        twitter: pick(base.twitter, fb?.twitter),
+        linkedin: pick(base.linkedin, fb?.linkedin),
+        website: pick(base.website, fb?.website),
+        interests: pick(base.interests, fb?.interests),
+        languages: pick(base.languages, fb?.languages),
+        topFriendIds: pick(base.topFriendIds, fb?.topFriendIds),
+        galleryPhotos: pick(base.galleryPhotos, fb?.galleryPhotos),
+        emailVisibility: pick(base.emailVisibility, fb?.emailVisibility),
+        profileVisibility: pick(base.profileVisibility, fb?.profileVisibility),
         geoLat: fb?.geoLat ?? base.geoLat,
         geoLng: fb?.geoLng ?? base.geoLng,
-        manualLocations: fb?.manualLocations ?? base.manualLocations,
-        localRadiusMiles: fb?.localRadiusMiles ?? base.localRadiusMiles,
-        eventRadiusMiles: fb?.eventRadiusMiles ?? base.eventRadiusMiles,
-        localChatVisibility: fb?.localChatVisibility ?? base.localChatVisibility,
+        manualLocations: pick(base.manualLocations, fb?.manualLocations),
+        localRadiusMiles: pick(base.localRadiusMiles, fb?.localRadiusMiles),
+        eventRadiusMiles: pick(base.eventRadiusMiles, fb?.eventRadiusMiles),
+        localChatVisibility: pick(base.localChatVisibility, fb?.localChatVisibility),
       };
       const status = fb
         ? computeDisplayStatus({
@@ -329,6 +339,7 @@ export function useCommunityMembers(): {
         currentUser,
         firebaseDocs[currentUser.id],
         Boolean(firebaseDocs[currentUser.id]),
+        true, // prefer the auth store for my own freshest edits
       );
     }
     // Anyone who shows up *only* in Firestore (e.g. a member that

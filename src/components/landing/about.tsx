@@ -1,47 +1,14 @@
 "use client";
 
 import { motion, useReducedMotion } from "framer-motion";
-import { Heart, Globe, Coffee, Sparkles } from "lucide-react";
 import { FlipCard } from "@/components/ui/flip-card";
 import { EditableText } from "@/components/inline/editable-text";
-
-const VALUES = [
-  {
-    icon: Heart,
-    en: { title: "Sisterhood", description: "We believe in the power of women supporting women. Every amiga is family." },
-    es: { title: "Hermandad", description: "Creemos en el poder de las mujeres apoyando a mujeres. Cada amiga es familia." },
-    gradient: "from-primary/20 to-rosa/15",
-    gradientBack: "from-primary to-magenta",
-    iconColor: "text-primary",
-  },
-  {
-    icon: Globe,
-    en: { title: "Culture", description: "Celebrating our Latina roots through shared experiences, traditions, and pride." },
-    es: { title: "Cultura", description: "Celebrando nuestras raíces Latinas a través de experiencias, tradiciones y orgullo." },
-    gradient: "from-magenta/20 to-brand-pink/15",
-    gradientBack: "from-magenta to-brand-pink",
-    iconColor: "text-magenta",
-  },
-  {
-    icon: Coffee,
-    en: { title: "Connection", description: "From Coffee & Cuties meetups to group trips, we create spaces to bond." },
-    es: { title: "Conexión", description: "De nuestros meetups de Café y Cuties a viajes grupales, creamos espacios para conectar." },
-    gradient: "from-brand-pink/20 to-rosa/15",
-    gradientBack: "from-brand-pink to-magenta",
-    iconColor: "text-brand-pink",
-  },
-  {
-    icon: Sparkles,
-    en: { title: "Growth", description: "Empowering each other to grow, explore, and become our best selves." },
-    es: { title: "Crecimiento", description: "Empoderándonos mutuamente para crecer, explorar y ser nuestra mejor versión." },
-    gradient: "from-rosa/20 to-primary/15",
-    gradientBack: "from-magenta to-brand-pink",
-    iconColor: "text-magenta",
-  },
-];
+import { useFlipCards, DEFAULT_VALUES } from "@/lib/use-site-content";
+import { iconByName } from "@/lib/section-icons";
 
 export function About() {
   const prefersReducedMotion = useReducedMotion();
+  const VALUES = useFlipCards("home.values", DEFAULT_VALUES);
   return (
     <section id="about" className="canvas-warm grain relative overflow-hidden py-28 sm:py-32">
       {/* Warm editorial backdrop */}
@@ -101,9 +68,11 @@ export function About() {
 
         {/* Value cards */}
         <div className="mt-16 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {VALUES.map((v, i) => (
+          {VALUES.map((v, i) => {
+            const Icon = iconByName(v.icon);
+            return (
             <motion.div
-              key={v.en.title}
+              key={i}
               initial={prefersReducedMotion ? false : { opacity: 0, y: 28 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
@@ -113,25 +82,26 @@ export function About() {
                 className="h-64 cursor-pointer rounded-3xl"
                 front={
                   <div className="glass lift elevate-2 flex h-full flex-col items-start justify-center gap-4 rounded-3xl p-7 text-left">
-                    <div className={`flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[var(--magenta)]/12 to-[#FACDE8]/40 ${v.iconColor}`}>
-                      <v.icon className="h-6 w-6" aria-hidden="true" />
+                    <div className={`flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[var(--magenta)]/12 to-[#FACDE8]/40 ${v.iconColor ?? ""}`}>
+                      <Icon className="h-6 w-6" aria-hidden="true" />
                     </div>
-                    <EditableText as="h3" id={`home.about.value.${i}.en.title`} className="font-display text-xl text-ink">{v.en.title}</EditableText>
-                    <EditableText as="p" id={`home.about.value.${i}.en.desc`} className="text-sm leading-relaxed text-ink-soft">{v.en.description}</EditableText>
+                    <h3 className="font-display text-xl text-ink">{v.enTitle}</h3>
+                    <p className="text-sm leading-relaxed text-ink-soft">{v.enDesc}</p>
                   </div>
                 }
                 back={
                   <div className={`flex h-full flex-col items-start justify-center gap-4 rounded-3xl bg-gradient-to-br ${v.gradientBack} p-7 text-left text-white`}>
                     <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/15 backdrop-blur-sm">
-                      <v.icon className="h-6 w-6 text-white" aria-hidden="true" />
+                      <Icon className="h-6 w-6 text-white" aria-hidden="true" />
                     </div>
-                    <EditableText as="h3" id={`home.about.value.${i}.es.title`} className="font-display text-xl">{v.es.title}</EditableText>
-                    <EditableText as="p" id={`home.about.value.${i}.es.desc`} className="text-sm leading-relaxed text-white/85">{v.es.description}</EditableText>
+                    <h3 className="font-display text-xl">{v.esTitle}</h3>
+                    <p className="text-sm leading-relaxed text-white/85">{v.esDesc}</p>
                   </div>
                 }
               />
             </motion.div>
-          ))}
+            );
+          })}
         </div>
 
         {/* Founder spotlight — editorial mission card */}

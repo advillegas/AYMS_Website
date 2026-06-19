@@ -181,6 +181,46 @@ export const DEFAULT_MARQUEE: MarqueeContent = {
   ],
 };
 
+/* ----- Bilingual flip-card tiles (Why Us, About values, Hero pillars) ----- */
+
+export interface FlipCardItem {
+  /** Lucide icon name (see lib/section-icons.ts). */
+  icon: string;
+  enTitle: string;
+  enDesc: string;
+  esTitle: string;
+  esDesc: string;
+  /** Tailwind gradient stops for the flipped (back) face. */
+  gradientBack: string;
+  /** Optional icon tint (About cards use it). */
+  iconColor?: string;
+}
+
+export const NEW_FLIP_CARD: FlipCardItem = {
+  icon: "Sparkles",
+  enTitle: "New card",
+  enDesc: "Describe this card.",
+  esTitle: "Tarjeta nueva",
+  esDesc: "Describe esta tarjeta.",
+  gradientBack: "from-[var(--magenta)] to-[var(--brand-pink)]",
+};
+
+export const DEFAULT_WHYUS: FlipCardItem[] = [
+  { icon: "Users", enTitle: "Small Groups", enDesc: "Intimate groups of 10–20 amigas so everyone bonds and no one gets lost in the crowd.", esTitle: "Grupos Pequeños", esDesc: "Grupos íntimos de 10–20 amigas para que todas se conecten y nadie se pierda.", gradientBack: "from-[var(--magenta)] to-[var(--brand-pink)]" },
+  { icon: "Crown", enTitle: "Curated Itineraries", enDesc: "Every meal, excursion, and surprise is hand-picked. No cookie-cutter tours here.", esTitle: "Itinerarios Curados", esDesc: "Cada comida, excursión y sorpresa es elegida a mano. Nada genérico aquí.", gradientBack: "from-[#DAA520] to-[#C44B3F]" },
+  { icon: "Shield", enTitle: "Safe & Supported", enDesc: "Experienced trip leaders, local guides, and emergency protocols at every destination.", esTitle: "Seguras y Apoyadas", esDesc: "Líderes de viaje experimentadas, guías locales y protocolos de emergencia en cada destino.", gradientBack: "from-[#9B2C8A] to-[var(--magenta)]" },
+  { icon: "Heart", enTitle: "Latina Sisterhood", enDesc: "Built by Latinas, for Latinas. A Latina travel community that gets you — your culture, your vibe, your language.", esTitle: "Hermandad Latina", esDesc: "Creado por Latinas, para Latinas. Una comunidad que te entiende — tu cultura, tu onda, tu idioma.", gradientBack: "from-[#C44B3F] to-[#DAA520]" },
+  { icon: "MapPin", enTitle: "Bucket List Destinations", enDesc: "From Cancún to Kenya, Bali to NYC — we go where the magic is.", esTitle: "Destinos de Ensueño", esDesc: "De Cancún a Kenya, Bali a NYC — vamos donde está la magia.", gradientBack: "from-[var(--magenta)] to-[#9B2C8A]" },
+  { icon: "Sparkles", enTitle: "All-Inclusive Vibes", enDesc: "Hotels, meals, activities, and transfers included. Just show up and enjoy.", esTitle: "Todo Incluido", esDesc: "Hoteles, comidas, actividades y traslados incluidos. Solo llega y disfruta.", gradientBack: "from-[var(--brand-pink)] to-[var(--magenta)]" },
+];
+
+export const DEFAULT_VALUES: FlipCardItem[] = [
+  { icon: "Heart", enTitle: "Sisterhood", enDesc: "We believe in the power of women supporting women. Every amiga is family.", esTitle: "Hermandad", esDesc: "Creemos en el poder de las mujeres apoyando a mujeres. Cada amiga es familia.", gradientBack: "from-primary to-magenta", iconColor: "text-primary" },
+  { icon: "Globe", enTitle: "Culture", enDesc: "Celebrating our Latina roots through shared experiences, traditions, and pride.", esTitle: "Cultura", esDesc: "Celebrando nuestras raíces Latinas a través de experiencias, tradiciones y orgullo.", gradientBack: "from-magenta to-brand-pink", iconColor: "text-magenta" },
+  { icon: "Coffee", enTitle: "Connection", enDesc: "From Coffee & Cuties meetups to group trips, we create spaces to bond.", esTitle: "Conexión", esDesc: "De nuestros meetups de Café y Cuties a viajes grupales, creamos espacios para conectar.", gradientBack: "from-brand-pink to-magenta", iconColor: "text-brand-pink" },
+  { icon: "Sparkles", enTitle: "Growth", enDesc: "Empowering each other to grow, explore, and become our best selves.", esTitle: "Crecimiento", esDesc: "Empoderándonos mutuamente para crecer, explorar y ser nuestra mejor versión.", gradientBack: "from-magenta to-brand-pink", iconColor: "text-magenta" },
+];
+
 /* ----------------------------- store ------------------------------- */
 
 interface ConfigRow {
@@ -301,6 +341,18 @@ export function useExperiencesContent(): ExperiencesContent {
 export function useMarqueeContent(): MarqueeContent {
   const c = useDomain<MarqueeContent>("marquee", DEFAULT_MARQUEE);
   return { words: c.words.length ? c.words : DEFAULT_MARQUEE.words };
+}
+
+/**
+ * Read a bilingual flip-card tile list (Why Us, About values, Hero pillars)
+ * from cms_config, falling back to the coded defaults so the live design is
+ * unchanged until the admin edits. Stored as a top-level array under `key`.
+ */
+export function useFlipCards(key: string, defaults: FlipCardItem[]): FlipCardItem[] {
+  const raw = useSiteContentStore((s) => s.values[key]);
+  useEffect(() => useSiteContentStore.getState().subscribe(), []);
+  if (Array.isArray(raw) && raw.length) return raw as FlipCardItem[];
+  return defaults;
 }
 
 /** Persist a domain doc (admin only). */

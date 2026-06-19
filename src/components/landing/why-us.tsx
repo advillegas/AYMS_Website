@@ -1,57 +1,14 @@
 "use client";
 
 import { motion, useReducedMotion } from "framer-motion";
-import { Shield, Heart, MapPin, Sparkles, Users, Crown } from "lucide-react";
 import { FlipCard } from "@/components/ui/flip-card";
 import { EditableText } from "@/components/inline/editable-text";
-
-const PROPS = [
-  {
-    icon: Users,
-    en: { title: "Small Groups", desc: "Intimate groups of 10–20 amigas so everyone bonds and no one gets lost in the crowd." },
-    es: { title: "Grupos Pequeños", desc: "Grupos íntimos de 10–20 amigas para que todas se conecten y nadie se pierda." },
-    gradient: "from-primary/20 to-rosa/10",
-    gradientBack: "from-[var(--magenta)] to-[var(--brand-pink)]",
-  },
-  {
-    icon: Crown,
-    en: { title: "Curated Itineraries", desc: "Every meal, excursion, and surprise is hand-picked. No cookie-cutter tours here." },
-    es: { title: "Itinerarios Curados", desc: "Cada comida, excursión y sorpresa es elegida a mano. Nada genérico aquí." },
-    gradient: "from-brand-pink/20 to-coral/10",
-    gradientBack: "from-[#DAA520] to-[#C44B3F]",
-  },
-  {
-    icon: Shield,
-    en: { title: "Safe & Supported", desc: "Experienced trip leaders, local guides, and emergency protocols at every destination." },
-    es: { title: "Seguras y Apoyadas", desc: "Líderes de viaje experimentadas, guías locales y protocolos de emergencia en cada destino." },
-    gradient: "from-rosa/20 to-primary/10",
-    gradientBack: "from-[#9B2C8A] to-[var(--magenta)]",
-  },
-  {
-    icon: Heart,
-    en: { title: "Latina Sisterhood", desc: "Built by Latinas, for Latinas. A Latina travel community that gets you — your culture, your vibe, your language." },
-    es: { title: "Hermandad Latina", desc: "Creado por Latinas, para Latinas. Una comunidad que te entiende — tu cultura, tu onda, tu idioma." },
-    gradient: "from-coral/20 to-brand-pink/10",
-    gradientBack: "from-[#C44B3F] to-[#DAA520]",
-  },
-  {
-    icon: MapPin,
-    en: { title: "Bucket List Destinations", desc: "From Cancún to Kenya, Bali to NYC — we go where the magic is." },
-    es: { title: "Destinos de Ensueño", desc: "De Cancún a Kenya, Bali a NYC — vamos donde está la magia." },
-    gradient: "from-primary/20 to-rosa/10",
-    gradientBack: "from-[var(--magenta)] to-[#9B2C8A]",
-  },
-  {
-    icon: Sparkles,
-    en: { title: "All-Inclusive Vibes", desc: "Hotels, meals, activities, and transfers included. Just show up and enjoy." },
-    es: { title: "Todo Incluido", desc: "Hoteles, comidas, actividades y traslados incluidos. Solo llega y disfruta." },
-    gradient: "from-rosa/20 to-primary/10",
-    gradientBack: "from-[var(--brand-pink)] to-[var(--magenta)]",
-  },
-];
+import { useFlipCards, DEFAULT_WHYUS } from "@/lib/use-site-content";
+import { iconByName } from "@/lib/section-icons";
 
 export function WhyUs() {
   const prefersReducedMotion = useReducedMotion();
+  const PROPS = useFlipCards("home.whyus", DEFAULT_WHYUS);
   return (
     <section className="canvas-editorial grain relative overflow-hidden py-28 sm:py-32">
       <div className="mesh-warm opacity-70" />
@@ -77,9 +34,11 @@ export function WhyUs() {
         </motion.div>
 
         <div className="mt-14 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {PROPS.map((p, i) => (
+          {PROPS.map((p, i) => {
+            const Icon = iconByName(p.icon);
+            return (
             <motion.div
-              key={p.en.title}
+              key={i}
               initial={prefersReducedMotion ? false : { opacity: 0, y: 28 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
@@ -90,22 +49,23 @@ export function WhyUs() {
                 front={
                   <div className="glass lift elevate-2 flex h-full flex-col items-start justify-center gap-3 rounded-3xl p-7">
                     <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[var(--magenta)]/12 to-[#FACDE8]/45">
-                      <p.icon className="h-6 w-6 text-[var(--magenta)]" aria-hidden="true" />
+                      <Icon className="h-6 w-6 text-[var(--magenta)]" aria-hidden="true" />
                     </div>
-                    <EditableText as="h3" id={`home.whyus.prop.${i}.en.title`} className="font-display text-lg text-ink">{p.en.title}</EditableText>
-                    <EditableText as="p" id={`home.whyus.prop.${i}.en.desc`} className="text-sm leading-relaxed text-ink-soft">{p.en.desc}</EditableText>
+                    <h3 className="font-display text-lg text-ink">{p.enTitle}</h3>
+                    <p className="text-sm leading-relaxed text-ink-soft">{p.enDesc}</p>
                   </div>
                 }
                 back={
                   <div className={`flex h-full flex-col items-start justify-center gap-3 rounded-3xl bg-gradient-to-br ${p.gradientBack} p-7 text-white`}>
-                    <p.icon className="h-7 w-7 text-white/80" aria-hidden="true" />
-                    <EditableText as="h3" id={`home.whyus.prop.${i}.es.title`} className="font-display text-lg">{p.es.title}</EditableText>
-                    <EditableText as="p" id={`home.whyus.prop.${i}.es.desc`} className="text-sm leading-relaxed text-white/85">{p.es.desc}</EditableText>
+                    <Icon className="h-7 w-7 text-white/80" aria-hidden="true" />
+                    <h3 className="font-display text-lg">{p.esTitle}</h3>
+                    <p className="text-sm leading-relaxed text-white/85">{p.esDesc}</p>
                   </div>
                 }
               />
             </motion.div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </section>

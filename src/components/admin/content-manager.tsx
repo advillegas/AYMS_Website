@@ -7,11 +7,23 @@ import { ExperiencesPanel } from "./experiences-panel";
 import { GalleryPanel } from "./gallery-panel";
 import { FaqPanel } from "./faq-panel";
 import { MarqueePanel } from "./marquee-panel";
+import { FlipCardListPanel } from "./flip-card-list-panel";
+import { DEFAULT_WHYUS, DEFAULT_VALUES } from "@/lib/use-site-content";
 
-type Sub = "home" | "testimonials" | "experiences" | "gallery" | "faq" | "marquee";
+type Sub =
+  | "home"
+  | "whyus"
+  | "values"
+  | "testimonials"
+  | "experiences"
+  | "gallery"
+  | "faq"
+  | "marquee";
 
 const TABS: { id: Sub; label: string }[] = [
   { id: "home", label: "Homepage" },
+  { id: "whyus", label: "Why-Us cards" },
+  { id: "values", label: "Value cards" },
   { id: "experiences", label: "Experiences" },
   { id: "testimonials", label: "Testimonials" },
   { id: "gallery", label: "Gallery" },
@@ -19,7 +31,16 @@ const TABS: { id: Sub; label: string }[] = [
   { id: "marquee", label: "Marquee" },
 ];
 
-const VALID_SUBS: Sub[] = ["home", "testimonials", "experiences", "gallery", "faq", "marquee"];
+const VALID_SUBS: Sub[] = [
+  "home",
+  "whyus",
+  "values",
+  "testimonials",
+  "experiences",
+  "gallery",
+  "faq",
+  "marquee",
+];
 
 export function ContentManager({ section }: { section?: Sub }) {
   const [sub, setSub] = useState<Sub>(section ?? "home");
@@ -55,6 +76,23 @@ export function ContentManager({ section }: { section?: Sub }) {
       </div>
       <div className="min-h-0 flex-1">
         {sub === "home" && <HomeContentPanel />}
+        {sub === "whyus" && (
+          <FlipCardListPanel
+            contentKey="home.whyus"
+            defaults={DEFAULT_WHYUS}
+            title="Why Travel With Us — cards"
+            itemLabel="card"
+          />
+        )}
+        {sub === "values" && (
+          <FlipCardListPanel
+            contentKey="home.values"
+            defaults={DEFAULT_VALUES}
+            title="About — value cards"
+            itemLabel="card"
+            showIconColor
+          />
+        )}
         {sub === "experiences" && <ExperiencesPanel />}
         {sub === "testimonials" && <TestimonialsPanel />}
         {sub === "gallery" && <GalleryPanel />}

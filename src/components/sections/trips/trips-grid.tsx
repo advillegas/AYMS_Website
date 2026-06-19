@@ -31,7 +31,7 @@ import {
 import Image from "next/image";
 
 const STATUS_STYLE: Record<string, { label: string; cls: string }> = {
-  available: { label: "Spots Open", cls: "bg-white/90 text-green-700 border-white/50 backdrop-blur-sm shadow-sm" },
+  available: { label: "Available", cls: "bg-white/90 text-green-700 border-white/50 backdrop-blur-sm shadow-sm" },
   "sold-out": { label: "Sold Out", cls: "bg-white/90 text-red-600 border-white/50 backdrop-blur-sm shadow-sm" },
   waitlist: { label: "Join Waitlist", cls: "bg-white/90 text-amber-700 border-white/50 backdrop-blur-sm shadow-sm" },
   "coming-soon": { label: "Coming Soon", cls: "bg-white/90 text-blue-600 border-white/50 backdrop-blur-sm shadow-sm" },

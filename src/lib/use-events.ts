@@ -71,6 +71,10 @@ interface FirestoreEventDoc {
   location?: string;
   capacity?: number | null;
   image?: string;
+  link?: string;
+  linkLabel?: string;
+  lat?: number;
+  lng?: number;
   published?: boolean;
   sourceCalendarId?: string;
   sourceUid?: string;
@@ -105,6 +109,10 @@ function docToEvent(
     location: data.location ?? "",
     capacity: data.capacity ?? undefined,
     image: data.image,
+    link: data.link ?? undefined,
+    linkLabel: data.linkLabel ?? undefined,
+    lat: data.lat ?? undefined,
+    lng: data.lng ?? undefined,
     published: data.published ?? undefined,
     sourceCalendarId: data.sourceCalendarId,
     sourceUid: data.sourceUid,

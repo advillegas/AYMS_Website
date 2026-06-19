@@ -33,6 +33,10 @@ interface EventRow {
   location: string;
   capacity: number | null;
   image: string | null;
+  link: string | null;
+  link_label: string | null;
+  lat: number | null;
+  lng: number | null;
   published: boolean | null;
   source_calendar_id: string | null;
   source_uid: string | null;
@@ -55,6 +59,10 @@ function rowToEvent(r: EventRow): FirestoreEvent {
     location: r.location ?? "",
     capacity: r.capacity ?? undefined,
     image: r.image ?? undefined,
+    link: r.link ?? undefined,
+    linkLabel: r.link_label ?? undefined,
+    lat: r.lat ?? undefined,
+    lng: r.lng ?? undefined,
     published: r.published ?? undefined,
     sourceCalendarId: r.source_calendar_id ?? undefined,
     sourceUid: r.source_uid ?? undefined,
@@ -143,6 +151,10 @@ export function useEventsSupabase(): UseEventsResult {
         location: ev.location,
         capacity: ev.capacity ?? null,
         image: ev.image ?? null,
+        link: ev.link ?? null,
+        link_label: ev.linkLabel ?? null,
+        lat: ev.lat ?? null,
+        lng: ev.lng ?? null,
         published: ev.published ?? true,
         source_calendar_id: ev.sourceCalendarId ?? null,
         source_uid: ev.sourceUid ?? null,
@@ -172,6 +184,10 @@ export function useEventsSupabase(): UseEventsResult {
         location: "location",
         capacity: "capacity",
         image: "image",
+        link: "link",
+        linkLabel: "link_label",
+        lat: "lat",
+        lng: "lng",
         published: "published",
         sourceCalendarId: "source_calendar_id",
         sourceUid: "source_uid",

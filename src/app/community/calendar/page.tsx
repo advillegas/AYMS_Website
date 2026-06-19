@@ -60,6 +60,18 @@ import { EventRsvp } from "@/components/community/event-rsvp";
 import { useMeetups } from "@/lib/use-meetups";
 import { useHasPermission } from "@/lib/use-roles-store";
 import { useConfirm } from "@/components/ui/confirm-dialog";
+import { ensureHttp } from "@/lib/url";
+import dynamic from "next/dynamic";
+
+// Leaflet touches window at import; load the map client-only.
+const EventMap = dynamic(() => import("@/components/community/event-map"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex h-56 w-full items-center justify-center rounded-xl border border-rosa/20 bg-muted/30 text-xs text-muted-foreground">
+      Loading map…
+    </div>
+  ),
+});
 import { useReminderScheduler } from "@/lib/use-event-reminders";
 
 const TYPE_COLORS: Record<string, string> = {
@@ -534,6 +546,29 @@ export default function CalendarPage() {
                   <span>{detail.location || "Location TBD"}</span>
                 </div>
               </div>
+
+              {/* Map pin for the location */}
+              {detail.lat != null && detail.lng != null && (
+                <EventMap
+                  lat={detail.lat}
+                  lng={detail.lng}
+                  title={detail.title}
+                  location={detail.location}
+                />
+              )}
+
+              {/* External link (payment / RSVP / details page) */}
+              {ensureHttp(detail.link) && (
+                <a
+                  href={ensureHttp(detail.link)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#FF0099] to-[#B51760] px-5 text-sm font-semibold text-white shadow-[0_6px_20px_rgb(255_0_153/0.28)] transition hover:brightness-110"
+                >
+                  {detail.linkLabel?.trim() || "Open link"}
+                  <ExternalLink className="h-4 w-4" aria-hidden="true" />
+                </a>
+              )}
               {/* RSVP — events + member meetups take RSVPs; synced
                   feed items and one-off trips/camps don't. */}
               {(detail.type === "meetup" ||

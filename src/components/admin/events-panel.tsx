@@ -27,6 +27,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/lib/store";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { useEvents, type FirestoreEvent } from "@/lib/use-events";
+import { geocodeLocation } from "@/lib/geo";
 import { useFormDraft } from "@/lib/use-form-draft";
 import { DraftBanner, DraftSavedHint } from "@/components/admin/draft-banner";
 
@@ -39,6 +40,8 @@ interface EventDraft {
   endTime: string;
   type: string;
   location: string;
+  link: string;
+  linkLabel: string;
   capacity: string;
   published: boolean;
 }
@@ -122,6 +125,10 @@ export function EventsPanel() {
         endTime: data.endTime,
         type: data.type ?? "social",
         location: data.location ?? "",
+        link: data.link,
+        linkLabel: data.linkLabel,
+        lat: data.lat,
+        lng: data.lng,
         capacity: data.capacity,
         published: data.published ?? true,
         createdBy: user?.id,
@@ -334,6 +341,8 @@ function EventDialog({
   const [endTime, setEndTime] = useState("");
   const [type, setType] = useState<string>("social");
   const [location, setLocation] = useState("");
+  const [link, setLink] = useState("");
+  const [linkLabel, setLinkLabel] = useState("");
   const [capacity, setCapacity] = useState("");
   const [published, setPublished] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -347,7 +356,7 @@ function EventDialog({
   const readyRef = useRef(false);
 
   const data: EventDraft = {
-    title, description, date, endDate, startTime, endTime, type, location, capacity, published,
+    title, description, date, endDate, startTime, endTime, type, location, link, linkLabel, capacity, published,
   };
   const dataJson = JSON.stringify(data);
   const latestRef = useRef<EventDraft>(data);
@@ -357,6 +366,7 @@ function EventDialog({
   function applyDraft(d: EventDraft) {
     setTitle(d.title); setDescription(d.description); setDate(d.date); setEndDate(d.endDate);
     setStartTime(d.startTime); setEndTime(d.endTime); setType(d.type); setLocation(d.location);
+    setLink(d.link ?? ""); setLinkLabel(d.linkLabel ?? "");
     setCapacity(d.capacity); setPublished(d.published);
   }
   function handleRestore() {
@@ -381,6 +391,8 @@ function EventDialog({
     setEndTime(event?.endTime ?? "");
     setType(event?.type ?? "social");
     setLocation(event?.location ?? "");
+    setLink(event?.link ?? "");
+    setLinkLabel(event?.linkLabel ?? "");
     setCapacity(
       typeof event?.capacity === "number" && event.capacity > 0
         ? String(event.capacity)
@@ -391,6 +403,7 @@ function EventDialog({
       title: event?.title ?? "", description: event?.description ?? "", date: event?.date ?? "",
       endDate: event?.endDate ?? "", startTime: event?.startTime ?? "", endTime: event?.endTime ?? "",
       type: event?.type ?? "social", location: event?.location ?? "",
+      link: event?.link ?? "", linkLabel: event?.linkLabel ?? "",
       capacity: typeof event?.capacity === "number" && event.capacity > 0 ? String(event.capacity) : "",
       published: event?.published !== false,
     } satisfies EventDraft);
@@ -409,6 +422,8 @@ function EventDialog({
     setEndTime("");
     setType("social");
     setLocation("");
+    setLink("");
+    setLinkLabel("");
     setCapacity("");
     setPublished(true);
   }
@@ -515,9 +530,34 @@ function EventDialog({
               <Input
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
-                placeholder="e.g. Café, LA"
+                placeholder="e.g. Blue Bottle Coffee, Los Angeles, CA"
               />
             </div>
+          </div>
+          <p className="-mt-2 text-[11px] text-muted-foreground">
+            Use a full address or place name — we drop a map pin on it
+            automatically so members can find it.
+          </p>
+          <div className="grid gap-1.5">
+            <Label>Link (optional)</Label>
+            <Input
+              type="url"
+              inputMode="url"
+              value={link}
+              onChange={(e) => setLink(e.target.value)}
+              placeholder="https://your-payment-or-rsvp-page.com"
+            />
+            <p className="text-[11px] text-muted-foreground">
+              A payment, ticket, or details page. Shown as a button on the event.
+            </p>
+          </div>
+          <div className="grid gap-1.5">
+            <Label>Link button text (optional)</Label>
+            <Input
+              value={linkLabel}
+              onChange={(e) => setLinkLabel(e.target.value)}
+              placeholder="e.g. Buy tickets, Pay deposit, RSVP"
+            />
           </div>
           <div className="grid gap-1.5">
             <Label>Visibility</Label>
@@ -581,6 +621,23 @@ function EventDialog({
               }
               setBusy(true);
               try {
+                // Geocode the location to a map pin. Reuse existing coords when
+                // the address is unchanged on an edit so we don't re-hit the API.
+                const loc = location.trim();
+                let lat: number | undefined;
+                let lng: number | undefined;
+                if (loc) {
+                  if (event && event.location === loc && event.lat != null && event.lng != null) {
+                    lat = event.lat;
+                    lng = event.lng;
+                  } else {
+                    const geo = await geocodeLocation(loc);
+                    if (geo) {
+                      lat = geo.lat;
+                      lng = geo.lng;
+                    }
+                  }
+                }
                 await onSave({
                   title: title.trim(),
                   description: description.trim(),
@@ -589,7 +646,11 @@ function EventDialog({
                   startTime: startTime || undefined,
                   endTime: endTime || undefined,
                   type: type as FirestoreEvent["type"],
-                  location: location.trim(),
+                  location: loc,
+                  link: link.trim() || undefined,
+                  linkLabel: linkLabel.trim() || undefined,
+                  lat,
+                  lng,
                   capacity: capNum,
                   published,
                 });

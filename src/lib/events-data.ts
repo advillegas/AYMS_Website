@@ -19,6 +19,13 @@ export interface CalendarEvent {
   endTime?: string;
   type: "trip" | "meetup" | "camp" | "social" | "synced";
   location: string;
+  /** Map coordinates for the location pin (set by geocoding the address). */
+  lat?: number;
+  lng?: number;
+  /** Optional external link (e.g. a payment / registration / details page). */
+  link?: string;
+  /** Custom label for the link button (defaults to "Open link"). */
+  linkLabel?: string;
   /**
    * Optional attendance cap. When set, the RSVP affordance shows
    * "X going · N spots left" and disables "Going" once full.

@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth, useChat } from "@/lib/store";
 import { useCommunityUI } from "@/lib/community-ui-store";
+import { usePanelLayout } from "@/lib/use-panel-layout";
+import { PanelResizer } from "./panel-resizer";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -28,6 +30,8 @@ import {
   Menu,
   X,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Home,
   MapPin,
   CalendarHeart,
@@ -515,6 +519,34 @@ export function CommunityShell({ children }: { children: React.ReactNode }) {
   const selectedProfile = useCommunityUI((s) => s.selectedProfile);
   const activeThread = useCommunityUI((s) => s.activeThread);
 
+  // Per-member resizable / collapsible side rails.
+  const leftWidth = usePanelLayout((s) => s.leftWidth);
+  const rightWidth = usePanelLayout((s) => s.rightWidth);
+  const leftCollapsed = usePanelLayout((s) => s.leftCollapsed);
+  const rightCollapsed = usePanelLayout((s) => s.rightCollapsed);
+  const setLeftWidth = usePanelLayout((s) => s.setLeftWidth);
+  const setRightWidth = usePanelLayout((s) => s.setRightWidth);
+  const toggleLeft = usePanelLayout((s) => s.toggleLeft);
+  const toggleRight = usePanelLayout((s) => s.toggleRight);
+  const resetLeftWidth = usePanelLayout((s) => s.resetLeftWidth);
+  const resetRightWidth = usePanelLayout((s) => s.resetRightWidth);
+  const leftAsideRef = useRef<HTMLElement>(null);
+  const rightAsideRef = useRef<HTMLElement>(null);
+  const handleLeftResize = useCallback(
+    (clientX: number) => {
+      const rect = leftAsideRef.current?.getBoundingClientRect();
+      if (rect) setLeftWidth(clientX - rect.left);
+    },
+    [setLeftWidth],
+  );
+  const handleRightResize = useCallback(
+    (clientX: number) => {
+      const rect = rightAsideRef.current?.getBoundingClientRect();
+      if (rect) setRightWidth(rect.right - clientX);
+    },
+    [setRightWidth],
+  );
+
   // Mounting this once at the shell level keeps the heartbeat alive
   // anywhere inside /community without each page having to opt in.
   usePresenceHeartbeat();
@@ -667,7 +699,7 @@ export function CommunityShell({ children }: { children: React.ReactNode }) {
       </header>
 
       {/* BODY: 3-column ----------------------------------------- */}
-      <div className="flex flex-1 min-h-0">
+      <div className="relative flex flex-1 min-h-0">
         {/* Mobile drawer scrim */}
         {drawerOpen && (
           <div
@@ -676,12 +708,32 @@ export function CommunityShell({ children }: { children: React.ReactNode }) {
           />
         )}
 
+        {/* Collapsed-left expand tab (desktop only) */}
+        {leftCollapsed && (
+          <button
+            type="button"
+            onClick={toggleLeft}
+            aria-label="Expand channel list"
+            title="Expand channels"
+            className="absolute left-0 top-1/2 z-40 hidden -translate-y-1/2 items-center rounded-r-lg border border-l-0 border-[#FACDE8]/30 bg-card/95 py-3 pl-0.5 pr-1 text-primary shadow-md backdrop-blur-xl hover:bg-primary/10 lg:flex"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        )}
+
         {/* LEFT: channel list (always visible on lg+, drawer on mobile) */}
         <aside
+          ref={leftAsideRef}
           data-tour="channels"
+          style={
+            {
+              "--rail-left": leftCollapsed ? "0px" : `${leftWidth}px`,
+            } as React.CSSProperties
+          }
           className={cn(
             "fixed inset-y-0 left-0 z-50 w-60 bg-card/95 backdrop-blur-xl border-r border-[#FACDE8]/20 transition-transform shrink-0",
-            "lg:static lg:translate-x-0 lg:top-0 lg:bottom-0",
+            "lg:relative lg:translate-x-0 lg:top-0 lg:bottom-0 lg:w-[var(--rail-left)]",
+            leftCollapsed && "lg:min-w-0 lg:overflow-hidden lg:border-r-0",
             drawerOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
           )}
         >
@@ -700,10 +752,19 @@ export function CommunityShell({ children }: { children: React.ReactNode }) {
                 <X className="h-4 w-4" />
               </Button>
             </div>
-            <div className="hidden lg:block px-3 py-2.5 border-b border-[#FACDE8]/20">
+            <div className="hidden lg:flex items-center justify-between px-3 py-2.5 border-b border-[#FACDE8]/20">
               <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-gradient-brand">
                 Channels
               </span>
+              <button
+                type="button"
+                onClick={toggleLeft}
+                aria-label="Collapse channel list"
+                title="Collapse"
+                className="-mr-1 rounded p-1 text-muted-foreground hover:bg-primary/10 hover:text-primary"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
             </div>
             <div className="flex-1 min-h-0">
               <ChannelSidebar onChannelClick={() => setDrawerOpen(false)} />
@@ -716,6 +777,17 @@ export function CommunityShell({ children }: { children: React.ReactNode }) {
               <Home className="h-3.5 w-3.5" /> Back to Site
             </Link>
           </div>
+
+          {/* Drag-to-resize handle (desktop only, hidden while collapsed) */}
+          {!leftCollapsed && (
+            <PanelResizer
+              side="right"
+              onResize={handleLeftResize}
+              onReset={resetLeftWidth}
+              ariaLabel="Resize channel list"
+              className="hidden lg:block"
+            />
+          )}
         </aside>
 
         {/* CENTER: page content */}
@@ -723,9 +795,56 @@ export function CommunityShell({ children }: { children: React.ReactNode }) {
           {children}
         </main>
 
+        {/* Collapsed-right expand tab (xl only) */}
+        {showRightRail && rightCollapsed && (
+          <button
+            type="button"
+            onClick={toggleRight}
+            aria-label="Expand members panel"
+            title="Expand panel"
+            className="absolute right-0 top-1/2 z-40 hidden -translate-y-1/2 items-center rounded-l-lg border border-r-0 border-[#FACDE8]/30 bg-card/95 py-3 pr-0.5 pl-1 text-primary shadow-md backdrop-blur-xl hover:bg-primary/10 xl:flex"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+        )}
+
         {/* RIGHT: members / detail / thread */}
         {showRightRail && (
-          <aside className="hidden xl:block w-72 shrink-0 border-l border-[#FACDE8]/20 bg-card/60 backdrop-blur-sm">
+          <aside
+            ref={rightAsideRef}
+            style={
+              {
+                "--rail-right": rightCollapsed ? "0px" : `${rightWidth}px`,
+              } as React.CSSProperties
+            }
+            className={cn(
+              "relative hidden shrink-0 border-l border-[#FACDE8]/20 bg-card/60 backdrop-blur-sm xl:block xl:w-[var(--rail-right)]",
+              rightCollapsed && "xl:min-w-0 xl:overflow-hidden xl:border-l-0",
+            )}
+          >
+            {/* Drag-to-resize handle + collapse tab (hidden when collapsed).
+                The tab sits on the inner edge, vertically centered, so it
+                never collides with the panel content's own header/close. */}
+            {!rightCollapsed && (
+              <>
+                <PanelResizer
+                  side="left"
+                  onResize={handleRightResize}
+                  onReset={resetRightWidth}
+                  ariaLabel="Resize members panel"
+                  className="hidden xl:block"
+                />
+                <button
+                  type="button"
+                  onClick={toggleRight}
+                  aria-label="Collapse members panel"
+                  title="Collapse"
+                  className="absolute left-0 top-1/2 z-40 hidden -translate-y-1/2 items-center rounded-r-lg border border-l-0 border-[#FACDE8]/30 bg-card/95 py-3 pr-0.5 pl-1 text-muted-foreground shadow-sm hover:bg-primary/10 hover:text-primary xl:flex"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </>
+            )}
             {rightRail}
           </aside>
         )}

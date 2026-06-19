@@ -72,14 +72,28 @@ export function TripsGrid() {
         });
         return;
       }
-      const nowSaved = await toggleFavorite(trip);
-      if (nowSaved === null) return;
-      if (nowSaved) {
-        toast.success(`Saved ${trip.title}`, {
-          description: "Added to My Events — we'll keep you posted on updates.",
+      try {
+        const nowSaved = await toggleFavorite(trip);
+        if (nowSaved === null) {
+          toast.error("Sign in to save trips", {
+            action: { label: "Sign in", onClick: () => router.push("/login") },
+          });
+          return;
+        }
+        if (nowSaved) {
+          toast.success(`Saved ${trip.title}`, {
+            description: "Added to My Events — we'll keep you posted on updates.",
+          });
+        } else {
+          toast(`Removed ${trip.title} from saved`);
+        }
+      } catch (err) {
+        toast.error("Couldn't save this trip", {
+          description:
+            err instanceof Error && err.message
+              ? err.message
+              : "Please refresh the page and try again.",
         });
-      } else {
-        toast(`Removed ${trip.title} from saved`);
       }
     },
     [user, toggleFavorite, router],
@@ -255,7 +269,7 @@ export function TripsGrid() {
                                   "h-4 w-4 transition-colors",
                                   fav
                                     ? "fill-[#FF0099] text-[#FF0099]"
-                                    : "fill-transparent text-white",
+                                    : "fill-transparent text-[#B51760]",
                                 )}
                                 aria-hidden="true"
                               />
@@ -407,7 +421,7 @@ function TripDetail({
           <Heart
             className={cn(
               "h-[18px] w-[18px] transition-colors",
-              favorited ? "fill-[#FF0099] text-[#FF0099]" : "fill-transparent text-white",
+              favorited ? "fill-[#FF0099] text-[#FF0099]" : "fill-transparent text-[#B51760]",
             )}
             aria-hidden="true"
           />

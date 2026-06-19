@@ -30,12 +30,44 @@ import {
   type QueryDocumentSnapshot,
   type Timestamp,
 } from "firebase/firestore";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { getDb, isFirebaseConfigured } from "./firebase";
 import { getSupabase, useSupabaseBackend } from "./supabase";
 import { subscribeQuery, tsToIso, nowIso } from "./supabase-helpers";
 import { useAuth } from "./store";
 import { pushNotification } from "./notify";
 import { getTripById, type Trip } from "./trips-data";
+
+/**
+ * Make sure the Supabase client has a live session before an authenticated
+ * write. On public marketing pages (e.g. /trips) a signed-in member's token
+ * may have lapsed; getSession() refreshes an expired token, and the
+ * password-admin's bridge session is silently re-minted (same path as
+ * useAdminSessionRecovery). Without this, writes silently run as `anon` and
+ * RLS rejects them.
+ */
+async function ensureSupabaseSession(sb: SupabaseClient): Promise<void> {
+  try {
+    const { data } = await sb.auth.getSession();
+    if (data.session) return;
+    if (useAuth.getState().user?.id !== "admin") return;
+    const res = await fetch("/api/auth/admin-session", { method: "POST" });
+    if (!res.ok) return;
+    const j = (await res.json()) as {
+      ok?: boolean;
+      access_token?: string;
+      refresh_token?: string;
+    };
+    if (j?.ok && j.access_token && j.refresh_token) {
+      await sb.auth.setSession({
+        access_token: j.access_token,
+        refresh_token: j.refresh_token,
+      });
+    }
+  } catch {
+    /* best effort — the write below will surface a clear error if still anon */
+  }
+}
 
 export interface TripFavorite {
   tripId: string;
@@ -137,6 +169,7 @@ function useTripFavoritesSupabase(): UseTripFavoritesResult {
           : [{ tripId: trip.id, createdAt: nowIso() }, ...prev],
       );
       try {
+        await ensureSupabaseSession(sb);
         if (has) {
           const { error } = await sb
             .from("trip_favorites")
@@ -145,22 +178,26 @@ function useTripFavoritesSupabase(): UseTripFavoritesResult {
             .eq("trip_id", trip.id);
           if (error) throw new Error(error.message);
         } else {
+          // upsert (not insert) so a stale duplicate row never errors.
           const { error } = await sb
             .from("trip_favorites")
-            .insert({ user_id: uid, trip_id: trip.id });
+            .upsert(
+              { user_id: uid, trip_id: trip.id },
+              { onConflict: "user_id,trip_id" },
+            );
           if (error) throw new Error(error.message);
           savedNotification(uid, trip.title);
         }
         return !has;
       } catch (err) {
         console.error("[trip-favorites:sb] toggle failed", err);
-        // Revert the optimistic change.
+        // Revert the optimistic change and surface the real reason.
         setFavorites((prev) =>
           has
             ? [{ tripId: trip.id, createdAt: nowIso() }, ...prev]
             : prev.filter((f) => f.tripId !== trip.id),
         );
-        return has;
+        throw err instanceof Error ? err : new Error("Save failed");
       }
     },
     [uid, favoriteIds],
@@ -269,7 +306,7 @@ function useTripFavoritesFirebase(): UseTripFavoritesResult {
         return !has;
       } catch (err) {
         console.error("[trip-favorites] toggle failed", err);
-        return has;
+        throw err instanceof Error ? err : new Error("Save failed");
       }
     },
     [uid, favoriteIds],

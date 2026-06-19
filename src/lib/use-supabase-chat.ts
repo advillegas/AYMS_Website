@@ -14,6 +14,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { getSupabase } from "./supabase";
 import { subscribeQuery } from "./supabase-helpers";
+import { ensureSupabaseSession } from "./ensure-session";
 import { getUserCoords, haversineDistance, isWithinRadius } from "./geo";
 import { useAuth } from "./store";
 import { useChannels, type RichChannel } from "./use-channels-store";
@@ -289,12 +290,19 @@ export function useChannelChatSupabase(channelId: string): UseChannelChatResult 
         if (opts.post.media && opts.post.media.length > 0) row.post_media = opts.post.media;
       }
 
+      // Guarantee an authenticated session first — on a lapsed token the
+      // insert would run as `anon` and RLS rejects it ("Failed to send").
+      await ensureSupabaseSession(sb);
       const { error: insErr } = await sb.from("messages").insert(row);
       if (insErr) {
+        console.error("[supabase-chat] send failed", insErr.message);
         setError(insErr.message);
         setPendingMessages((prev) =>
           prev.map((p) => (p.id === tempId ? { ...p, _pending: false, _failed: true } : p)),
         );
+        toast.error("Couldn't send your message", {
+          description: "Check your connection or sign in again, then retry.",
+        });
         return null;
       }
       // Keep the optimistic bubble until the confirmed row shows up in a

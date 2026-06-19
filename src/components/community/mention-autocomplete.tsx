@@ -55,33 +55,31 @@ const NULL_STATE: MentionState = {
 /**
  * Walk backwards from the caret to find an in-progress @-token.
  *
- * We require start-of-input or whitespace before the @ to avoid
- * triggering on email addresses. The token body may contain spaces
- * (for multi-word names) — we only break on newlines, double
- * spaces, or the special chars `;:!?`.
+ * The token is a single CONTIGUOUS run after the @ (no spaces) — like
+ * Slack/Discord. This is what makes tagging reliable: as soon as the user
+ * types a space (e.g. finishes the mention and continues their message, or
+ * after picking from the list which inserts a hyphenated slug + space), the
+ * token closes instead of swallowing the rest of the message and showing a
+ * permanent "No matches". The @ must be at start-of-input or after
+ * whitespace so we don't trigger on email addresses.
  */
 function detectToken(value: string, caret: number): MentionState {
   if (caret <= 0) return NULL_STATE;
-  // Walk backwards looking for the opening @.
   let i = caret - 1;
   while (i >= 0) {
     const ch = value[i];
     if (ch === "@") {
       // Must be preceded by start-of-input or whitespace.
       if (i > 0 && !/\s/.test(value[i - 1])) return NULL_STATE;
-      const slice = value.slice(i + 1, caret);
-      // Empty token is fine (just typed @, show the full list).
-      // Break tokens on newlines or double spaces.
-      if (/\n/.test(slice) || /  /.test(slice)) return NULL_STATE;
       return {
         open: true,
-        query: slice,
+        query: value.slice(i + 1, caret),
         tokenStart: i,
         tokenEnd: caret,
       };
     }
-    // Break on newlines or sentence-ending punctuation.
-    if (ch === "\n" || /[;:!?]/.test(ch)) return NULL_STATE;
+    // Any whitespace or sentence punctuation ends the contiguous token.
+    if (/\s/.test(ch) || /[;:!?,]/.test(ch)) return NULL_STATE;
     i--;
   }
   return NULL_STATE;
@@ -125,6 +123,27 @@ function slugName(name: string): string {
   return name.toLowerCase().replace(/\s+/g, "-");
 }
 
+/** Strip to lowercase alphanumerics so "Amanda Cabrera", "amanda-cabrera"
+ *  and "amandacabrera" all compare equal — the query may arrive as a
+ *  partial name, a hyphenated slug, or anything in between. */
+function normalizeForMatch(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+/** True when `name`/`email` should surface for the typed mention `query`. */
+function matchesMention(
+  name: string,
+  email: string | undefined,
+  query: string,
+): boolean {
+  const nq = normalizeForMatch(query);
+  if (!nq) return true;
+  return (
+    normalizeForMatch(name).includes(nq) ||
+    normalizeForMatch(email ?? "").includes(nq)
+  );
+}
+
 export function MentionList({
   query,
   highlightedIndex,
@@ -140,19 +159,7 @@ export function MentionList({
 
   const items: MentionItem[] = useMemo(() => {
     const memberItems: MentionItem[] = pool
-      .filter((m) => {
-        if (!lowerQ) return true;
-        // Match against first name, full name, slug, or email so
-        // typing "@mar" matches "Maria Garcia" and "@maria-gar"
-        // narrows to exactly her.
-        const ln = m.name.toLowerCase();
-        const slug = slugName(m.name);
-        return (
-          ln.includes(lowerQ) ||
-          slug.includes(lowerQ.replace(/\s+/g, "-")) ||
-          (m.email ?? "").toLowerCase().includes(lowerQ)
-        );
-      })
+      .filter((m) => matchesMention(m.name, m.email, query))
       .slice(0, 12)
       .map((m) => ({
         id: m.id,
@@ -182,7 +189,7 @@ export function MentionList({
     );
 
     return [...specials, ...memberItems];
-  }, [lowerQ, pool]);
+  }, [lowerQ, query, pool]);
 
   useEffect(() => {
     onLengthChange?.(items.length);
@@ -271,16 +278,7 @@ export function getMentionItems(
 ): MentionItem[] {
   const lowerQ = query.toLowerCase();
   const memberItems: MentionItem[] = members
-    .filter((m) => {
-      if (!lowerQ) return true;
-      const ln = m.name.toLowerCase();
-      const slug = slugName(m.name);
-      return (
-        ln.includes(lowerQ) ||
-        slug.includes(lowerQ.replace(/\s+/g, "-")) ||
-        (m.email ?? "").toLowerCase().includes(lowerQ)
-      );
-    })
+    .filter((m) => matchesMention(m.name, m.email, query))
     .slice(0, 12)
     .map((m) => ({
       id: m.id,

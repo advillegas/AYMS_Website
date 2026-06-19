@@ -33,6 +33,11 @@ export interface CalendarEvent {
    */
   capacity?: number;
   /**
+   * For member-hosted entries (meetups) merged into this shape: the host's
+   * user id, so the unified calendar can let a host manage their own item.
+   */
+  hostId?: string;
+  /**
    * Optional representative photo (self-hosted under /public). When set, the
    * events list renders it behind the date stamp; otherwise the brand gradient
    * shows. Lets us add imagery where an event maps to a real place/activity.

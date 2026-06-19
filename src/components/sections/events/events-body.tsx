@@ -1,11 +1,29 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import Image from "next/image";
 import { format, parseISO, isPast, isValid } from "date-fns";
-import { Calendar, MapPin, Clock } from "lucide-react";
-import { useEvents, type CalendarEvent } from "@/lib/use-events";
+import {
+  Calendar,
+  MapPin,
+  Clock,
+  Map as MapIcon,
+  List,
+  Navigation,
+  Loader2,
+  ExternalLink,
+} from "lucide-react";
+import { toast } from "sonner";
+import { useCombinedEvents } from "@/lib/use-combined-events";
+import type { CalendarEvent } from "@/lib/events-data";
+import type { GeoCoord } from "@/lib/geo";
+import { ensureHttp } from "@/lib/url";
+import {
+  LocationAutocomplete,
+  type LocationResult,
+} from "@/components/community/location-autocomplete";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import {
@@ -18,6 +36,19 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { EventRsvp } from "@/components/community/event-rsvp";
 import { EditableText } from "@/components/inline/editable-text";
+
+// Leaflet touches `window` at import, so the map is loaded client-only.
+const EventsMap = dynamic(
+  () => import("@/components/community/events-map"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-[460px] w-full items-center justify-center rounded-2xl border border-rosa/20 bg-rosa/5 sm:h-[560px]">
+        <Loader2 className="h-6 w-6 animate-spin text-[#B51760]" />
+      </div>
+    ),
+  },
+);
 
 /** Event types that take RSVPs on the public page (not trips/synced feeds). */
 const RSVP_TYPES = new Set(["social", "meetup", "camp"]);
@@ -60,9 +91,16 @@ const FILTERS = ["All", "Social", "Meetup", "Trip", "Camp"] as const;
  * or full-bleed through the section builder. Events come from useEvents().
  */
 export function EventsBody() {
-  const { events, loading } = useEvents();
+  // Unified feed: published admin events + member meetups in one category.
+  const { events, loading, isMeetup } = useCombinedEvents();
   const [filter, setFilter] = useState<string>("All");
   const [detail, setDetail] = useState<CalendarEvent | null>(null);
+  const [view, setView] = useState<"list" | "map">("list");
+  // `origin` drives distance labels + the blue "you" dot; `focus` recenters
+  // the map (a fresh object each time so re-selecting the same place flies).
+  const [origin, setOrigin] = useState<GeoCoord | null>(null);
+  const [focus, setFocus] = useState<GeoCoord | null>(null);
+  const [locating, setLocating] = useState(false);
   const reduceMotion = useReducedMotion();
 
   const upcoming = events
@@ -75,9 +113,44 @@ export function EventsBody() {
     .filter((e) => filter === "All" || (e.type ?? "").toLowerCase() === filter.toLowerCase())
     .sort((a, b) => a.date.localeCompare(b.date));
 
+  const mappableCount = upcoming.filter(
+    (e) => e.lat != null && e.lng != null,
+  ).length;
+
+  function handlePlace(r: LocationResult) {
+    const c = { lat: r.lat, lng: r.lng };
+    setOrigin(c);
+    setFocus({ ...c });
+    setView("map");
+  }
+
+  function handleLocate() {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      toast.error("Location isn't available in this browser.");
+      return;
+    }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const c = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        setOrigin(c);
+        setFocus({ ...c });
+        setView("map");
+        setLocating(false);
+      },
+      () => {
+        setLocating(false);
+        toast.error(
+          "Couldn't get your location. Check your browser permissions and try again.",
+        );
+      },
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
+  }
+
   return (
     <>
-      {/* Filters */}
+      {/* Filters + view toggle */}
       <section className="glass sticky top-[88px] z-10 border-b border-[#221019]/10">
         <div className="mx-auto flex max-w-4xl items-center gap-2 overflow-x-auto px-4 py-3 sm:px-6 lg:px-8">
           {FILTERS.map((f, i) => (
@@ -95,10 +168,96 @@ export function EventsBody() {
               <EditableText as="span" id={`events.filter.${i}`}>{f}</EditableText>
             </button>
           ))}
+
+          {/* List / Map view toggle */}
+          <div
+            className="ml-auto flex shrink-0 overflow-hidden rounded-full border border-[#221019]/15"
+            role="group"
+            aria-label="View mode"
+          >
+            <button
+              type="button"
+              onClick={() => setView("list")}
+              aria-pressed={view === "list"}
+              className={cn(
+                "flex items-center gap-1 px-3 py-1.5 text-sm font-semibold transition-colors",
+                view === "list"
+                  ? "bg-gradient-to-r from-[#FF0099] to-[#B51760] text-white"
+                  : "text-ink-soft hover:bg-[#FF0099]/5 hover:text-[#B51760]",
+              )}
+            >
+              <List className="h-4 w-4" />
+              <span className="hidden sm:inline">List</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setView("map")}
+              aria-pressed={view === "map"}
+              className={cn(
+                "flex items-center gap-1 px-3 py-1.5 text-sm font-semibold transition-colors",
+                view === "map"
+                  ? "bg-gradient-to-r from-[#FF0099] to-[#B51760] text-white"
+                  : "text-ink-soft hover:bg-[#FF0099]/5 hover:text-[#B51760]",
+              )}
+            >
+              <MapIcon className="h-4 w-4" />
+              <span className="hidden sm:inline">Map</span>
+            </button>
+          </div>
         </div>
       </section>
 
+      {/* Map view: search + locate controls, then the live pin map */}
+      {view === "map" && (
+        <section className="canvas-editorial relative py-8">
+          <div className="relative mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+              <div className="flex-1">
+                <LocationAutocomplete
+                  onSelect={handlePlace}
+                  clearOnSelect={false}
+                  placeholder="Search a city, state, or zip to center the map"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={handleLocate}
+                disabled={locating}
+                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full border border-[#221019]/15 bg-white px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-[#FF0099]/5 hover:text-[#B51760] disabled:opacity-60"
+              >
+                {locating ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Navigation className="h-4 w-4 text-[#FF0099]" />
+                )}
+                Use my location
+              </button>
+            </div>
+
+            <EventsMap
+              events={upcoming}
+              origin={origin}
+              focus={focus}
+              onSelect={(e) => setDetail(e)}
+            />
+
+            <p className="mt-3 text-center text-xs text-ink-soft">
+              {mappableCount > 0 ? (
+                <>
+                  Showing {mappableCount} upcoming{" "}
+                  {mappableCount === 1 ? "event" : "events"} on the map. Tap a
+                  pin for details.
+                </>
+              ) : (
+                <>No upcoming events have a mapped location yet.</>
+              )}
+            </p>
+          </div>
+        </section>
+      )}
+
       {/* Events timeline */}
+      {view === "list" && (
       <section className="canvas-editorial relative py-14">
         <div className="relative mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
           {/* Loading skeleton */}
@@ -247,6 +406,7 @@ export function EventsBody() {
           )}
         </div>
       </section>
+      )}
 
       {/* Event detail */}
       <Dialog open={!!detail} onOpenChange={(o) => !o && setDetail(null)}>
@@ -285,11 +445,22 @@ export function EventsBody() {
                   </div>
                 )}
               </div>
+              {ensureHttp(detail.link) && (
+                <a
+                  href={ensureHttp(detail.link)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#FF0099] to-[#B51760] px-5 text-sm font-semibold text-white transition hover:brightness-110"
+                >
+                  {detail.linkLabel?.trim() || "Open link"}
+                  <ExternalLink className="h-4 w-4" aria-hidden="true" />
+                </a>
+              )}
               {RSVP_TYPES.has(detail.type ?? "") && (
                 <>
                   <Separator className="border-rosa/20" />
                   <EventRsvp
-                    targetType="event"
+                    targetType={isMeetup(detail.id) ? "meetup" : "event"}
                     targetId={detail.id}
                     title={detail.title}
                     date={detail.date}

@@ -41,7 +41,7 @@ const STEPS: TourStep[] = [
   {
     selector: '[data-tour="nav"]',
     title: "Find your way around",
-    body: "These tabs jump you between Home, live Chat, your private Messages, the events Calendar, local Meetups, the Members directory, and your saved trips & RSVPs in My Events.",
+    body: "These tabs jump you between Home, live Chat, your private Messages, the Events calendar (browse on a map or list, and host your own gathering), the Members directory, and your saved trips & RSVPs in My Events.",
     emoji: "🧭",
   },
   {

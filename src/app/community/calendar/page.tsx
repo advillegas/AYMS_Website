@@ -26,6 +26,8 @@ import {
   ChevronRight,
   List,
   Grid3X3,
+  Map as MapIcon,
+  Plus,
   Loader2,
   Trash2,
 } from "lucide-react";
@@ -65,7 +67,7 @@ import { useAuth } from "@/lib/store";
 import { getUserCoords, haversineDistance } from "@/lib/geo";
 import dynamic from "next/dynamic";
 
-// Leaflet touches window at import; load the map client-only.
+// Leaflet touches window at import; load the maps client-only.
 const EventMap = dynamic(() => import("@/components/community/event-map"), {
   ssr: false,
   loading: () => (
@@ -74,6 +76,15 @@ const EventMap = dynamic(() => import("@/components/community/event-map"), {
     </div>
   ),
 });
+const EventsMap = dynamic(() => import("@/components/community/events-map"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex h-[460px] w-full items-center justify-center rounded-2xl border border-rosa/20 bg-muted/30 text-xs text-muted-foreground sm:h-[560px]">
+      Loading map…
+    </div>
+  ),
+});
+import { MeetupForm } from "@/components/community/meetup-form";
 import { useReminderScheduler } from "@/lib/use-event-reminders";
 
 const TYPE_COLORS: Record<string, string> = {
@@ -107,7 +118,7 @@ function getCalendarDays(month: Date): Date[] {
   return days;
 }
 
-type ViewMode = "calendar" | "list";
+type ViewMode = "calendar" | "list" | "map";
 
 export default function CalendarPage() {
   const { events: rawEvents, loading: eventsLoading, deleteEvent } = useEvents();
@@ -141,6 +152,7 @@ export default function CalendarPage() {
       lng: m.lng ?? undefined,
       link: m.link,
       linkLabel: m.linkLabel,
+      hostId: m.hostId,
     }));
     // Members aren't admins — admin drafts (published === false) must not
     // leak onto the shared calendar. Member meetups have no publish gate.
@@ -153,6 +165,7 @@ export default function CalendarPage() {
   const [selected, setSelected] = useState<Date>(new Date());
   const [detail, setDetail] = useState<CalendarEvent | null>(null);
   const [view, setView] = useState<ViewMode>("calendar");
+  const [hostOpen, setHostOpen] = useState(false);
   const [origin, setOrigin] = useState("");
   useEffect(() => {
     if (typeof window !== "undefined") setOrigin(window.location.origin);
@@ -355,7 +368,32 @@ export default function CalendarPage() {
                 <List className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">Events</span>
               </button>
+              <button
+                type="button"
+                onClick={() => setView("map")}
+                className={cn(
+                  "flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium transition-colors",
+                  view === "map"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-background text-foreground/70 hover:bg-primary/10",
+                )}
+                aria-pressed={view === "map"}
+                aria-label="Map view"
+              >
+                <MapIcon className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Map</span>
+              </button>
             </div>
+            {user && (
+              <Button
+                size="sm"
+                onClick={() => setHostOpen(true)}
+                className="h-8 gap-1 bg-gradient-to-r from-[#FF0099] to-[#B51760] text-white hover:brightness-110 border-0"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Host</span>
+              </Button>
+            )}
             <SubscribeButton origin={origin} />
           </div>
         </div>
@@ -408,6 +446,19 @@ export default function CalendarPage() {
           >
             <Loader2 className="h-6 w-6 animate-spin text-primary" />
             <p className="text-sm">Loading events…</p>
+          </div>
+        ) : view === "map" ? (
+          <div className="p-2 sm:p-4 lg:p-6">
+            <EventsMap
+              events={filteredEvents}
+              origin={myCoords}
+              onSelect={(e) => setDetail(e)}
+            />
+            <p className="mt-3 text-center text-xs text-muted-foreground">
+              {nearMe && myCoords
+                ? `Showing events within ${radiusMiles} mi. Tap a pin for details.`
+                : "Tap a pin for details, or use “Near me” to filter by distance."}
+            </p>
           </div>
         ) : view === "calendar" ? (
           <div className="p-2 sm:p-4 lg:p-6">
@@ -601,6 +652,9 @@ export default function CalendarPage() {
         )}
       </div>
 
+      {/* Member "host a gathering" form — events + meetups are one category */}
+      <MeetupForm open={hostOpen} onOpenChange={setHostOpen} />
+
       {/* Event detail dialog */}
       <Dialog open={!!detail} onOpenChange={(o) => !o && setDetail(null)}>
         <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
@@ -711,12 +765,17 @@ export default function CalendarPage() {
               </div>
               <Separator />
               <EventComments eventId={detail.id} />
-              {canManageCalendar && (
+              {(canManageCalendar ||
+                (meetupIds.has(detail.id) &&
+                  !!detail.hostId &&
+                  detail.hostId === user?.id)) && (
                 <>
                   <Separator />
                   <div className="flex items-center justify-between gap-2 rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2">
                     <span className="text-[11px] text-muted-foreground">
-                      Admin: remove this {meetupIds.has(detail.id) ? "meetup" : "event"} from the calendar.
+                      {canManageCalendar ? "Admin: remove" : "Remove your"}{" "}
+                      {meetupIds.has(detail.id) ? "meetup" : "event"} from the
+                      calendar.
                     </span>
                     <Button
                       variant="outline"

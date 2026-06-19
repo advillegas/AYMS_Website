@@ -27,6 +27,7 @@ import {
   Star,
   Check,
   Hourglass,
+  Heart,
   Loader2,
   FileSignature,
   ArrowRight,
@@ -38,6 +39,7 @@ import { useEvents } from "@/lib/use-events";
 import { useMeetups } from "@/lib/use-meetups";
 import { useMyRsvpRefs } from "@/lib/use-rsvps";
 import { useMyTripReservations } from "@/lib/use-trip-reservations";
+import { useTripFavorites } from "@/lib/use-trip-favorites";
 import { useReminderScheduler } from "@/lib/use-event-reminders";
 import { useTrips } from "@/lib/use-trips";
 import { getTripById } from "@/lib/trips-data";
@@ -91,6 +93,7 @@ function StatusIcon({ status }: { status: string }) {
   if (status === "Waitlisted") return <Hourglass className="h-3 w-3" />;
   if (status === "Interested") return <Star className="h-3 w-3" />;
   if (status === "Hosting") return <Sparkles className="h-3 w-3" />;
+  if (status === "Saved") return <Heart className="h-3 w-3 fill-current" />;
   return <Check className="h-3 w-3" />;
 }
 
@@ -105,6 +108,8 @@ export default function MyEventsPage() {
   const { events, loading: eventsLoading } = useEvents();
   const { meetups, loading: meetupsLoading } = useMeetups();
   const { reservations, loading: tripsLoading } = useMyTripReservations();
+  const { favorites: favoriteTrips, loading: favoritesLoading } =
+    useTripFavorites();
   const { trips } = useTrips();
 
   // Resolve reserved trips against the LIVE list first (so admin-created
@@ -133,6 +138,7 @@ export default function MyEventsPage() {
     const out: UpcomingItem[] = [];
 
     // Trips (reserved / waitlist)
+    const reservedTripIds = new Set(reservations.map((r) => r.tripId));
     for (const r of reservations) {
       const trip = tripById.get(r.tripId) ?? getTripById(r.tripId);
       out.push({
@@ -146,6 +152,23 @@ export default function MyEventsPage() {
         href: "/trips",
         status: r.status === "waitlist" ? "Waitlisted" : "Reserved",
         statusTone: r.status === "waitlist" ? "amber" : "emerald",
+      });
+    }
+
+    // Saved trips (favorites) — skip ones already shown as reserved.
+    for (const fav of favoriteTrips) {
+      if (reservedTripIds.has(fav.tripId)) continue;
+      const trip = tripById.get(fav.tripId) ?? getTripById(fav.tripId);
+      if (!trip) continue;
+      out.push({
+        key: `fav:${fav.tripId}`,
+        kind: "trip",
+        title: trip.title,
+        date: "",
+        location: trip.dates ?? trip.destination,
+        href: "/trips",
+        status: "Saved",
+        statusTone: "primary",
       });
     }
 
@@ -208,7 +231,7 @@ export default function MyEventsPage() {
     }
 
     return out;
-  }, [reservations, myRsvps, eventById, meetups, user?.id, tripById]);
+  }, [reservations, favoriteTrips, myRsvps, eventById, meetups, user?.id, tripById]);
 
   // Split upcoming vs past (items with a real date earlier than today).
   // Dateless items (trips) always count as upcoming.
@@ -245,7 +268,7 @@ export default function MyEventsPage() {
   }, [items, today]);
 
   const loading =
-    eventsLoading || meetupsLoading || tripsLoading;
+    eventsLoading || meetupsLoading || tripsLoading || favoritesLoading;
   const isEmpty = !loading && items.length === 0;
 
   return (

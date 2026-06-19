@@ -1,9 +1,13 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import { toast } from "sonner";
 import { type Trip } from "@/lib/trips-data";
 import { useTrips } from "@/lib/use-trips";
+import { useAuth } from "@/lib/store";
+import { useTripFavorites } from "@/lib/use-trip-favorites";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { ReserveButton } from "@/components/trips/reserve-button";
@@ -27,6 +31,7 @@ import {
   Sparkles,
   ArrowRight,
   Plane,
+  Heart,
 } from "lucide-react";
 import Image from "next/image";
 
@@ -54,6 +59,31 @@ export function TripsGrid() {
   const [selected, setSelected] = useState<Trip | null>(null);
   const reduceMotion = useReducedMotion();
   const { trips, loading } = useTrips();
+  const router = useRouter();
+  const user = useAuth((s) => s.user);
+  const { favoriteIds, toggle: toggleFavorite } = useTripFavorites();
+
+  const handleFavorite = useCallback(
+    async (trip: Trip) => {
+      if (!user) {
+        toast.error("Sign in to save trips", {
+          description: "Log in to favorite trips and get updates about them.",
+          action: { label: "Sign in", onClick: () => router.push("/login") },
+        });
+        return;
+      }
+      const nowSaved = await toggleFavorite(trip);
+      if (nowSaved === null) return;
+      if (nowSaved) {
+        toast.success(`Saved ${trip.title}`, {
+          description: "Added to My Events — we'll keep you posted on updates.",
+        });
+      } else {
+        toast(`Removed ${trip.title} from saved`);
+      }
+    },
+    [user, toggleFavorite, router],
+  );
 
   const REGION_MAP: Record<string, string> = {
     Mexico: "Americas", USA: "Americas", Colombia: "Americas",
@@ -173,6 +203,7 @@ export function TripsGrid() {
             <AnimatePresence mode="popLayout">
               {filtered.map((trip, i) => {
                 const st = statusStyle(trip.status);
+                const fav = favoriteIds.has(trip.id);
                 const { url: booking, label: bookLabel } = resolveBooking(
                   trip.bookingUrl,
                   trip.bookingLabel,
@@ -211,9 +242,24 @@ export function TripsGrid() {
                             />
                             {/* scrim so white status badge + heart stay legible over any photo */}
                             <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/25 via-transparent to-black/15" aria-hidden="true" />
-                            <span className="glass-control absolute top-3 right-3 h-9 w-9" aria-hidden="true">
-                              <span className="text-base leading-none text-white">♡</span>
-                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleFavorite(trip)}
+                              aria-pressed={fav}
+                              aria-label={fav ? `Remove ${trip.title} from saved` : `Save ${trip.title}`}
+                              title={fav ? "Saved — click to remove" : "Save this trip"}
+                              className="glass-control pointer-events-auto absolute top-3 right-3 z-10 h-9 w-9 transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099] focus-visible:ring-offset-1"
+                            >
+                              <Heart
+                                className={cn(
+                                  "h-4 w-4 transition-colors",
+                                  fav
+                                    ? "fill-[#FF0099] text-[#FF0099]"
+                                    : "fill-transparent text-white",
+                                )}
+                                aria-hidden="true"
+                              />
+                            </button>
                             <Badge className={`absolute top-3 left-3 text-[10px] font-bold ${st.cls}`}>
                               {st.label}
                             </Badge>
@@ -313,14 +359,28 @@ export function TripsGrid() {
             DialogContent's `sm:max-w-sm` at ≥640px — otherwise the wide
             2-column detail content overflows a 384px popup and clips. */}
         <DialogContent className="w-[calc(100vw-2rem)] gap-0 overflow-x-hidden overflow-y-auto border-rosa/30 glass-strong elevate-4 sm:max-w-2xl max-h-[90vh]">
-          {selected && <TripDetail trip={selected} />}
+          {selected && (
+            <TripDetail
+              trip={selected}
+              favorited={favoriteIds.has(selected.id)}
+              onToggleFavorite={() => handleFavorite(selected)}
+            />
+          )}
         </DialogContent>
       </Dialog>
     </>
   );
 }
 
-function TripDetail({ trip }: { trip: Trip }) {
+function TripDetail({
+  trip,
+  favorited,
+  onToggleFavorite,
+}: {
+  trip: Trip;
+  favorited: boolean;
+  onToggleFavorite: () => void;
+}) {
   const st = statusStyle(trip.status);
   return (
     <>
@@ -336,6 +396,22 @@ function TripDetail({ trip }: { trip: Trip }) {
         />
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-transparent" aria-hidden="true" />
         <span className="absolute bottom-3 left-4 text-4xl drop-shadow-lg" aria-hidden="true">{trip.emoji}</span>
+        <button
+          type="button"
+          onClick={onToggleFavorite}
+          aria-pressed={favorited}
+          aria-label={favorited ? `Remove ${trip.title} from saved` : `Save ${trip.title}`}
+          title={favorited ? "Saved — click to remove" : "Save this trip"}
+          className="glass-control absolute top-3 right-3 z-10 h-10 w-10 transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099] focus-visible:ring-offset-1"
+        >
+          <Heart
+            className={cn(
+              "h-[18px] w-[18px] transition-colors",
+              favorited ? "fill-[#FF0099] text-[#FF0099]" : "fill-transparent text-white",
+            )}
+            aria-hidden="true"
+          />
+        </button>
       </div>
       <DialogHeader className="mt-4">
         <div className="flex items-center gap-3">

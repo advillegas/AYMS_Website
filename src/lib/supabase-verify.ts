@@ -81,6 +81,54 @@ export async function resolveCanonicalUserIdByEmail(
 }
 
 /**
+ * Look up the canonical app user row by the Supabase auth uid linked to it
+ * (users.auth_id). More reliable than email because it works even when the
+ * row's email column is blank — notably the password-admin, whose users row
+ * has a null email so the UI shows just "Admin".
+ */
+export async function resolveAppUserByAuthId(
+  authUid: string,
+): Promise<{ id: string; role: string } | null> {
+  const svc = getServiceClient() ?? getAnonServerClient();
+  if (!svc || !authUid.trim()) return null;
+  try {
+    const { data, error } = await svc
+      .from("users")
+      .select("id, role")
+      .eq("auth_id", authUid)
+      .limit(1);
+    if (error || !data?.[0]) return null;
+    return {
+      id: data[0].id as string,
+      role: (data[0].role as string) || "amiga",
+    };
+  } catch (err) {
+    console.error("[supabase-verify] auth_id lookup failed", err);
+    return null;
+  }
+}
+
+/**
+ * Resolve the canonical users.id for a verified identity. Tries the linked
+ * auth uid first (survives a blank email), then falls back to email. Returns
+ * null only when neither resolves.
+ */
+export async function resolveCanonicalUserId(identity: {
+  authUid: string;
+  email: string | null;
+}): Promise<string | null> {
+  if (identity.authUid) {
+    const byAuth = await resolveAppUserByAuthId(identity.authUid);
+    if (byAuth) return byAuth.id;
+  }
+  if (identity.email) {
+    const byEmail = await resolveAppUserByEmail(identity.email);
+    if (byEmail) return byEmail.id;
+  }
+  return null;
+}
+
+/**
  * Server-side fine-grained permission check: does the user behind this
  * verified email hold `permission` via any of their assigned roles?
  *

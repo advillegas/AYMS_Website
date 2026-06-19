@@ -9,7 +9,7 @@ import { useSupabaseBackend } from "@/lib/supabase";
 import { getServiceClient } from "@/lib/supabase-server";
 import {
   verifySupabaseToken,
-  resolveCanonicalUserIdByEmail,
+  resolveCanonicalUserId,
 } from "@/lib/supabase-verify";
 
 /**
@@ -110,9 +110,9 @@ export async function POST(request: Request) {
     }
     // Stream identity continuity: mint for the canonical users.id
     // (original Firebase UID for migrated members), never the auth uuid.
-    const canonicalId = verified.email
-      ? await resolveCanonicalUserIdByEmail(verified.email)
-      : null;
+    // Resolve by auth_id first so it works even when the row has no email
+    // (e.g. the admin), then fall back to email.
+    const canonicalId = await resolveCanonicalUserId(verified);
     if (!canonicalId) {
       return NextResponse.json(
         { error: "Couldn't resolve your member profile. Please sign in again." },

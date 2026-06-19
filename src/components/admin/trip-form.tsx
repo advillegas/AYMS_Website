@@ -17,7 +17,7 @@ import { toast } from "sonner";
 import type { Trip } from "@/lib/trips-data";
 import { useFormDraft } from "@/lib/use-form-draft";
 import { DraftBanner, DraftSavedHint } from "@/components/admin/draft-banner";
-import { ensureHttp } from "@/lib/url";
+import { resolveBooking } from "@/lib/url";
 
 /** All editable fields, captured as a draft so interruptions don't lose work. */
 interface TripDraft {
@@ -276,8 +276,13 @@ export function TripFormDialog({
         emoji: emoji.trim(),
         gradient: gradient.trim() || DEFAULT_GRADIENT,
         image: image.trim(),
-        bookingUrl: ensureHttp(bookingUrl) || undefined,
-        bookingLabel: bookingLabel.trim() || undefined,
+        // Normalize so a link pasted into the wrong field still works and a
+        // raw URL never ends up as the button text.
+        bookingUrl: resolveBooking(bookingUrl, bookingLabel).url || undefined,
+        bookingLabel:
+          resolveBooking(bookingUrl, bookingLabel).label === "Book Now"
+            ? undefined
+            : resolveBooking(bookingUrl, bookingLabel).label,
         published,
         featured,
       };

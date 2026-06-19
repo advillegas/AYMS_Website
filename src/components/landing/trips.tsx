@@ -9,7 +9,7 @@ import { Calendar, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { useTrips, sortTrips, type Trip } from "@/lib/use-trips";
-import { ensureHttp } from "@/lib/url";
+import { resolveBooking } from "@/lib/url";
 import { EditableText } from "@/components/inline/editable-text";
 
 /** Short scarcity/status line for a card, or null when nothing urgent. */
@@ -90,8 +90,10 @@ export function Trips() {
           <div className="mt-14 grid grid-cols-1 gap-6 md:grid-cols-3">
             {homeTrips.map((trip, i) => {
               const u = urgency(trip);
-              const booking = ensureHttp(trip.bookingUrl);
-              const bookLabel = trip.bookingLabel?.trim() || "Book Now";
+              const { url: booking, label: bookLabel } = resolveBooking(
+                trip.bookingUrl,
+                trip.bookingLabel,
+              );
               const cardCls = "photo-card group flex h-full flex-col rounded-2xl elevate-2";
               const cardInner = (
                 <>

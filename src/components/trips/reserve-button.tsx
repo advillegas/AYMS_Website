@@ -25,7 +25,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/store";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { useTripReservations } from "@/lib/use-trip-reservations";
-import { ensureHttp } from "@/lib/url";
+import { resolveBooking } from "@/lib/url";
 import type { Trip } from "@/lib/trips-data";
 
 interface ReserveButtonProps {
@@ -60,13 +60,15 @@ export function ReserveButton({
   // Trips that are marketed as fully closed don't take reservations.
   const closed = trip.status === "sold-out" && !isFirebase;
 
-  // Admin-provided booking link → a direct "Book Now" CTA to their payment or
-  // details page. Takes priority over the free in-app hold and works for
-  // logged-out viewers too.
-  // Single, editable CTA label for the whole trip (default "Book Now").
-  const ctaLabel = trip.bookingLabel?.trim() || "Book Now";
+  // Admin-provided booking link → a direct CTA to their payment or details
+  // page. Takes priority over the free in-app hold and works for logged-out
+  // viewers too. `resolveBooking` is forgiving about which field the link was
+  // pasted into and never lets a raw URL become the button text.
+  const { url: bookingUrl, label: ctaLabel } = resolveBooking(
+    trip.bookingUrl,
+    trip.bookingLabel,
+  );
 
-  const bookingUrl = ensureHttp(trip.bookingUrl);
   if (bookingUrl) {
     const label = ctaLabel;
     return (

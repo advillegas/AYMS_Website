@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { ReserveButton } from "@/components/trips/reserve-button";
 import { EditableText } from "@/components/inline/editable-text";
-import { ensureHttp } from "@/lib/url";
+import { resolveBooking } from "@/lib/url";
 import {
   Dialog,
   DialogContent,
@@ -173,8 +173,10 @@ export function TripsGrid() {
             <AnimatePresence mode="popLayout">
               {filtered.map((trip, i) => {
                 const st = statusStyle(trip.status);
-                const booking = ensureHttp(trip.bookingUrl);
-                const bookLabel = trip.bookingLabel?.trim() || "Book Now";
+                const { url: booking, label: bookLabel } = resolveBooking(
+                  trip.bookingUrl,
+                  trip.bookingLabel,
+                );
                 return (
                   <motion.div
                     key={trip.id}

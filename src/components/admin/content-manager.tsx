@@ -8,10 +8,11 @@ import { GalleryPanel } from "./gallery-panel";
 import { FaqPanel } from "./faq-panel";
 import { MarqueePanel } from "./marquee-panel";
 import { FlipCardListPanel } from "./flip-card-list-panel";
-import { DEFAULT_WHYUS, DEFAULT_VALUES } from "@/lib/use-site-content";
+import { DEFAULT_WHYUS, DEFAULT_VALUES, DEFAULT_PILLARS } from "@/lib/use-site-content";
 
 type Sub =
   | "home"
+  | "pillars"
   | "whyus"
   | "values"
   | "testimonials"
@@ -22,6 +23,7 @@ type Sub =
 
 const TABS: { id: Sub; label: string }[] = [
   { id: "home", label: "Homepage" },
+  { id: "pillars", label: "Hero cards" },
   { id: "whyus", label: "Why-Us cards" },
   { id: "values", label: "Value cards" },
   { id: "experiences", label: "Experiences" },
@@ -33,6 +35,7 @@ const TABS: { id: Sub; label: string }[] = [
 
 const VALID_SUBS: Sub[] = [
   "home",
+  "pillars",
   "whyus",
   "values",
   "testimonials",
@@ -76,6 +79,14 @@ export function ContentManager({ section }: { section?: Sub }) {
       </div>
       <div className="min-h-0 flex-1">
         {sub === "home" && <HomeContentPanel />}
+        {sub === "pillars" && (
+          <FlipCardListPanel
+            contentKey="home.pillars"
+            defaults={DEFAULT_PILLARS}
+            title="Hero — pillar cards"
+            itemLabel="card"
+          />
+        )}
         {sub === "whyus" && (
           <FlipCardListPanel
             contentKey="home.whyus"

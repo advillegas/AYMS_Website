@@ -6,31 +6,16 @@ import Image from "next/image";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Heart, Users, Sparkles, ArrowDown } from "lucide-react";
+import { ArrowDown } from "lucide-react";
 import { FlipCard } from "@/components/ui/flip-card";
-import { useHomeContent, useSiteSettings } from "@/lib/use-site-content";
+import {
+  useHomeContent,
+  useSiteSettings,
+  useFlipCards,
+  DEFAULT_PILLARS,
+} from "@/lib/use-site-content";
+import { iconByName } from "@/lib/section-icons";
 import { EditableText } from "@/components/inline/editable-text";
-
-const PILLARS = [
-  {
-    icon: Heart,
-    en: { label: "Connect", desc: "Build lifelong friendships" },
-    es: { label: "Conectar", desc: "Construye amistades para toda la vida" },
-    accent: "from-[var(--magenta)] to-[#C2266A]",
-  },
-  {
-    icon: Users,
-    en: { label: "Empower", desc: "Grow together as a community" },
-    es: { label: "Empoderar", desc: "Crecer juntas como comunidad" },
-    accent: "from-[var(--brand-pink)] to-[#9B2C8A]",
-  },
-  {
-    icon: Sparkles,
-    en: { label: "Celebrate", desc: "Travel and create memories" },
-    es: { label: "Celebrar", desc: "Viajar y crear recuerdos" },
-    accent: "from-[#C44B3F] to-[var(--magenta)]",
-  },
-];
 
 /**
  * Inspiring on-brand headline variants. Index 0 is the canonical brand line;
@@ -93,6 +78,7 @@ export function Hero() {
   const prefersReducedMotion = useReducedMotion();
   const { stats } = useHomeContent();
   const settings = useSiteSettings();
+  const PILLARS = useFlipCards("home.pillars", DEFAULT_PILLARS);
   return (
     <section
       id="home"
@@ -216,9 +202,11 @@ export function Hero() {
             transition={{ delay: prefersReducedMotion ? 0 : 0.9, duration: 0.8 }}
             className="mx-auto mt-16 grid max-w-3xl grid-cols-1 gap-6 sm:grid-cols-3"
           >
-            {PILLARS.map((item, i) => (
+            {PILLARS.map((item, i) => {
+              const Icon = iconByName(item.icon);
+              return (
               <motion.div
-                key={item.en.label}
+                key={i}
                 initial={prefersReducedMotion ? false : { opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: prefersReducedMotion ? 0 : 1.1 + i * 0.15, ease: [0.16, 1, 0.3, 1] }}
@@ -227,25 +215,26 @@ export function Hero() {
                   className="h-48 cursor-pointer rounded-3xl"
                   front={
                     <div className="glass-strong elevate-2 flex h-full flex-col items-center justify-center gap-3 rounded-3xl p-6">
-                      <span className={`inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br ${item.accent} shadow-[0_6px_18px_rgb(255_0_153/0.22)]`}>
-                        <item.icon className="h-6 w-6 text-white" aria-hidden="true" />
+                      <span className={`inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br ${item.gradientBack} shadow-[0_6px_18px_rgb(255_0_153/0.22)]`}>
+                        <Icon className="h-6 w-6 text-white" aria-hidden="true" />
                       </span>
-                      <EditableText as="h3" id={`home.hero.pillar.${i}.en.title`} className="font-display text-lg font-semibold text-ink">{item.en.label}</EditableText>
-                      <EditableText as="p" id={`home.hero.pillar.${i}.en.desc`} className="text-sm text-ink-soft">{item.en.desc}</EditableText>
+                      <h3 className="font-display text-lg font-semibold text-ink">{item.enTitle}</h3>
+                      <p className="text-sm text-ink-soft">{item.enDesc}</p>
                     </div>
                   }
                   back={
                     <div className="glass-strong elevate-3 flex h-full flex-col items-center justify-center gap-3 rounded-3xl border border-[var(--magenta)]/15 p-6">
-                      <span className={`inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br ${item.accent} shadow-[0_6px_18px_rgb(255_0_153/0.22)]`}>
-                        <item.icon className="h-6 w-6 text-white" aria-hidden="true" />
+                      <span className={`inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br ${item.gradientBack} shadow-[0_6px_18px_rgb(255_0_153/0.22)]`}>
+                        <Icon className="h-6 w-6 text-white" aria-hidden="true" />
                       </span>
-                      <EditableText as="h3" id={`home.hero.pillar.${i}.es.title`} className="font-display-italic text-lg text-[var(--brand-pink)]">{item.es.label}</EditableText>
-                      <EditableText as="p" id={`home.hero.pillar.${i}.es.desc`} className="text-sm text-ink-soft">{item.es.desc}</EditableText>
+                      <h3 className="font-display-italic text-lg text-[var(--brand-pink)]">{item.esTitle}</h3>
+                      <p className="text-sm text-ink-soft">{item.esDesc}</p>
                     </div>
                   }
                 />
               </motion.div>
-            ))}
+              );
+            })}
           </motion.div>
 
           {/* Scroll cue */}

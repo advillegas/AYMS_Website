@@ -221,6 +221,13 @@ export const DEFAULT_VALUES: FlipCardItem[] = [
   { icon: "Sparkles", enTitle: "Growth", enDesc: "Empowering each other to grow, explore, and become our best selves.", esTitle: "Crecimiento", esDesc: "Empoderándonos mutuamente para crecer, explorar y ser nuestra mejor versión.", gradientBack: "from-magenta to-brand-pink", iconColor: "text-magenta" },
 ];
 
+/** Hero pillar flip-cards. `gradientBack` doubles as the icon-well accent. */
+export const DEFAULT_PILLARS: FlipCardItem[] = [
+  { icon: "Heart", enTitle: "Connect", enDesc: "Build lifelong friendships", esTitle: "Conectar", esDesc: "Construye amistades para toda la vida", gradientBack: "from-[var(--magenta)] to-[#C2266A]" },
+  { icon: "Users", enTitle: "Empower", enDesc: "Grow together as a community", esTitle: "Empoderar", esDesc: "Crecer juntas como comunidad", gradientBack: "from-[var(--brand-pink)] to-[#9B2C8A]" },
+  { icon: "Sparkles", enTitle: "Celebrate", enDesc: "Travel and create memories", esTitle: "Celebrar", esDesc: "Viajar y crear recuerdos", gradientBack: "from-[#C44B3F] to-[var(--magenta)]" },
+];
+
 /* ----------------------------- store ------------------------------- */
 
 interface ConfigRow {

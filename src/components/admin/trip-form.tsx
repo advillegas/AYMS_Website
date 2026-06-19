@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,6 +15,32 @@ import {
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import type { Trip } from "@/lib/trips-data";
+import { useFormDraft } from "@/lib/use-form-draft";
+import { DraftBanner, DraftSavedHint } from "@/components/admin/draft-banner";
+
+/** All editable fields, captured as a draft so interruptions don't lose work. */
+interface TripDraft {
+  title: string;
+  destination: string;
+  country: string;
+  dates: string;
+  duration: string;
+  price: string;
+  deposit: string;
+  spots: string;
+  spotsLeft: string;
+  status: Trip["status"];
+  description: string;
+  highlights: string;
+  includes: string;
+  notIncluded: string;
+  emoji: string;
+  gradient: string;
+  image: string;
+  published: boolean;
+  featured: boolean;
+  order: string;
+}
 
 /** Sensible brand gradient seeded into the form for brand-new trips. */
 const DEFAULT_GRADIENT = "from-[#FF0099] via-[#B51760] to-[#9B2C8A]";
@@ -85,6 +111,47 @@ export function TripFormDialog({
   const [order, setOrder] = useState("");
   const [busy, setBusy] = useState(false);
 
+  // Draft autosave so an accidental close / refresh never loses the form.
+  const draftKey = open ? (trip ? `trip:${trip.id}` : "trip:new") : null;
+  const draft = useFormDraft<TripDraft>(draftKey);
+  const baselineRef = useRef<string | null>(null);
+  const readyRef = useRef(false);
+
+  const data: TripDraft = {
+    title, destination, country, dates, duration, price, deposit, spots, spotsLeft,
+    status, description, highlights, includes, notIncluded, emoji, gradient, image,
+    published, featured, order,
+  };
+  const dataJson = JSON.stringify(data);
+  const latestRef = useRef<TripDraft>(data);
+  latestRef.current = data;
+  const dirty = baselineRef.current !== null && dataJson !== baselineRef.current;
+
+  function applyDraft(d: TripDraft) {
+    setTitle(d.title); setDestination(d.destination); setCountry(d.country);
+    setDates(d.dates); setDuration(d.duration); setPrice(d.price); setDeposit(d.deposit);
+    setSpots(d.spots); setSpotsLeft(d.spotsLeft); setStatus(d.status);
+    setDescription(d.description); setHighlights(d.highlights); setIncludes(d.includes);
+    setNotIncluded(d.notIncluded); setEmoji(d.emoji); setGradient(d.gradient);
+    setImage(d.image); setPublished(d.published); setFeatured(d.featured); setOrder(d.order);
+  }
+
+  function handleRestore() {
+    const d = draft.getDraft();
+    if (d) applyDraft(d);
+    draft.dismiss();
+  }
+  function handleDiscard() {
+    draft.clear();
+  }
+
+  // Autosave the draft whenever the form differs from what it opened with.
+  useEffect(() => {
+    if (!open || !readyRef.current || baselineRef.current === null) return;
+    if (dataJson !== baselineRef.current) draft.save(JSON.parse(dataJson) as TripDraft);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, dataJson]);
+
   useEffect(() => {
     if (!open) return;
     setTitle(trip?.title ?? "");
@@ -110,6 +177,21 @@ export function TripFormDialog({
     setOrder(
       trip && typeof trip.order === "number" ? String(trip.order) : "",
     );
+    // Snapshot the opened baseline so autosave only fires on real changes.
+    baselineRef.current = JSON.stringify({
+      title: trip?.title ?? "", destination: trip?.destination ?? "", country: trip?.country ?? "",
+      dates: trip?.dates ?? "", duration: trip?.duration ?? "", price: trip ? String(trip.price) : "",
+      deposit: trip ? String(trip.deposit) : "", spots: trip ? String(trip.spots) : "",
+      spotsLeft: trip ? String(trip.spotsLeft) : "", status: trip?.status ?? "available",
+      description: trip?.description ?? "", highlights: arrayToLines(trip?.highlights),
+      includes: arrayToLines(trip?.includes), notIncluded: arrayToLines(trip?.notIncluded),
+      emoji: trip?.emoji ?? "", gradient: trip?.gradient || DEFAULT_GRADIENT, image: trip?.image ?? "",
+      published: trip ? trip.published !== false : true, featured: trip ? !!trip.featured : false,
+      order: trip && typeof trip.order === "number" ? String(trip.order) : "",
+    } satisfies TripDraft);
+    readyRef.current = false;
+    const t = setTimeout(() => { readyRef.current = true; }, 0);
+    return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, trip?.id]);
 
@@ -190,6 +272,8 @@ export function TripFormDialog({
       // leaving Order blank doesn't reset its position to the end.
       if (orderNum !== undefined) payload.order = orderNum;
       await onSave(payload);
+      // Saved for real — drop the recovery draft.
+      draft.clear();
     } finally {
       setBusy(false);
     }
@@ -199,7 +283,12 @@ export function TripFormDialog({
     <Dialog
       open={open}
       onOpenChange={(v) => {
-        if (!v) reset();
+        if (!v) {
+          // Flush any in-progress edits to the draft BEFORE closing, so even an
+          // accidental backdrop click keeps the work for next time.
+          if (dirty) draft.saveNow(latestRef.current);
+          reset();
+        }
         onOpenChange(v);
       }}
     >
@@ -214,6 +303,14 @@ export function TripFormDialog({
         </DialogHeader>
 
         <div className="space-y-4 py-2">
+          {draft.hasDraft && (
+            <DraftBanner
+              savedAt={draft.draftSavedAt}
+              label={isEdit ? "edit to this trip" : "trip draft"}
+              onRestore={handleRestore}
+              onDiscard={handleDiscard}
+            />
+          )}
           <div className="grid gap-1.5">
             <Label>Title</Label>
             <Input
@@ -448,6 +545,11 @@ export function TripFormDialog({
         </div>
 
         <DialogFooter>
+          {dirty && (
+            <div className="mr-auto flex items-center sm:self-center">
+              <DraftSavedHint savedAt={draft.draftSavedAt} />
+            </div>
+          )}
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>

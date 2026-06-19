@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,6 +27,21 @@ import { toast } from "sonner";
 import { useAuth } from "@/lib/store";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { useEvents, type FirestoreEvent } from "@/lib/use-events";
+import { useFormDraft } from "@/lib/use-form-draft";
+import { DraftBanner, DraftSavedHint } from "@/components/admin/draft-banner";
+
+interface EventDraft {
+  title: string;
+  description: string;
+  date: string;
+  endDate: string;
+  startTime: string;
+  endTime: string;
+  type: string;
+  location: string;
+  capacity: string;
+  published: boolean;
+}
 
 const EVENT_TYPES = [
   { value: "trip", label: "Trip" },
@@ -325,6 +340,37 @@ function EventDialog({
 
   const isEdit = !!event;
 
+  // Draft autosave — survives accidental close / refresh.
+  const draftKey = open ? (event ? `event:${event.id}` : "event:new") : null;
+  const draft = useFormDraft<EventDraft>(draftKey);
+  const baselineRef = useRef<string | null>(null);
+  const readyRef = useRef(false);
+
+  const data: EventDraft = {
+    title, description, date, endDate, startTime, endTime, type, location, capacity, published,
+  };
+  const dataJson = JSON.stringify(data);
+  const latestRef = useRef<EventDraft>(data);
+  latestRef.current = data;
+  const dirty = baselineRef.current !== null && dataJson !== baselineRef.current;
+
+  function applyDraft(d: EventDraft) {
+    setTitle(d.title); setDescription(d.description); setDate(d.date); setEndDate(d.endDate);
+    setStartTime(d.startTime); setEndTime(d.endTime); setType(d.type); setLocation(d.location);
+    setCapacity(d.capacity); setPublished(d.published);
+  }
+  function handleRestore() {
+    const d = draft.getDraft();
+    if (d) applyDraft(d);
+    draft.dismiss();
+  }
+
+  useEffect(() => {
+    if (!open || !readyRef.current || baselineRef.current === null) return;
+    if (dataJson !== baselineRef.current) draft.save(JSON.parse(dataJson) as EventDraft);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, dataJson]);
+
   useEffect(() => {
     if (!open) return;
     setTitle(event?.title ?? "");
@@ -341,6 +387,16 @@ function EventDialog({
         : "",
     );
     setPublished(event?.published !== false);
+    baselineRef.current = JSON.stringify({
+      title: event?.title ?? "", description: event?.description ?? "", date: event?.date ?? "",
+      endDate: event?.endDate ?? "", startTime: event?.startTime ?? "", endTime: event?.endTime ?? "",
+      type: event?.type ?? "social", location: event?.location ?? "",
+      capacity: typeof event?.capacity === "number" && event.capacity > 0 ? String(event.capacity) : "",
+      published: event?.published !== false,
+    } satisfies EventDraft);
+    readyRef.current = false;
+    const t = setTimeout(() => { readyRef.current = true; }, 0);
+    return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, event?.id]);
 
@@ -361,7 +417,10 @@ function EventDialog({
     <Dialog
       open={open}
       onOpenChange={(v) => {
-        if (!v) reset();
+        if (!v) {
+          if (dirty) draft.saveNow(latestRef.current);
+          reset();
+        }
         onOpenChange(v);
       }}
     >
@@ -375,6 +434,14 @@ function EventDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-2">
+          {draft.hasDraft && (
+            <DraftBanner
+              savedAt={draft.draftSavedAt}
+              label={isEdit ? "edit to this event" : "event draft"}
+              onRestore={handleRestore}
+              onDiscard={draft.clear}
+            />
+          )}
           <div className="grid gap-1.5">
             <Label>Title</Label>
             <Input
@@ -493,6 +560,11 @@ function EventDialog({
           </div>
         </div>
         <DialogFooter>
+          {dirty && (
+            <div className="mr-auto flex items-center sm:self-center">
+              <DraftSavedHint savedAt={draft.draftSavedAt} />
+            </div>
+          )}
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
@@ -521,6 +593,7 @@ function EventDialog({
                   capacity: capNum,
                   published,
                 });
+                draft.clear();
               } finally {
                 setBusy(false);
               }

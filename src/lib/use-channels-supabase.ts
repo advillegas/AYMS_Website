@@ -77,6 +77,14 @@ export async function writeChannelsToSupabase(
     // client to `anon` and RLS silently rejects the write, so a newly
     // created channel never persists ("attempts fail and changes aren't saved").
     await ensureSupabaseSession(sb);
+    // UPSERT ONLY. We deliberately do NOT prune rows missing from `channels`.
+    //
+    // A previous version deleted every row whose id wasn't in this list. That
+    // turned the channels table into a mirror of whatever list it was handed —
+    // so ANY client that wrote a stale/partial list (e.g. a freshly-hydrated
+    // browser still holding only the default channels) silently DELETED every
+    // admin-created channel for everyone. Deletions now happen one id at a time
+    // through deleteChannelFromSupabase, only on an explicit hard delete.
     const { error: upErr } = await sb
       .from("channels")
       .upsert(channels.map(channelToRow));
@@ -84,18 +92,32 @@ export async function writeChannelsToSupabase(
       console.warn("[channels:sb] upsert failed", upErr.message);
       return false;
     }
-    const keep = channels.map((c) => c.id);
-    if (keep.length > 0) {
-      // Best-effort prune of removed channels; never fail the create on this.
-      const { error: delErr } = await sb
-        .from("channels")
-        .delete()
-        .not("id", "in", `(${keep.map((id) => `"${id}"`).join(",")})`);
-      if (delErr) console.warn("[channels:sb] prune failed", delErr.message);
-    }
     return true;
   } catch (err) {
     console.warn("[channels:sb] write failed", err);
+    return false;
+  }
+}
+
+/**
+ * Hard-delete a single channel row. This is the ONLY path that removes a
+ * channel from Supabase — called from the store's deleteChannel(id, hard)
+ * so a deletion is always an explicit, single-id action, never a side effect
+ * of writing the full list.
+ */
+export async function deleteChannelFromSupabase(id: string): Promise<boolean> {
+  const sb = getSupabase();
+  if (!sb) return false;
+  try {
+    await ensureSupabaseSession(sb);
+    const { error } = await sb.from("channels").delete().eq("id", id);
+    if (error) {
+      console.warn("[channels:sb] delete failed", id, error.message);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn("[channels:sb] delete threw", err);
     return false;
   }
 }
@@ -106,13 +128,21 @@ export async function seedSupabaseChannelsIfEmpty(
   const sb = getSupabase();
   if (!sb) return;
   try {
-    const { data } = await sb.from("channels").select("id");
+    const { data, error } = await sb.from("channels").select("id");
+    // CRITICAL: a failed read must NOT be treated as "table is empty". Doing so
+    // previously re-seeded defaults over a populated table. Bail on any error.
+    if (error) {
+      console.warn("[channels:sb] seed read failed; skipping seed", error.message);
+      return;
+    }
     const existing = new Set((data ?? []).map((r: { id: string }) => r.id));
     const missing = defaults.filter((d) => !existing.has(d.id));
     if (existing.size === 0) {
+      // Only seed when the table is genuinely empty (read succeeded, 0 rows).
       await writeChannelsToSupabase(defaults);
     } else if (missing.length > 0) {
-      // Merge any newly-added system channels (e.g. #local).
+      // Merge any newly-added system channels (e.g. #local) without touching
+      // existing rows.
       await sb.from("channels").upsert(missing.map(channelToRow));
     }
   } catch (err) {
@@ -123,6 +153,7 @@ export async function seedSupabaseChannelsIfEmpty(
 export function useChannelsSyncSupabase(
   setChannels: (channels: RichChannel[]) => void,
   defaults: RichChannel[],
+  onSynced?: () => void,
 ): void {
   useEffect(() => {
     void seedSupabaseChannelsIfEmpty(defaults);
@@ -130,6 +161,8 @@ export function useChannelsSyncSupabase(
       "channels",
       (sb) => sb.from("channels").select("*").order("position", { ascending: true }),
       (rows) => {
+        // We've heard the server's truth — unblock local write-through.
+        onSynced?.();
         if (rows.length > 0) setChannels(rows.map(rowToChannel));
       },
       (msg) => console.warn("[channels:sb] sync failed", msg),

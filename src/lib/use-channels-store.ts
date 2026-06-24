@@ -15,6 +15,7 @@ import { getDb, isFirebaseConfigured } from "./firebase";
 import { useSupabaseBackend } from "./supabase";
 import {
   writeChannelsToSupabase,
+  deleteChannelFromSupabase,
   useChannelsSyncSupabase,
 } from "./use-channels-supabase";
 
@@ -265,6 +266,11 @@ export const useChannels = create<ChannelsState>()(
           set((s) => ({
             channels: s.channels.filter((c) => c.id !== id),
           }));
+          // Deletions are explicit + single-id. The full-list write-through is
+          // upsert-only (it never prunes), so a hard delete must remove the row
+          // directly. (Firebase replaces the whole config doc, so its
+          // write-through already drops it.)
+          if (useSupabaseBackend) void deleteChannelFromSupabase(id);
         } else {
           set((s) => ({
             channels: s.channels.map((c) =>
@@ -409,11 +415,21 @@ let channelsSyncListenerStarted = false;
 let applyingRemote = false;
 let pendingWrites = 0;
 let lastLocalEditAt = 0;
+// Gate write-through until we've seen the backend's current channel list once.
+// Otherwise a freshly-hydrated browser (localStorage may hold a stale/partial
+// list, e.g. just the defaults) would write that list before learning the
+// server's truth — resurrecting deleted channels or overwriting newer edits.
+let remoteSynced = false;
+function markChannelsSynced() {
+  remoteSynced = true;
+}
 
 useChannels.subscribe((state) => {
   if (!isFirebaseConfigured && !useSupabaseBackend) return;
   // Don't echo a snapshot we just applied back to the backend.
   if (applyingRemote) return;
+  // Hold writes until the first real snapshot arrives (see remoteSynced).
+  if (!remoteSynced) return;
   // Mark the edit immediately (before the debounce) so a snapshot landing in
   // the gap before the write fires can't clobber the optimistic change.
   lastLocalEditAt = Date.now();
@@ -446,7 +462,7 @@ const setChannelsState = (channels: RichChannel[]) => {
 
 export function useChannelsSync(): void {
   return useSupabaseBackend
-    ? useChannelsSyncSupabase(setChannelsState, DEFAULT_CHANNELS)
+    ? useChannelsSyncSupabase(setChannelsState, DEFAULT_CHANNELS, markChannelsSynced)
     : useChannelsSyncFirebase();
 }
 
@@ -462,6 +478,8 @@ function useChannelsSyncFirebase(): void {
     const unsub = onSnapshot(
       doc(db, "config", "channels"),
       (snap) => {
+        // Heard the server (even an empty/missing doc) — unblock write-through.
+        markChannelsSynced();
         if (!snap.exists()) return;
         const data = snap.data() as { channels?: RichChannel[] };
         if (data.channels) {

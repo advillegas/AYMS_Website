@@ -504,11 +504,14 @@ export function canViewChannel(
   channel: Pick<RichChannel, "restrictedRoleIds">,
   userRoleIds: string[],
 ): boolean {
-  if (!channel.restrictedRoleIds || channel.restrictedRoleIds.length === 0) {
+  // Be defensive: a malformed value (non-array) must not throw and take down
+  // the whole channel list. Anything that isn't a non-empty array = open.
+  const restricted = channel.restrictedRoleIds;
+  if (!Array.isArray(restricted) || restricted.length === 0) {
     return true;
   }
   for (const r of userRoleIds) {
-    if (channel.restrictedRoleIds.includes(r)) return true;
+    if (restricted.includes(r)) return true;
   }
   return false;
 }

@@ -37,12 +37,18 @@ function rowToChannel(r: ChannelRow): RichChannel {
     icon: r.icon ?? "#",
     category: r.category as RichChannel["category"],
     type: r.type as RichChannel["type"],
-    restrictedRoleIds: r.restricted_role_ids ?? [],
+    // Coerce to a real array. A malformed jsonb value (e.g. an object `{}`
+    // instead of `[]`) must never reach the UI — canViewChannel calls
+    // `.includes` on this, and one bad row would otherwise crash the whole
+    // community render.
+    restrictedRoleIds: Array.isArray(r.restricted_role_ids)
+      ? r.restricted_role_ids
+      : [],
     archived: r.archived ?? false,
     position: r.position ?? 0,
     createdAt: r.created_at ? new Date(r.created_at).getTime() : Date.now(),
     createdBy: r.created_by ?? undefined,
-    geoLocations: r.geo_locations ?? undefined,
+    geoLocations: Array.isArray(r.geo_locations) ? r.geo_locations : undefined,
     geoRadiusMiles: r.geo_radius_miles ?? undefined,
     isGeoChannel: r.is_geo_channel ?? false,
   };

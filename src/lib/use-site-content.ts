@@ -228,6 +228,57 @@ export const DEFAULT_PILLARS: FlipCardItem[] = [
   { icon: "Sparkles", enTitle: "Celebrate", enDesc: "Travel and create memories", esTitle: "Celebrar", esDesc: "Viajar y crear recuerdos", gradientBack: "from-[#C44B3F] to-[var(--magenta)]" },
 ];
 
+/* ------------------- Contact / social link tiles ------------------- */
+
+export interface ContactLinkItem {
+  /** Platform key (see lib/social-icons.tsx) — drives the brand glyph/tint. */
+  platform: string;
+  /** Raw destination (URL, email, phone, or internal route). */
+  href: string;
+  /** Optional uploaded image that replaces the brand glyph. */
+  image?: string;
+  enTitle: string;
+  enSub: string;
+  esTitle: string;
+  esSub: string;
+}
+
+export const NEW_CONTACT_LINK: ContactLinkItem = {
+  platform: "instagram",
+  href: "",
+  enTitle: "New link",
+  enSub: "Describe this link",
+  esTitle: "Nuevo enlace",
+  esSub: "Describe este enlace",
+};
+
+export const DEFAULT_CONTACT_LINKS: ContactLinkItem[] = [
+  {
+    platform: "instagram",
+    href: "https://www.instagram.com/amigasymassocial/",
+    enTitle: "@amigasymassocial",
+    enSub: "Follow us on Instagram",
+    esTitle: "@amigasymassocial",
+    esSub: "Síguenos en Instagram",
+  },
+  {
+    platform: "email",
+    href: "hello@amigasymassocial.com",
+    enTitle: "hello@amigasymassocial.com",
+    enSub: "Email us anytime",
+    esTitle: "hello@amigasymassocial.com",
+    esSub: "Escríbenos cuando quieras",
+  },
+  {
+    platform: "join",
+    href: "/register",
+    enTitle: "Become an Amiga",
+    enSub: "Join for free and access the community portal",
+    esTitle: "Hazte una Amiga",
+    esSub: "Únete gratis y accede al portal comunitario",
+  },
+];
+
 /* ----------------------------- store ------------------------------- */
 
 interface ConfigRow {
@@ -360,6 +411,16 @@ export function useFlipCards(key: string, defaults: FlipCardItem[]): FlipCardIte
   useEffect(() => useSiteContentStore.getState().subscribe(), []);
   if (Array.isArray(raw) && raw.length) return raw as FlipCardItem[];
   return defaults;
+}
+
+/** Editable contact / social link tiles (Contact section). */
+export const CONTACT_LINKS_KEY = "home.contact.links";
+
+export function useContactLinks(): ContactLinkItem[] {
+  const raw = useSiteContentStore((s) => s.values[CONTACT_LINKS_KEY]);
+  useEffect(() => useSiteContentStore.getState().subscribe(), []);
+  if (Array.isArray(raw) && raw.length) return raw as ContactLinkItem[];
+  return DEFAULT_CONTACT_LINKS;
 }
 
 /** Persist a domain doc (admin only). */

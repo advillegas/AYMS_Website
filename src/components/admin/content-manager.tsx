@@ -8,6 +8,7 @@ import { GalleryPanel } from "./gallery-panel";
 import { FaqPanel } from "./faq-panel";
 import { MarqueePanel } from "./marquee-panel";
 import { FlipCardListPanel } from "./flip-card-list-panel";
+import { ContactLinksPanel } from "./contact-links-panel";
 import { DEFAULT_WHYUS, DEFAULT_VALUES, DEFAULT_PILLARS } from "@/lib/use-site-content";
 
 type Sub =
@@ -19,7 +20,8 @@ type Sub =
   | "experiences"
   | "gallery"
   | "faq"
-  | "marquee";
+  | "marquee"
+  | "contact";
 
 const TABS: { id: Sub; label: string }[] = [
   { id: "home", label: "Homepage" },
@@ -31,6 +33,7 @@ const TABS: { id: Sub; label: string }[] = [
   { id: "gallery", label: "Gallery" },
   { id: "faq", label: "FAQ" },
   { id: "marquee", label: "Marquee" },
+  { id: "contact", label: "Contact" },
 ];
 
 const VALID_SUBS: Sub[] = [
@@ -43,6 +46,7 @@ const VALID_SUBS: Sub[] = [
   "gallery",
   "faq",
   "marquee",
+  "contact",
 ];
 
 export function ContentManager({ section }: { section?: Sub }) {
@@ -109,6 +113,7 @@ export function ContentManager({ section }: { section?: Sub }) {
         {sub === "gallery" && <GalleryPanel />}
         {sub === "faq" && <FaqPanel />}
         {sub === "marquee" && <MarqueePanel />}
+        {sub === "contact" && <ContactLinksPanel />}
       </div>
     </div>
   );

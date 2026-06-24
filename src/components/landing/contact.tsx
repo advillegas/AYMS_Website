@@ -1,64 +1,25 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { motion, useReducedMotion } from "framer-motion";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Mail, Heart, Send, Loader2 } from "lucide-react";
+import { Send, Loader2 } from "lucide-react";
 import { EditableText } from "@/components/inline/editable-text";
 import { useNewsletter } from "@/lib/use-newsletter";
+import { useContactLinks } from "@/lib/use-site-content";
+import { getPlatform, resolveContactHref } from "@/lib/social-icons";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-function InstagramIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
-      <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
-      <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
-    </svg>
-  );
-}
-
-const CONTACT_ITEMS = [
-  {
-    href: "https://www.instagram.com/amigasymassocial/",
-    icon: InstagramIcon,
-    gradient: "from-primary/20 to-magenta/15",
-    iconColor: "text-primary",
-    en: { title: "@amigasymassocial", sub: "Follow us on Instagram" },
-    es: { title: "@amigasymassocial", sub: "Síguenos en Instagram" },
-    isLink: true,
-    external: true,
-  },
-  {
-    href: "mailto:hello@amigasymassocial.com",
-    icon: Mail,
-    gradient: "from-coral/20 to-brand-pink/15",
-    iconColor: "text-coral",
-    en: { title: "hello@amigasymassocial.com", sub: "Email us anytime" },
-    es: { title: "hello@amigasymassocial.com", sub: "Escríbenos cuando quieras" },
-    isLink: true,
-    external: false,
-  },
-  {
-    href: "/register",
-    icon: Heart,
-    gradient: "from-rosa/20 to-primary/15",
-    iconColor: "text-magenta",
-    en: { title: "Become an Amiga", sub: "Join for free and access the community portal" },
-    es: { title: "Hazte una Amiga", sub: "Únete gratis y accede al portal comunitario" },
-    isLink: true,
-    external: false,
-  },
-];
 
 export function Contact() {
   const prefersReducedMotion = useReducedMotion();
   const { submitting, subscribe } = useNewsletter();
+  const contactLinks = useContactLinks();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -121,42 +82,65 @@ export function Contact() {
             </EditableText>
 
             <div className="mt-8 space-y-4">
-              {CONTACT_ITEMS.map((item, i) => {
+              {contactLinks.map((item, i) => {
+                const plat = getPlatform(item.platform);
+                const Icon = plat.Icon;
+                const href = resolveContactHref(item.platform, item.href);
                 const inner = (
                   <>
-                    <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${item.gradient} elevate-2`}>
-                      <item.icon className={`h-5 w-5 ${item.iconColor}`} aria-hidden="true" />
+                    <div
+                      className={`relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl elevate-2 ${
+                        item.image ? "bg-white" : `bg-gradient-to-br ${plat.gradient}`
+                      }`}
+                    >
+                      {item.image ? (
+                        <Image
+                          src={item.image}
+                          alt=""
+                          fill
+                          unoptimized
+                          sizes="48px"
+                          className="object-cover"
+                        />
+                      ) : (
+                        <Icon className={`h-5 w-5 ${plat.iconColor}`} />
+                      )}
                     </div>
-                    <div>
-                      <p className="text-sm font-semibold text-ink">
-                        <EditableText as="span" id={`home.contact.item.${i}.en.title`} className="group-hover:hidden">{item.en.title}</EditableText>
-                        <EditableText as="span" id={`home.contact.item.${i}.es.title`} className="hidden group-hover:inline text-[var(--magenta)]">{item.es.title}</EditableText>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-ink">
+                        <span className="group-hover:hidden">{item.enTitle}</span>
+                        <span className="hidden text-[var(--magenta)] group-hover:inline">
+                          {item.esTitle || item.enTitle}
+                        </span>
                       </p>
-                      <p className="text-xs text-ink-soft">
-                        <EditableText as="span" id={`home.contact.item.${i}.en.sub`} className="group-hover:hidden">{item.en.sub}</EditableText>
-                        <EditableText as="span" id={`home.contact.item.${i}.es.sub`} className="hidden group-hover:inline">{item.es.sub}</EditableText>
+                      <p className="truncate text-xs text-ink-soft">
+                        <span className="group-hover:hidden">{item.enSub}</span>
+                        <span className="hidden group-hover:inline">
+                          {item.esSub || item.enSub}
+                        </span>
                       </p>
                     </div>
                   </>
                 );
-                const cls = "glass lift group flex items-center gap-4 rounded-2xl p-5 transition-all elevate-2";
-                return item.isLink ? (
+                // The page-wide `lift` hover plus a tap-scale so the tiles feel
+                // tactile on both mouse and touch.
+                const cls =
+                  "glass lift group flex items-center gap-4 rounded-2xl p-5 transition-all elevate-2 active:scale-[0.98]";
+                return href ? (
                   <a
-                    key={item.en.title}
-                    href={item.href}
-                    target={item.external ? "_blank" : undefined}
-                    rel={item.external ? "noopener noreferrer" : undefined}
+                    key={i}
+                    href={href}
+                    target={plat.external ? "_blank" : undefined}
+                    rel={plat.external ? "noopener noreferrer" : undefined}
                     aria-label={
-                      item.external
-                        ? `${item.en.sub} (opens in a new tab)`
-                        : item.en.sub
+                      plat.external ? `${item.enSub} (opens in a new tab)` : item.enSub
                     }
                     className={`${cls} cursor-pointer`}
                   >
                     {inner}
                   </a>
                 ) : (
-                  <div key={item.en.title} className={`${cls} cursor-default`}>
+                  <div key={i} className={`${cls} cursor-default`}>
                     {inner}
                   </div>
                 );

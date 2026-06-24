@@ -371,15 +371,21 @@ drop policy if exists notifications_insert on public.notifications;
 create policy notifications_insert on public.notifications
   for insert to authenticated with check (true);
 
+-- NOTE: the update/delete policies mirror the SELECT policy's is_app_admin()
+-- fallback. Without it the password-admin (whose canonical id is 'admin' and
+-- whose session resolves via is_app_admin(), not always via
+-- current_app_user_id()) could READ notifications but silently fail to mark
+-- them read/delete — the UPDATE matched zero rows under RLS, so the badge
+-- "cleared" optimistically then revived on reload.
 drop policy if exists notifications_update on public.notifications;
 create policy notifications_update on public.notifications
   for update to authenticated
-  using (recipient_id = (select public.current_app_user_id()))
-  with check (recipient_id = (select public.current_app_user_id()));
+  using (recipient_id = (select public.current_app_user_id()) or (select public.is_app_admin()))
+  with check (recipient_id = (select public.current_app_user_id()) or (select public.is_app_admin()));
 
 drop policy if exists notifications_delete on public.notifications;
 create policy notifications_delete on public.notifications
-  for delete to authenticated using (recipient_id = (select public.current_app_user_id()));
+  for delete to authenticated using (recipient_id = (select public.current_app_user_id()) or (select public.is_app_admin()));
 
 -- ============================================================
 -- reports — members file as themselves; only admins read/triage.

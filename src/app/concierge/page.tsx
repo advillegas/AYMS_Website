@@ -6,7 +6,6 @@ import { CmsPageWrapper } from "@/components/admin/cms-page-wrapper";
 import { ConciergeHero } from "@/components/sections/concierge/concierge-hero";
 import { ConciergeProblem } from "@/components/sections/concierge/concierge-problem";
 import { ConciergeGuide } from "@/components/sections/concierge/concierge-guide";
-import { ConciergeRegions } from "@/components/sections/concierge/concierge-regions";
 import { ConciergePlan } from "@/components/sections/concierge/concierge-plan";
 import { ConciergeStakes } from "@/components/sections/concierge/concierge-stakes";
 import { ConciergeInquiry } from "@/components/sections/concierge/concierge-inquiry";
@@ -24,7 +23,6 @@ export default function ConciergePage() {
         <ConciergeHero />
         <ConciergeProblem />
         <ConciergeGuide />
-        <ConciergeRegions />
         <ConciergePlan />
         <ConciergeStakes />
         <ConciergeInquiry />

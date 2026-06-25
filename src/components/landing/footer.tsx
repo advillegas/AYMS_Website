@@ -102,6 +102,7 @@ const FOOTER_COLUMNS: { heading: string; links: { label: string; href: string }[
     heading: "Explore",
     links: [
       { label: "Trips", href: "/trips" },
+      { label: "Concierge", href: "/concierge" },
       { label: "Events", href: "/events" },
       { label: "Featured", href: "/featured" },
       { label: "Gallery", href: "/gallery" },

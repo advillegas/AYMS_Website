@@ -53,6 +53,7 @@ export interface NavLink {
 const DEFAULT_NAV: NavLink[] = [
   { id: "nav-home", label: "Home", href: "/", isVisible: true },
   { id: "nav-trips", label: "Trips", href: "/trips", isVisible: true },
+  { id: "nav-concierge", label: "Concierge", href: "/concierge", isVisible: true },
   { id: "nav-camp", label: "Camp", href: "/camp", isVisible: true },
   { id: "nav-events", label: "Events", href: "/events", isVisible: true },
   { id: "nav-gallery", label: "Gallery", href: "/gallery", isVisible: true },

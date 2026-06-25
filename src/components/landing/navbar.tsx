@@ -32,6 +32,7 @@ import { toast } from "sonner";
 const FALLBACK_LINKS = [
   { label: "Home", href: "/" },
   { label: "Trips", href: "/trips" },
+  { label: "Concierge", href: "/concierge" },
   { label: "Camp", href: "/camp" },
   { label: "Events", href: "/events" },
   { label: "Gallery", href: "/gallery" },

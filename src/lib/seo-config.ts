@@ -27,6 +27,7 @@ export type SeoDoc = Record<string, PageSeo>;
 export const SEO_PAGES: { slug: string; label: string }[] = [
   { slug: "home", label: "Home" },
   { slug: "trips", label: "Trips" },
+  { slug: "concierge", label: "Concierge" },
   { slug: "events", label: "Events" },
   { slug: "gallery", label: "Gallery" },
   { slug: "faq", label: "FAQ" },

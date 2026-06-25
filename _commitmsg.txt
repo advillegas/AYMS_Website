@@ -1,6 +1,0 @@
-revert(concierge): remove regional chapters map section
-
-The regional "find your amigas" map is community-oriented; the concierge page
-is about trips. Removed the section from the page and deleted the now-orphaned
-ChaptersMap + ConciergeRegions components and the vendored us-states GeoJSON.
-(Recoverable from git history if we want it on a community/chapters page later.)

@@ -105,8 +105,8 @@ export function ConciergeInquiry() {
           </h2>
           <EditableText as="p" id="concierge.cta.lead" className="mx-auto mt-4 max-w-xl text-lead text-ink-soft">
             Tell us a little about your dream trip and we&apos;ll be in touch
-            within 1–2 business days with next steps. It&apos;s free, friendly,
-            and zero-obligation.
+            within 1–2 business days with next steps. No pressure — just a
+            friendly, zero-obligation chat to see if we&apos;re the right fit.
           </EditableText>
         </motion.div>
 
@@ -208,7 +208,7 @@ export function ConciergeInquiry() {
 
               <p className="flex items-center justify-center gap-1.5 text-center text-[11px] text-ink-soft">
                 <ShieldCheck className="h-3.5 w-3.5 text-[var(--magenta)]" aria-hidden="true" />
-                Free, no-obligation consultation. Your details stay private.
+                No-obligation inquiry. Your details stay private.
               </p>
             </form>
           )}

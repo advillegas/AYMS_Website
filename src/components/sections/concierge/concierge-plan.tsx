@@ -24,7 +24,7 @@ const STEPS = [
     id: "call",
     icon: Phone,
     step: "01",
-    title: "Book a free discovery call",
+    title: "Book a discovery call",
     body: "Tell us your vibe, your dates, and your budget. No pressure, no jargon — just a friendly conversation about the trip you want.",
   },
   {

@@ -13,7 +13,7 @@ export function generateMetadata(): Promise<Metadata> {
     description:
       "Hand your dream trip to a planner who treats it like their own. " +
       "AYMS designs and books fully custom getaways for Latinas — flights, stays, " +
-      "activities, and 24/7 support — so you travel effortlessly. Request your free consultation.",
+      "activities, and 24/7 support — so you travel effortlessly. Request your consultation.",
     canonical: "/concierge",
   });
 }

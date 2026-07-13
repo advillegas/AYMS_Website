@@ -30,11 +30,19 @@ export interface CombinedEventsResult {
   loading: boolean;
   /** Resolve the RSVP target backend for an id in the merged feed. */
   isMeetup: (id: string) => boolean;
+  /** Which synced-source (if any) an event id came from, for badges. */
+  isSynced: (id: string) => boolean;
+  /**
+   * Delete any item in the merged feed, routing to the correct backend
+   * (meetup vs event). Feed-synced events are tombstoned so the cron
+   * sync can't re-create them. Admin-only by security rules.
+   */
+  deleteItem: (id: string) => Promise<boolean>;
 }
 
 export function useCombinedEvents(): CombinedEventsResult {
-  const { events: rawEvents, loading: eventsLoading } = useEvents();
-  const { meetups, loading: meetupsLoading } = useMeetups();
+  const { events: rawEvents, loading: eventsLoading, deleteEvent } = useEvents();
+  const { meetups, loading: meetupsLoading, deleteMeetup } = useMeetups();
 
   const meetupIds = useMemo(
     () => new Set(meetups.map((m) => m.id)),
@@ -63,10 +71,21 @@ export function useCombinedEvents(): CombinedEventsResult {
     return [...publishedEvents, ...mappedMeetups];
   }, [rawEvents, meetups]);
 
+  const syncedIds = useMemo(
+    () =>
+      new Set(
+        rawEvents.filter((e) => e.sourceCalendarId).map((e) => e.id),
+      ),
+    [rawEvents],
+  );
+
   return {
     events,
     meetupIds,
     loading: eventsLoading || meetupsLoading,
     isMeetup: (id: string) => meetupIds.has(id),
+    isSynced: (id: string) => syncedIds.has(id),
+    deleteItem: (id: string) =>
+      meetupIds.has(id) ? deleteMeetup(id) : deleteEvent(id),
   };
 }

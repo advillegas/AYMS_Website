@@ -17,6 +17,7 @@ import {
   kindFromMime,
 } from "@/lib/use-media-library";
 import { uploadCmsMedia } from "@/lib/supabase-storage";
+import { useImageCropper } from "@/components/admin/image-cropper";
 import { Upload, Loader2, Trash2, ImageIcon, Check } from "lucide-react";
 import { toast } from "sonner";
 
@@ -37,6 +38,7 @@ interface Props {
  */
 export function MediaLibraryDialog({ open, onOpenChange, onSelect, current }: Props) {
   const { assets, loaded } = useMediaAssets();
+  const requestCrop = useImageCropper();
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -44,12 +46,15 @@ export function MediaLibraryDialog({ open, onOpenChange, onSelect, current }: Pr
     const file = e.target.files?.[0];
     if (!file) return;
     e.target.value = "";
+    // Crop/adjust before uploading — cancel aborts the upload.
+    const cropped = await requestCrop(file, { title: "Crop & adjust photo" });
+    if (!cropped) return;
     setUploading(true);
     try {
-      const url = await uploadCmsMedia(file);
+      const url = await uploadCmsMedia(cropped);
       // uploadCmsMedia already records storage uploads; this also catches
       // the small-image data-URL fallback (no-op) without duplicating.
-      void recordMediaAsset(url, file.name, kindFromMime(file.type));
+      void recordMediaAsset(url, cropped.name, kindFromMime(cropped.type));
       onSelect(url);
       onOpenChange(false);
       toast.success("Image added.");

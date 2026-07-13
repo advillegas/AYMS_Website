@@ -4,7 +4,10 @@ import { useRef, useState, useEffect } from "react";
 import type { BuilderElement } from "@/lib/builder-store";
 import { cn } from "@/lib/utils";
 import { RevealWrap } from "@/components/builder/reveal-wrap";
+import { RichTextEditor } from "@/components/inline/rich-text-editor";
+import { RichTextStatic } from "@/components/inline/rich-text-static";
 import { uploadCmsMedia, toVideoEmbedUrl } from "@/lib/supabase-storage";
+import { useImageCropper } from "@/components/admin/image-cropper";
 
 const NOISE_BG =
   "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E\")";
@@ -74,6 +77,7 @@ interface Props {
 export function ElementRenderer({ element, editable, onUpdate, onClick, isSelected }: Props) {
   const { type, props: p } = element;
   const fileRef = useRef<HTMLInputElement>(null);
+  const requestCrop = useImageCropper();
   const [uploading, setUploading] = useState(false);
 
   const wrapper = cn(
@@ -103,11 +107,14 @@ export function ElementRenderer({ element, editable, onUpdate, onClick, isSelect
     if (!file) return;
     // Reset the input so re-picking the same file fires onChange again.
     e.target.value = "";
+    // Crop/adjust images first (videos/GIFs pass straight through).
+    const prepared = await requestCrop(file, { title: "Crop & adjust photo" });
+    if (!prepared) return;
     setUploading(true);
     try {
       // Uploads to Supabase Storage and stores the URL (never a base64
       // blob — these elements persist as JSONB + stream over realtime).
-      const url = await uploadCmsMedia(file);
+      const url = await uploadCmsMedia(prepared);
       onUpdate?.({ [key]: url });
     } catch (err) {
       console.error("[builder] media upload failed", err);
@@ -120,53 +127,74 @@ export function ElementRenderer({ element, editable, onUpdate, onClick, isSelect
     case "heading": {
       const Tag = (p.level as string) === "h1" ? "h1" : (p.level as string) === "h3" ? "h3" : "h2";
       const sizes = { h1: "text-4xl sm:text-5xl lg:text-6xl", h2: "text-3xl sm:text-4xl", h3: "text-xl sm:text-2xl" };
+      const headingCls = cn(
+        "font-display text-ink outline-none",
+        sizes[Tag],
+        !!(p.textGlow as boolean) && "text-glow-pink",
+        !!(p.ambientFloat as boolean) && !editable && "animate-float",
+      );
+      const headingStyle: React.CSSProperties = {
+        color: creamText(p.color),
+        textAlign: p.align as CanvasTextAlign,
+      };
       return (
         <div className={wrapper} onClick={handleClick}>
           {rv(
-            <Tag
-              className={cn(
-                "font-display text-ink outline-none",
-                sizes[Tag],
-                !!(p.textGlow as boolean) && "text-glow-pink",
-                !!(p.ambientFloat as boolean) && !editable && "animate-float",
-              )}
-              style={{ color: creamText(p.color), textAlign: p.align as CanvasTextAlign }}
-              contentEditable={!!editable}
-              suppressContentEditableWarning
-              onBlur={(e) => onUpdate?.({ text: e.currentTarget.textContent || "" })}
-            >
-              {p.text as string}
-            </Tag>,
+            editable ? (
+              // Rich inline editing: bold/italic/underline, size, brand
+              // fonts, accents. Serializes to a plain string when no
+              // formatting is applied (legacy storage shape).
+              <RichTextEditor
+                as={Tag}
+                className={headingCls}
+                style={headingStyle}
+                value={(p.text as string) || ""}
+                multiline
+                onCommit={(text) => {
+                  if (text !== ((p.text as string) || "")) onUpdate?.({ text });
+                }}
+              />
+            ) : (
+              <RichTextStatic
+                as={Tag}
+                className={headingCls}
+                style={headingStyle}
+                value={(p.text as string) || ""}
+              />
+            ),
           )}
         </div>
       );
     }
 
-    case "text":
+    case "text": {
+      const textCls = "leading-relaxed whitespace-pre-wrap outline-none text-ink-soft";
+      const textStyle: React.CSSProperties = {
+        color: creamText(p.color),
+        textAlign: p.align as CanvasTextAlign,
+        fontSize: `${p.fontSize}px`,
+      };
       return (
         <div className={wrapper} onClick={handleClick}>
           {rv(
-            <p
-              className="leading-relaxed whitespace-pre-wrap outline-none text-ink-soft"
-              style={{
-                color: creamText(p.color),
-                textAlign: p.align as CanvasTextAlign,
-                fontSize: `${p.fontSize}px`,
-              }}
-              contentEditable={!!editable}
-              suppressContentEditableWarning
-              // innerText (not textContent) preserves the line breaks the user
-              // types — textContent flattens <div>/<br> into one block, which
-              // is what collapsed multi-paragraph text into a giant block.
-              onBlur={(e) =>
-                onUpdate?.({ text: e.currentTarget.innerText.replace(/\n{3,}/g, "\n\n") })
-              }
-            >
-              {p.text as string}
-            </p>,
+            editable ? (
+              <RichTextEditor
+                as="p"
+                className={textCls}
+                style={textStyle}
+                value={(p.text as string) || ""}
+                multiline
+                onCommit={(text) => {
+                  if (text !== ((p.text as string) || "")) onUpdate?.({ text });
+                }}
+              />
+            ) : (
+              <RichTextStatic as="p" className={textCls} style={textStyle} value={(p.text as string) || ""} />
+            ),
           )}
         </div>
       );
+    }
 
     case "image":
       return (
@@ -734,9 +762,14 @@ export function ElementRenderer({ element, editable, onUpdate, onClick, isSelect
                     const file = e.target.files?.[0];
                     if (!file) return;
                     e.target.value = "";
+                    const prepared = await requestCrop(file, {
+                      title: "Crop gallery photo",
+                      defaultAspect: "1:1",
+                    });
+                    if (!prepared) return;
                     setUploading(true);
                     try {
-                      const url = await uploadCmsMedia(file);
+                      const url = await uploadCmsMedia(prepared);
                       const imgs = [...(p.images as string[])];
                       imgs[i] = url;
                       onUpdate?.({ images: imgs });

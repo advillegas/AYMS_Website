@@ -43,9 +43,6 @@ function toFSString(v: string): FSValue {
 function toFSInt(v: number): FSValue {
   return { integerValue: String(v) };
 }
-function toFSBool(v: boolean): FSValue {
-  return { booleanValue: v };
-}
 function toFSTimestamp(): FSValue {
   return { timestampValue: new Date().toISOString() };
 }
@@ -58,14 +55,11 @@ function fromFSString(v: FSValue | undefined): string {
 function fromFSBool(v: FSValue | undefined): boolean {
   return v?.booleanValue ?? false;
 }
-
-async function fsGet(path: string): Promise<FSDocument | null> {
-  const res = await fetch(`${FIRESTORE_BASE}/${path}`, {
-    headers: { "Content-Type": "application/json" },
-  });
-  if (res.status === 404) return null;
-  if (!res.ok) throw new Error(`Firestore GET ${path}: ${res.status}`);
-  return res.json();
+function fromFSStringArray(v: FSValue | undefined): string[] {
+  const values = v?.arrayValue?.values ?? [];
+  return values
+    .map((x) => x.stringValue)
+    .filter((s): s is string => typeof s === "string" && s.length > 0);
 }
 
 async function fsList(
@@ -96,25 +90,6 @@ async function fsPatch(
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`Firestore PATCH ${path}: ${res.status} ${text}`);
-  }
-}
-
-async function fsCreate(
-  collectionPath: string,
-  docId: string,
-  fields: Record<string, FSValue>,
-): Promise<void> {
-  const res = await fetch(
-    `${FIRESTORE_BASE}/${collectionPath}?documentId=${encodeURIComponent(docId)}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ fields }),
-    },
-  );
-  if (!res.ok && res.status !== 409) {
-    const text = await res.text();
-    throw new Error(`Firestore CREATE ${collectionPath}/${docId}: ${res.status} ${text}`);
   }
 }
 
@@ -352,6 +327,8 @@ interface SyncConfigRow {
   name: string | null;
   ical_url: string | null;
   enabled: boolean | null;
+  /** Optional until supabase/events-suppression.sql is applied. */
+  suppressed_uids?: string[] | null;
 }
 
 interface SyncResult {
@@ -372,10 +349,12 @@ async function syncViaSupabase(): Promise<NextResponse> {
   }
 
   try {
-    // 1. Read all sync configs
+    // 1. Read all sync configs. select("*") (not an explicit column list)
+    // so this keeps working before the optional suppressed_uids column
+    // migration has been applied.
     const { data: configRows, error: configErr } = await svc
       .from("calendar_sync_configs")
-      .select("id, name, ical_url, enabled");
+      .select("*");
     if (configErr) throw new Error(configErr.message);
     const configs = (configRows ?? []) as SyncConfigRow[];
     console.debug("[calendar-sync] found", configs.length, "config rows");
@@ -390,6 +369,10 @@ async function syncViaSupabase(): Promise<NextResponse> {
       const configId = config.id;
       const configName = config.name ?? "";
       const icalUrl = config.ical_url ?? "";
+      // Feed UIDs the admin deleted or detached — never re-create them.
+      const suppressed = new Set(
+        Array.isArray(config.suppressed_uids) ? config.suppressed_uids : [],
+      );
 
       if (!config.enabled) {
         console.debug("[calendar-sync] skipping disabled:", configName);
@@ -444,6 +427,10 @@ async function syncViaSupabase(): Promise<NextResponse> {
         const rowById = new Map<string, Record<string, unknown>>();
         for (const fe of feedEvents) {
           feedUids.add(fe.uid);
+          // Tombstoned by an admin delete/edit — skip the upsert entirely.
+          // (Still counted in feedUids so the orphan pass leaves any
+          // detached manual copy alone.)
+          if (suppressed.has(fe.uid)) continue;
           const eventId = `sync-${configId}-${fe.uid.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 80)}`;
           rowById.set(eventId, {
             id: eventId,
@@ -583,6 +570,8 @@ export async function POST(request: NextRequest) {
       const configName = fromFSString(f.name);
       const icalUrl = fromFSString(f.icalUrl);
       const enabled = fromFSBool(f.enabled);
+      // Feed UIDs the admin deleted or detached — never re-create them.
+      const suppressed = new Set(fromFSStringArray(f.suppressedUids));
       const docPath = configDoc.name.split("/documents/")[1];
       const configId = docPath?.split("/").pop() ?? "";
 
@@ -637,6 +626,8 @@ export async function POST(request: NextRequest) {
         const feedUids = new Set<string>();
         for (const fe of feedEvents) {
           feedUids.add(fe.uid);
+          // Tombstoned by an admin delete/edit — skip the upsert entirely.
+          if (suppressed.has(fe.uid)) continue;
           const eventId = `sync-${configId}-${fe.uid.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 80)}`;
           await fsUpsert(`events/${eventId}`, {
             title: toFSString(fe.title),

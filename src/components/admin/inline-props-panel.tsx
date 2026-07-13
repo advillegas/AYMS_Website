@@ -12,6 +12,7 @@ import { v4 as uuid } from "uuid";
 import { cn } from "@/lib/utils";
 import { uploadCmsMedia } from "@/lib/supabase-storage";
 import { MediaLibraryDialog } from "@/components/admin/media-library-dialog";
+import { useImageCropper } from "@/components/admin/image-cropper";
 
 /** Current image width as a clamped percent (20–100) of the content panel. */
 function imgWidthPct(w: unknown): number {
@@ -47,6 +48,7 @@ export function InlinePropsPanel() {
 
 function PanelContent({ element, onClose }: { element: BuilderElement; onClose: () => void }) {
   const fileRef = useRef<HTMLInputElement>(null);
+  const requestCrop = useImageCropper();
   const [uploading, setUploading] = useState(false);
   const [libraryKey, setLibraryKey] = useState<string | null>(null);
   const p = element.props;
@@ -84,10 +86,13 @@ function PanelContent({ element, onClose }: { element: BuilderElement; onClose: 
     const file = e.target.files?.[0];
     if (!file) return;
     e.target.value = "";
+    // Crop/adjust images first (videos/GIFs pass straight through).
+    const prepared = await requestCrop(file, { title: "Crop & adjust photo" });
+    if (!prepared) return;
     setUploading(true);
     try {
       // Real Storage upload → durable URL (not a base64 blob in JSONB).
-      const url = await uploadCmsMedia(file);
+      const url = await uploadCmsMedia(prepared);
       update({ [key]: url });
     } catch (err) {
       console.error("[builder] media upload failed", err);

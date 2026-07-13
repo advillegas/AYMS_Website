@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import { useCms, SYSTEM_PAGES } from "@/lib/cms-store";
+import { useTogglePublish, TOGGLE_PUBLISH_HINT } from "@/lib/use-toggle-publish";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
@@ -34,6 +34,46 @@ function sanitizeSlug(raw: string): string {
     .replace(/[^a-z0-9-]/g, "-")
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "");
+}
+
+/** Draft/Live status badge — double-click (or Enter/Space) flips it. */
+function PublishToggleBadge({
+  slug,
+  title,
+  live,
+}: {
+  slug: string;
+  title: string;
+  live: boolean;
+}) {
+  const { toggling, toggle } = useTogglePublish(slug);
+  return (
+    <button
+      type="button"
+      onDoubleClick={() => void toggle()}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          void toggle();
+        }
+      }}
+      disabled={toggling}
+      title={TOGGLE_PUBLISH_HINT}
+      aria-label={`${title} is ${live ? "live" : "in draft"}. ${TOGGLE_PUBLISH_HINT}.`}
+      className={`inline-flex h-5 shrink-0 select-none items-center gap-1 rounded-full border px-2 text-[9px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099] disabled:opacity-50 ${
+        live
+          ? "border-green-500/20 bg-green-500/15 text-green-400 hover:bg-green-500/25"
+          : "border-white/10 bg-white/5 text-white/30 hover:bg-white/10 hover:text-white/60"
+      }`}
+    >
+      {live ? (
+        <Eye className="h-2.5 w-2.5" aria-hidden="true" />
+      ) : (
+        <EyeOff className="h-2.5 w-2.5" aria-hidden="true" />
+      )}
+      {live ? "Live" : "Draft"}
+    </button>
+  );
 }
 
 export function PageManager({ onEditPage }: Props) {
@@ -118,24 +158,30 @@ export function PageManager({ onEditPage }: Props) {
             const cmsPage = pages[sp.slug];
             const hasOverride = cmsPage && cmsPage.elements.length > 0;
             return (
-              <button
+              <div
                 key={sp.slug}
-                onClick={() => onEditPage(sp.slug)}
-                className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-white/5 group"
+                className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 transition-colors hover:bg-white/5 group"
               >
-                <Lock className="h-3.5 w-3.5 text-white/20 shrink-0" aria-hidden="true" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-white/80 group-hover:text-white truncate">
-                    {sp.title}
-                  </p>
-                  <p className="text-[10px] text-white/30">{sp.href}</p>
-                </div>
+                <button
+                  onClick={() => onEditPage(sp.slug)}
+                  className="flex flex-1 items-center gap-3 text-left min-w-0"
+                >
+                  <Lock className="h-3.5 w-3.5 text-white/20 shrink-0" aria-hidden="true" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-white/80 group-hover:text-white truncate">
+                      {sp.title}
+                    </p>
+                    <p className="text-[10px] text-white/30">{sp.href}</p>
+                  </div>
+                </button>
                 {hasOverride && (
-                  <Badge className="bg-green-500/15 text-green-400 border-green-500/20 text-[9px]">
-                    Edited
-                  </Badge>
+                  <PublishToggleBadge
+                    slug={sp.slug}
+                    title={sp.title}
+                    live={!!cmsPage?.isPublished}
+                  />
                 )}
-              </button>
+              </div>
             );
           })}
 
@@ -163,15 +209,11 @@ export function PageManager({ onEditPage }: Props) {
                     </div>
                   </button>
                   <div className="flex items-center gap-1 shrink-0">
-                    {page.isPublished ? (
-                      <Badge className="bg-green-500/15 text-green-400 border-green-500/20 text-[9px]">
-                        <Eye className="h-2.5 w-2.5 mr-0.5" aria-hidden="true" /> Live
-                      </Badge>
-                    ) : (
-                      <Badge className="bg-white/5 text-white/30 border-white/10 text-[9px]">
-                        <EyeOff className="h-2.5 w-2.5 mr-0.5" aria-hidden="true" /> Draft
-                      </Badge>
-                    )}
+                    <PublishToggleBadge
+                      slug={page.slug}
+                      title={page.title}
+                      live={page.isPublished}
+                    />
                     <Button
                       variant="ghost"
                       size="icon"

@@ -19,6 +19,7 @@ import { useFormDraft } from "@/lib/use-form-draft";
 import { DraftBanner, DraftSavedHint } from "@/components/admin/draft-banner";
 import { EmojiField } from "@/components/admin/emoji-field";
 import { ImagePositioner } from "@/components/admin/image-positioner";
+import { useImageCropper } from "@/components/admin/image-cropper";
 import { uploadCmsMedia } from "@/lib/supabase-storage";
 import { resolveBooking } from "@/lib/url";
 
@@ -95,6 +96,7 @@ export function TripFormDialog({
   onSave: (data: TripFormData) => Promise<void>;
 }) {
   const isEdit = !!trip;
+  const requestCrop = useImageCropper();
 
   const [title, setTitle] = useState("");
   const [destination, setDestination] = useState("");
@@ -131,10 +133,19 @@ export function TripFormDialog({
       toast.error("Please choose an image file.");
       return;
     }
+    // Crop first (trip cards render ~16:9); the focal-point positioner
+    // below still fine-tunes how the cropped photo sits on the card.
+    const cropped = await requestCrop(file, {
+      title: "Crop trip cover photo",
+      defaultAspect: "16:9",
+    });
+    if (!cropped) return;
     setUploadingImage(true);
     try {
-      const url = await uploadCmsMedia(file);
+      const url = await uploadCmsMedia(cropped);
       setImage(url);
+      // A fresh crop invalidates any previous focal point — recenter.
+      setImagePosition("");
       toast.success("Image uploaded.");
     } catch {
       toast.error("Upload failed. Try again or paste an image URL.");

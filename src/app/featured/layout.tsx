@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { EventsJsonLd } from "@/components/seo/json-ld";
-import { COMMUNITY_EVENTS } from "@/lib/events-data";
+import { loadUpcomingPublicEvents } from "@/lib/events-server";
 import { seoMetadata } from "@/lib/seo-config";
 
 /**
@@ -24,17 +24,15 @@ export function generateMetadata(): Promise<Metadata> {
   });
 }
 
-export default function FeaturedLayout({
+export default async function FeaturedLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   // Surface upcoming community events as structured data so the spotlight
-  // page is eligible for rich event results.
-  const today = new Date().toISOString().slice(0, 10);
-  const upcoming = COMMUNITY_EVENTS.filter((e) => e.date >= today)
-    .sort((a, b) => a.date.localeCompare(b.date))
-    .slice(0, 10);
+  // page is eligible for rich event results. Live list only — deleted
+  // events must not linger in metadata.
+  const upcoming = await loadUpcomingPublicEvents(10);
 
   return (
     <>

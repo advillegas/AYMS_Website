@@ -7,6 +7,7 @@ import { useInlineEdit } from "@/lib/use-inline-edit";
 import { toast } from "sonner";
 import { uploadCmsMedia } from "@/lib/supabase-storage";
 import { MediaLibraryDialog } from "@/components/admin/media-library-dialog";
+import { useImageCropper } from "@/components/admin/image-cropper";
 import { Upload, Loader2, Images } from "lucide-react";
 
 interface Props {
@@ -32,6 +33,7 @@ interface Props {
 export function EditableImage({ id, src, alt, fill, width, height, sizes, priority, className }: Props) {
   const url = useOverrideImage(id, src);
   const editing = useInlineEdit((s) => s.enabled);
+  const requestCrop = useImageCropper();
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
@@ -40,9 +42,12 @@ export function EditableImage({ id, src, alt, fill, width, height, sizes, priori
     const file = e.target.files?.[0];
     if (!file) return;
     e.target.value = "";
+    // Crop/adjust so the photo fits this slot — cancel aborts the replace.
+    const cropped = await requestCrop(file, { title: "Crop & adjust photo" });
+    if (!cropped) return;
     setUploading(true);
     try {
-      const u = await uploadCmsMedia(file);
+      const u = await uploadCmsMedia(cropped);
       const ok = await saveOverrideImage(id, u);
       if (!ok) toast.error("Photo uploaded but couldn't be saved — try again.");
     } catch {

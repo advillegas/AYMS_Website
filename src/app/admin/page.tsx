@@ -88,9 +88,18 @@ export default function AdminPage() {
   const canEditContent = useHasPermission("manageContent");
   const allowed = canEditContent || user?.role === "admin";
 
-  const [activeTab, setActiveTab] = useState<Tab>("content");
+  // Client-only page (auth-gated after hydration), so the ?tab= deep link
+  // can seed initial state directly instead of a post-mount effect.
+  // Default lands on Pages so the page builder is the front door.
+  const [activeTab, setActiveTab] = useState<Tab>(() => {
+    if (typeof window !== "undefined") {
+      const t = new URLSearchParams(window.location.search).get("tab");
+      if (t && VALID_TABS.includes(t as Tab)) return t as Tab;
+    }
+    return "pages";
+  });
   const [contentSection, setContentSection] = useState<
-    "home" | "testimonials" | "experiences" | "gallery" | "faq" | "marquee"
+    "home" | "testimonials" | "experiences" | "gallery" | "faq" | "marquee" | "links"
   >("home");
   const templates = useCms((s) => s.templates);
   const deleteTemplate = useCms((s) => s.deleteTemplate);
@@ -107,11 +116,6 @@ export default function AdminPage() {
     deleteTemplate(id);
     toast.success(`Template “${name}” deleted`);
   }
-
-  useEffect(() => {
-    const t = new URLSearchParams(window.location.search).get("tab");
-    if (t && VALID_TABS.includes(t as Tab)) setActiveTab(t as Tab);
-  }, []);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -147,13 +151,20 @@ export default function AdminPage() {
         setContentSection("faq");
         setActiveTab("content");
         return;
+      case "links":
+        setContentSection("links");
+        setActiveTab("content");
+        return;
       case "home":
         setContentSection("home");
         setActiveTab("content");
         return;
+      // Pages wired for in-place click-to-edit: flip edit mode on and go.
       case "camp":
+      case "privacy":
+      case "terms":
         useInlineEdit.getState().set(true);
-        router.push("/camp");
+        router.push(systemPageHref(slug));
         return;
       default:
         setEditPage(slug);
@@ -222,6 +233,13 @@ export default function AdminPage() {
         </ScrollArea>
 
         <div className="border-t border-white/10 p-3">
+          <Link
+            href="/community/admin"
+            className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs text-white/50 transition-colors hover:bg-white/5 hover:text-white"
+          >
+            <Users className="h-3.5 w-3.5" /> Community CRM
+            <ExternalLink className="ml-auto h-3 w-3 text-white/25" aria-hidden="true" />
+          </Link>
           <Link
             href="/"
             className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs text-white/50 transition-colors hover:bg-white/5 hover:text-white"

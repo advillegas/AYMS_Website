@@ -8,6 +8,7 @@ import { Loader2, Send } from "lucide-react";
 import { useNewsletter } from "@/lib/use-newsletter";
 import { useSiteSettings } from "@/lib/use-site-content";
 import { EditableText } from "@/components/inline/editable-text";
+import { FooterColumns } from "./footer-columns";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -97,28 +98,6 @@ function FooterSignup() {
   );
 }
 
-const FOOTER_COLUMNS: { heading: string; links: { label: string; href: string }[] }[] = [
-  {
-    heading: "Explore",
-    links: [
-      { label: "Trips", href: "/trips" },
-      { label: "Concierge", href: "/concierge" },
-      { label: "Events", href: "/events" },
-      { label: "Featured", href: "/featured" },
-      { label: "Gallery", href: "/gallery" },
-    ],
-  },
-  {
-    heading: "Community",
-    links: [
-      { label: "Become an Amiga", href: "/register" },
-      { label: "Log In", href: "/login" },
-      { label: "FAQ", href: "/faq" },
-      { label: "About AYMS", href: "/llm" },
-    ],
-  },
-];
-
 export function Footer() {
   const settings = useSiteSettings();
   const igUrl = `https://www.instagram.com/${settings.instagramHandle}/`;
@@ -169,27 +148,7 @@ export function Footer() {
             </div>
           </div>
 
-          {FOOTER_COLUMNS.map((col, ci) => (
-            <nav
-              key={col.heading}
-              aria-label={col.heading}
-              className="md:col-span-2"
-            >
-              <EditableText as="p" id={`home.footer.col.${ci}.heading`} className="eyebrow text-white/40">{col.heading}</EditableText>
-              <ul className="mt-4 space-y-3">
-                {col.links.map((l, li) => (
-                  <li key={l.href}>
-                    <Link
-                      href={l.href}
-                      className="text-sm text-white/65 transition-colors hover:text-[#FACDE8] focus-visible:outline-none focus-visible:text-[#FACDE8]"
-                    >
-                      <EditableText as="span" id={`home.footer.col.${ci}.link.${li}`}>{l.label}</EditableText>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </nav>
-          ))}
+          <FooterColumns />
 
           <div className="md:col-span-3">
             <EditableText as="p" id="home.footer.followHeading" className="eyebrow text-white/40">Follow</EditableText>

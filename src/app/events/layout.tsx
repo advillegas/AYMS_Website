@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { EventsJsonLd } from "@/components/seo/json-ld";
-import { COMMUNITY_EVENTS } from "@/lib/events-data";
+import { loadUpcomingPublicEvents } from "@/lib/events-server";
 import { seoMetadata } from "@/lib/seo-config";
 
 /**
@@ -24,17 +24,15 @@ export function generateMetadata(): Promise<Metadata> {
   });
 }
 
-export default function EventsLayout({
+export default async function EventsLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   // Emit upcoming events as structured data so /events is eligible for rich
-  // event results (mirrors the /featured spotlight's ItemList of events).
-  const today = new Date().toISOString().slice(0, 10);
-  const upcoming = COMMUNITY_EVENTS.filter((e) => e.date >= today)
-    .sort((a, b) => a.date.localeCompare(b.date))
-    .slice(0, 10);
+  // event results. Reads the LIVE published list — never the static seed
+  // array — so deleted events don't linger in search results.
+  const upcoming = await loadUpcomingPublicEvents(10);
 
   return (
     <>

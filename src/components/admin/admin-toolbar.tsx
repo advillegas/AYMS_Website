@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import { useEditMode } from "@/lib/edit-mode";
 import { useBuilder, type ElementType, type BuilderElement } from "@/lib/builder-store";
-import type { CmsVersion } from "@/lib/cms-store";
+import { useCms, type CmsVersion } from "@/lib/cms-store";
+import { useTogglePublish, TOGGLE_PUBLISH_HINT } from "@/lib/use-toggle-publish";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
@@ -93,7 +94,7 @@ interface Props {
   slug: string;
   isSystem: boolean;
   onReset: () => void;
-  onUnpublish: () => void;
+  onUnpublish: () => Promise<boolean>;
   onListVersions: () => Promise<CmsVersion[]>;
   onRestoreVersion: (elements: BuilderElement[]) => void;
 }
@@ -127,6 +128,8 @@ export function AdminToolbar({
   const setPreview = useEditMode((s) => s.setPreview);
   const canUndo = useBuilder((s) => s.canUndo);
   const canRedo = useBuilder((s) => s.canRedo);
+  const isLive = useCms((s) => !!s.pages[slug]?.isPublished);
+  const { toggling: statusToggling, toggle: togglePublish } = useTogglePublish(slug);
   const [paletteOpen, setPaletteOpen] = useState(false);
 
   // Ctrl/Cmd+Z = undo, Ctrl/Cmd+Shift+Z (or Ctrl+Y) = redo, while editing.
@@ -137,6 +140,9 @@ export function AdminToolbar({
       if (!mod) return;
       const target = e.target as HTMLElement | null;
       if (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return;
+      // Inside a contentEditable (rich text editing) the browser's native
+      // undo owns Ctrl+Z — don't hijack it for canvas time-travel.
+      if (target?.isContentEditable) return;
       const key = e.key.toLowerCase();
       if (key === "z" && !e.shiftKey) {
         e.preventDefault();
@@ -206,6 +212,24 @@ export function AdminToolbar({
             / {pageSlug}
           </span>
         )}
+        <button
+          type="button"
+          onDoubleClick={() => void togglePublish()}
+          disabled={statusToggling}
+          title={TOGGLE_PUBLISH_HINT}
+          aria-label={`This page is ${isLive ? "live" : "in draft"}. ${TOGGLE_PUBLISH_HINT}.`}
+          className={`ml-1 inline-flex h-5 select-none items-center gap-1 rounded-full border px-2 text-[9px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099] disabled:opacity-50 ${
+            isLive
+              ? "border-green-500/25 bg-green-500/15 text-green-300 hover:bg-green-500/25"
+              : "border-white/10 bg-white/5 text-white/40 hover:bg-white/10 hover:text-white/70"
+          }`}
+        >
+          <span
+            className={`h-1.5 w-1.5 rounded-full ${isLive ? "bg-green-400" : "bg-white/30"}`}
+            aria-hidden="true"
+          />
+          {isLive ? "Live" : "Draft"}
+        </button>
         <div className="ml-2 flex items-center gap-0.5">
           <button
             type="button"
@@ -320,7 +344,12 @@ export function AdminToolbar({
                 <button
                   type="button"
                   role="menuitem"
-                  onClick={() => { onUnpublish(); setRevertOpen(false); toast.success("Unpublished — the original site page is live again."); }}
+                  onClick={async () => {
+                    setRevertOpen(false);
+                    const ok = await onUnpublish();
+                    if (ok) toast.success("Unpublished — the original site page is live again.");
+                    else toast.error("Couldn't unpublish — check your connection and try again.");
+                  }}
                   className="flex w-full items-start gap-2.5 rounded-lg p-2.5 text-left text-white/70 hover:bg-white/5 hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]"
                 >
                   <X className="h-3.5 w-3.5 mt-0.5 shrink-0 text-[#FF0099]" aria-hidden="true" />

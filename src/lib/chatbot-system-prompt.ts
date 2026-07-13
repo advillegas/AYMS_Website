@@ -18,6 +18,12 @@ export interface SystemPromptOptions {
   liveTrips?: string;
   /** Live events block (markdown) from Supabase; replaces the static baseline. */
   liveEvents?: string;
+  /**
+   * Owner-authored notes from Admin → Content → Chatbot (cms_config
+   * "chatbot".extraKnowledge). Appended as an authoritative knowledge
+   * section so the owner can correct/extend the bot without a deploy.
+   */
+  extraKnowledge?: string;
 }
 
 const STATIC_TRIPS = `## Trips (static fallback — confirm current pricing/availability on /trips)
@@ -37,11 +43,14 @@ export function buildSystemPrompt({
   nowIso,
   liveTrips,
   liveEvents,
+  extraKnowledge,
 }: SystemPromptOptions = {}): string {
   const today = nowIso ?? new Date().toISOString().slice(0, 10);
   const tripsBlock = liveTrips && liveTrips.trim() ? liveTrips.trim() : STATIC_TRIPS;
   const eventsBlock =
     liveEvents && liveEvents.trim() ? liveEvents.trim() : STATIC_EVENTS;
+  // Cap owner notes so a runaway paste can't blow up per-request tokens.
+  const ownerBlock = (extraKnowledge ?? "").trim().slice(0, 8_000);
 
   return `You are the official AI assistant for **Amigas Y Más Social (AYMS)**, a Latina community and travel company.
 
@@ -118,6 +127,7 @@ ${tripsBlock}
 
 # Live events
 ${eventsBlock}
+${ownerBlock ? `\n# Owner notes (authoritative — provided by the AYMS team, trust over the static knowledge above)\n${ownerBlock}\n` : ""}
 
 ## Useful site links to direct people to
 - Homepage: /

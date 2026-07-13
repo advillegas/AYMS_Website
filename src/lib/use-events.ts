@@ -1,30 +1,33 @@
 "use client";
 
 /**
- * Firestore-backed community events with realtime subscription,
- * CRUD mutations, and automatic seed migration from the static
- * COMMUNITY_EVENTS array.
+ * Firestore-backed community events with realtime subscription and
+ * CRUD mutations.
  *
- * Replaces the old read-only Zustand store so the calendar page,
- * marketing events page, and admin panel all share the same live
- * data.
+ * The database is the ONLY source of events. There is deliberately no
+ * auto-seeding and no static fallback list: when the admin deletes an
+ * event it stays deleted, and an empty collection renders an empty
+ * events page (see the empty state in events-body.tsx) instead of
+ * resurrecting placeholder data.
  *
- * When Firestore isn't configured the hook falls back to the static
- * seed data so the marketing site still renders events.
+ * Synced (iCal) events get a tombstone when deleted or edited: their
+ * feed UID is appended to `suppressedUids` on the owning
+ * calendarSyncConfigs doc, which the /api/calendar/sync upsert honors,
+ * so the 15-minute cron can never re-create them.
  */
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   addDoc,
+  arrayUnion,
   collection,
   deleteDoc,
   doc,
-  getDocs,
+  getDoc,
   limit,
   onSnapshot,
   query,
   serverTimestamp,
-  setDoc,
   updateDoc,
   type DocumentData,
   type FirestoreError,
@@ -37,10 +40,7 @@ import {
   useEventsSupabase,
   useSyncConfigsSupabase,
 } from "./use-events-supabase";
-import {
-  COMMUNITY_EVENTS,
-  type CalendarEvent,
-} from "./events-data";
+import { type CalendarEvent } from "./events-data";
 
 export type { CalendarEvent };
 
@@ -124,39 +124,28 @@ function docToEvent(
 }
 
 /* ------------------------------------------------------------------ */
-/* Seed migration                                                      */
+/* Sync tombstones                                                     */
+/*                                                                     */
+/* Deleting (or hand-editing) an event that came from an iCal feed     */
+/* must survive the next cron sync. We record the feed UID on the      */
+/* owning sync config doc; the sync route skips suppressed UIDs when   */
+/* upserting. Firestore is schemaless so no migration is needed, and   */
+/* calendarSyncConfigs is already admin-writable by the rules.         */
 /* ------------------------------------------------------------------ */
 
-let seeded = false;
-
-async function seedIfEmpty(): Promise<void> {
-  if (seeded || !isFirebaseConfigured) return;
+async function suppressSyncUidFirebase(
+  sourceCalendarId: string,
+  sourceUid: string,
+): Promise<void> {
   const db = getDb();
   if (!db) return;
-  seeded = true;
   try {
-    const snap = await getDocs(
-      query(collection(db, "events"), limit(1)),
-    );
-    if (!snap.empty) return;
-    for (const ev of COMMUNITY_EVENTS) {
-      await setDoc(doc(db, "events", ev.id), {
-        title: ev.title,
-        description: ev.description,
-        date: ev.date,
-        endDate: ev.endDate ?? null,
-        type: ev.type,
-        location: ev.location,
-        image: ev.image ?? null,
-        published: ev.published ?? true,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
-    }
-    console.debug("[events] seeded Firestore with COMMUNITY_EVENTS");
+    await updateDoc(doc(db, "calendarSyncConfigs", sourceCalendarId), {
+      suppressedUids: arrayUnion(sourceUid),
+    });
   } catch (err) {
-    console.warn("[events] seed failed", err);
-    seeded = false;
+    // Config may already be deleted (feed removed) — nothing to suppress.
+    console.warn("[events] could not tombstone synced uid", err);
   }
 }
 
@@ -174,6 +163,9 @@ export interface UseEventsResult {
 }
 
 export function useEvents(): UseEventsResult {
+  // House dual-backend dispatch: useSupabaseBackend is a build-time
+  // constant, so hook order is stable for the life of the app.
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   return useSupabaseBackend ? useEventsSupabase() : useEventsFirebase();
 }
 
@@ -183,22 +175,12 @@ function useEventsFirebase(): UseEventsResult {
   const isFirestore = isFirebaseConfigured;
 
   useEffect(() => {
-    if (!isFirebaseConfigured) {
-      setEvents(
-        COMMUNITY_EVENTS.map((e) => ({
-          ...e,
-          type: e.type as EventType,
-        })),
-      );
-      setLoading(false);
-      return;
-    }
+    // No backend, no events — `events` initializes empty and `loading`
+    // initializes false when Firebase isn't configured (getDb() is null
+    // exactly then), so there's nothing to set here — and never phantom
+    // placeholder data the admin can't delete.
     const db = getDb();
-    if (!db) {
-      setLoading(false);
-      return;
-    }
-    void seedIfEmpty();
+    if (!db) return;
     const q = query(collection(db, "events"), limit(500));
     const unsub = onSnapshot(
       q,
@@ -212,12 +194,7 @@ function useEventsFirebase(): UseEventsResult {
       },
       (err: FirestoreError) => {
         console.warn("[events] snapshot failed", err);
-        setEvents(
-          COMMUNITY_EVENTS.map((e) => ({
-            ...e,
-            type: e.type as EventType,
-          })),
-        );
+        setEvents([]);
         setLoading(false);
       },
     );
@@ -275,6 +252,22 @@ function useEventsFirebase(): UseEventsResult {
           cleaned[k] = v === undefined ? null : v;
         }
         cleaned.updatedAt = serverTimestamp();
+
+        // Editing a feed-synced event detaches it into a manual event and
+        // tombstones its UID — otherwise the next sync would overwrite the
+        // admin's changes wholesale (the sync upsert replaces the doc).
+        try {
+          const snap = await getDoc(doc(db, "events", id));
+          const data = snap.data() as FirestoreEventDoc | undefined;
+          if (data?.sourceCalendarId && data?.sourceUid) {
+            await suppressSyncUidFirebase(data.sourceCalendarId, data.sourceUid);
+            cleaned.sourceCalendarId = null;
+            cleaned.sourceUid = null;
+          }
+        } catch {
+          /* detach is best-effort; the update below still applies */
+        }
+
         await updateDoc(doc(db, "events", id), cleaned);
         return true;
       } catch (err) {
@@ -291,6 +284,17 @@ function useEventsFirebase(): UseEventsResult {
       const db = getDb();
       if (!db) return false;
       try {
+        // Tombstone feed-synced events BEFORE deleting so the 15-minute
+        // cron sync can never resurrect them.
+        try {
+          const snap = await getDoc(doc(db, "events", id));
+          const data = snap.data() as FirestoreEventDoc | undefined;
+          if (data?.sourceCalendarId && data?.sourceUid) {
+            await suppressSyncUidFirebase(data.sourceCalendarId, data.sourceUid);
+          }
+        } catch {
+          /* suppression is best-effort; deletion still proceeds */
+        }
         await deleteDoc(doc(db, "events", id));
         return true;
       } catch (err) {
@@ -317,6 +321,8 @@ export interface CalendarSyncConfig {
   lastSyncError?: string;
   lastSyncCount?: number;
   enabled: boolean;
+  /** Feed UIDs the admin deleted/detached — sync must never re-create these. */
+  suppressedUids?: string[];
   createdBy: string;
   createdAt?: string;
 }
@@ -329,6 +335,7 @@ interface FirestoreSyncConfigDoc {
   lastSyncError?: string;
   lastSyncCount?: number;
   enabled?: boolean;
+  suppressedUids?: string[];
   createdBy?: string;
   createdAt?: Timestamp;
 }
@@ -346,6 +353,9 @@ function docToSyncConfig(
     lastSyncError: data.lastSyncError,
     lastSyncCount: data.lastSyncCount,
     enabled: data.enabled ?? true,
+    suppressedUids: Array.isArray(data.suppressedUids)
+      ? data.suppressedUids
+      : [],
     createdBy: data.createdBy ?? "",
     createdAt: tsToIso(data.createdAt),
   };
@@ -360,20 +370,22 @@ type UseSyncConfigsResult = {
 };
 
 export function useSyncConfigs(): UseSyncConfigsResult {
+  // House dual-backend dispatch: useSupabaseBackend is a build-time
+  // constant, so hook order is stable for the life of the app.
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   return useSupabaseBackend ? useSyncConfigsSupabase() : useSyncConfigsFirebase();
 }
 
 function useSyncConfigsFirebase(): UseSyncConfigsResult {
   const [configs, setConfigs] = useState<CalendarSyncConfig[]>([]);
+  // Initializes false when Firebase isn't configured — no effect needed.
   const [loading, setLoading] = useState(isFirebaseConfigured);
 
   useEffect(() => {
-    if (!isFirebaseConfigured) {
-      setLoading(false);
-      return;
-    }
+    // getDb() is null exactly when Firebase isn't configured, and
+    // `loading` already initialized false for that case.
     const db = getDb();
-    if (!db) { setLoading(false); return; }
+    if (!db) return;
     const q = query(collection(db, "calendarSyncConfigs"), limit(50));
     const unsub = onSnapshot(
       q,

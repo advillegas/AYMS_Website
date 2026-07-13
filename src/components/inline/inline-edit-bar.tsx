@@ -9,7 +9,7 @@ import { useEditMode } from "@/lib/edit-mode";
 import { Pencil, Check, SlidersHorizontal } from "lucide-react";
 
 /** Routes wired for in-place click-to-edit. Expand as pages get wrapped. */
-const INPLACE_ROUTES = ["/", "/camp"];
+const INPLACE_ROUTES = ["/", "/camp", "/events", "/privacy", "/terms"];
 
 /**
  * For pages not wired for in-place editing, send the owner straight to the
@@ -22,6 +22,7 @@ const EDIT_DESTINATION: Record<string, string> = {
   "/trips": "/admin?tab=trips",
   "/events": "/admin?tab=events",
   "/featured": "/admin?tab=events",
+  "/links": "/admin?tab=content&section=links",
 };
 
 /**

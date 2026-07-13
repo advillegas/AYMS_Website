@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { HomeContentPanel } from "./home-content-panel";
 import { TestimonialsPanel } from "./testimonials-panel";
 import { ExperiencesPanel } from "./experiences-panel";
@@ -9,6 +9,9 @@ import { FaqPanel } from "./faq-panel";
 import { MarqueePanel } from "./marquee-panel";
 import { FlipCardListPanel } from "./flip-card-list-panel";
 import { ContactLinksPanel } from "./contact-links-panel";
+import { LinksPagePanel } from "./links-page-panel";
+import { DestinationsPanel } from "./destinations-panel";
+import { ChatbotPanel } from "./chatbot-panel";
 import { DEFAULT_WHYUS, DEFAULT_VALUES, DEFAULT_PILLARS } from "@/lib/use-site-content";
 
 type Sub =
@@ -21,19 +24,25 @@ type Sub =
   | "gallery"
   | "faq"
   | "marquee"
-  | "contact";
+  | "contact"
+  | "links"
+  | "destinations"
+  | "chatbot";
 
 const TABS: { id: Sub; label: string }[] = [
   { id: "home", label: "Homepage" },
   { id: "pillars", label: "Hero cards" },
   { id: "whyus", label: "Why-Us cards" },
   { id: "values", label: "Value cards" },
+  { id: "destinations", label: "Destinations" },
   { id: "experiences", label: "Experiences" },
   { id: "testimonials", label: "Testimonials" },
   { id: "gallery", label: "Gallery" },
   { id: "faq", label: "FAQ" },
   { id: "marquee", label: "Marquee" },
   { id: "contact", label: "Contact" },
+  { id: "links", label: "Links page" },
+  { id: "chatbot", label: "Chatbot" },
 ];
 
 const VALID_SUBS: Sub[] = [
@@ -47,22 +56,30 @@ const VALID_SUBS: Sub[] = [
   "faq",
   "marquee",
   "contact",
+  "links",
+  "destinations",
+  "chatbot",
 ];
 
 export function ContentManager({ section }: { section?: Sub }) {
-  const [sub, setSub] = useState<Sub>(section ?? "home");
+  // Mounted client-side only (admin gates on hydration), so the fresh-load
+  // deep link (/admin?tab=content&section=gallery) can seed initial state.
+  const [sub, setSub] = useState<Sub>(() => {
+    if (typeof window !== "undefined") {
+      const s = new URLSearchParams(window.location.search).get("section");
+      if (s && VALID_SUBS.includes(s as Sub)) return s as Sub;
+    }
+    return section && VALID_SUBS.includes(section) ? section : "home";
+  });
 
   // Open the requested panel when the parent routes here ("edit this page"),
   // so it lands on the right editor instead of always defaulting to Homepage.
-  useEffect(() => {
+  // Render-time adjustment instead of an effect — no cascading re-renders.
+  const [prevSection, setPrevSection] = useState(section);
+  if (section !== prevSection) {
+    setPrevSection(section);
     if (section && VALID_SUBS.includes(section)) setSub(section);
-  }, [section]);
-
-  // Also honor a fresh-load deep link (/admin?tab=content&section=gallery).
-  useEffect(() => {
-    const s = new URLSearchParams(window.location.search).get("section");
-    if (s && VALID_SUBS.includes(s as Sub)) setSub(s as Sub);
-  }, []);
+  }
 
   return (
     <div className="flex h-full flex-col">
@@ -114,6 +131,9 @@ export function ContentManager({ section }: { section?: Sub }) {
         {sub === "faq" && <FaqPanel />}
         {sub === "marquee" && <MarqueePanel />}
         {sub === "contact" && <ContactLinksPanel />}
+        {sub === "links" && <LinksPagePanel />}
+        {sub === "destinations" && <DestinationsPanel />}
+        {sub === "chatbot" && <ChatbotPanel />}
       </div>
     </div>
   );

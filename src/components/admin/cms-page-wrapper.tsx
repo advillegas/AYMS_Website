@@ -365,7 +365,7 @@ export function CmsPageWrapper({ slug, children }: Props) {
     }
     useEditMode.setState({ selectedElementId: null });
     clearCanvasDraft(); // discard recovered/in-progress edits
-    if (isSystemSlug(slug)) useCms.getState().unpublishPage(slug);
+    if (isSystemSlug(slug)) void useCms.getState().unpublishPage(slug);
   }, [slug, sectionMode, clearCanvasDraft]);
 
   const handleUnpublish = useCallback(() => useCms.getState().unpublishPage(slug), [slug]);

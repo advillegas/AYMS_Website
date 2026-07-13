@@ -22,11 +22,21 @@ import {
   EyeOff,
   Globe,
   Loader2,
+  RefreshCw,
+  Users,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/store";
 import { useConfirm } from "@/components/ui/confirm-dialog";
-import { useEvents, type FirestoreEvent } from "@/lib/use-events";
+import { getAuthInstance } from "@/lib/firebase";
+import { getSupabase, useSupabaseBackend } from "@/lib/supabase";
+import {
+  useEvents,
+  useSyncConfigs,
+  type FirestoreEvent,
+  type CalendarSyncConfig,
+} from "@/lib/use-events";
+import { useMeetups } from "@/lib/use-meetups";
 import { geocodeLocation } from "@/lib/geo";
 import { useFormDraft } from "@/lib/use-form-draft";
 import { DraftBanner, DraftSavedHint } from "@/components/admin/draft-banner";
@@ -62,20 +72,27 @@ function isPublished(e: FirestoreEvent): boolean {
 }
 
 /**
- * Embeddable Events manager for the unified /admin dashboard. Mirrors the
- * manual-event management of /community/admin/calendar (create/edit/
- * delete/publish) styled as a dark dashboard panel. Synced (Google
- * Calendar) events are surfaced read-only — their feeds are still
- * configured on the community calendar page. All business logic lives in
- * the shared `useEvents` hook.
+ * Embeddable Events manager for the unified /admin dashboard — the editor
+ * the admin lands in from "/events → Edit this page". EVERY event that can
+ * appear on /events is manageable here:
+ *   • manual events — create / edit / publish / delete
+ *   • feed-synced events — edit (detaches from the feed) / delete; both
+ *     tombstone the feed UID so the 15-minute sync can't re-create them
+ *   • connected calendar feeds — pause / resume / sync now / delete
+ *   • member meetups — remove (moderation)
+ * All business logic lives in the shared `useEvents` hooks.
  */
 export function EventsPanel() {
   const user = useAuth((s) => s.user);
   const confirm = useConfirm();
   const { events, loading, addEvent, updateEvent, deleteEvent } = useEvents();
+  const { configs, loading: configsLoading, updateConfig, deleteConfig } =
+    useSyncConfigs();
+  const { meetups, loading: meetupsLoading, deleteMeetup } = useMeetups();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<FirestoreEvent | null>(null);
+  const [syncing, setSyncing] = useState<string | null>(null);
 
   const manualEvents = useMemo(
     () => events.filter((e) => !e.sourceCalendarId),
@@ -85,6 +102,11 @@ export function EventsPanel() {
     () => events.filter((e) => e.sourceCalendarId),
     [events],
   );
+  const feedNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const c of configs) m.set(c.id, c.name);
+    return m;
+  }, [configs]);
 
   async function handleTogglePublished(ev: FirestoreEvent) {
     const next = !isPublished(ev);
@@ -94,16 +116,97 @@ export function EventsPanel() {
   }
 
   async function handleDelete(ev: FirestoreEvent) {
+    const synced = Boolean(ev.sourceCalendarId);
     const ok = await confirm({
       title: `Delete "${ev.title}"?`,
-      description: "This event will be permanently removed.",
+      description: synced
+        ? "This event will be permanently removed, and the calendar feed is blocked from re-adding it."
+        : "This event will be permanently removed.",
       confirmText: "Delete event",
       destructive: true,
     });
     if (!ok) return;
     const done = await deleteEvent(ev.id);
-    if (done) toast.success("Event deleted.");
+    if (done) toast.success("Event deleted — it won't come back.");
     else toast.error("Couldn't delete the event.");
+  }
+
+  async function handleDeleteMeetup(id: string, title: string) {
+    const ok = await confirm({
+      title: `Remove "${title}"?`,
+      description:
+        "This member-hosted meetup will be removed from the calendar and /events for everyone.",
+      confirmText: "Remove meetup",
+      destructive: true,
+    });
+    if (!ok) return;
+    const done = await deleteMeetup(id);
+    if (done) toast.success("Meetup removed.");
+    else toast.error("Couldn't remove the meetup.");
+  }
+
+  async function handleSyncNow(configId: string) {
+    setSyncing(configId);
+    try {
+      const headers: Record<string, string> = {};
+      try {
+        if (useSupabaseBackend) {
+          const accessToken = (await getSupabase()?.auth.getSession())?.data
+            .session?.access_token;
+          if (accessToken) headers.authorization = `Bearer ${accessToken}`;
+        } else {
+          const idToken = await getAuthInstance()?.currentUser?.getIdToken();
+          if (idToken) headers.authorization = `Bearer ${idToken}`;
+        }
+      } catch {
+        /* no session — proxy will reject if auth is required */
+      }
+      const res = await fetch("/api/calendar/sync-now", {
+        method: "POST",
+        headers,
+      });
+      if (!res.ok) {
+        const body = (await res.json().catch(() => null)) as {
+          error?: string;
+        } | null;
+        throw new Error(body?.error ? body.error : `HTTP ${res.status}`);
+      }
+      const data = await res.json();
+      const result = data.results?.find(
+        (r: { configId: string }) => r.configId === configId,
+      );
+      if (result?.error) toast.error(`Sync error: ${result.error}`);
+      else
+        toast.success(
+          `Synced ${result?.upserted ?? 0} events, removed ${result?.deleted ?? 0}.`,
+        );
+    } catch (err) {
+      toast.error(
+        `Sync failed: ${err instanceof Error ? err.message : "Unknown"}`,
+      );
+    } finally {
+      setSyncing(null);
+    }
+  }
+
+  async function handleDeleteFeed(config: CalendarSyncConfig) {
+    const ok = await confirm({
+      title: `Disconnect "${config.name}"?`,
+      description:
+        "The feed and every event it synced will be removed. This can't be undone.",
+      confirmText: "Disconnect feed",
+      destructive: true,
+    });
+    if (!ok) return;
+    const sourceEvents = events.filter(
+      (e) => e.sourceCalendarId === config.id,
+    );
+    for (const e of sourceEvents) {
+      await deleteEvent(e.id);
+    }
+    const done = await deleteConfig(config.id);
+    if (done) toast.success(`Disconnected "${config.name}" and removed its events.`);
+    else toast.error("Couldn't disconnect the feed.");
   }
 
   async function handleSave(data: Partial<FirestoreEvent>) {
@@ -267,18 +370,86 @@ export function EventsPanel() {
             )}
           </section>
 
-          {/* Synced events (read-only — feeds are managed on the community calendar) */}
+          {/* Connected calendar feeds — pause / sync / disconnect */}
+          {(configsLoading ? false : configs.length > 0) ? (
+            <section className="space-y-2">
+              <p className="flex items-center gap-1.5 px-1 text-[10px] font-bold uppercase tracking-wider text-white/30">
+                <Globe className="h-3 w-3" /> Connected feeds ({configs.length})
+              </p>
+              {configs.map((c) => (
+                <div
+                  key={c.id}
+                  className="flex items-center gap-3 rounded-lg border border-white/8 bg-white/[0.02] px-3 py-2"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-white/80">
+                      {c.name}
+                    </p>
+                    <p className="truncate text-[10px] text-white/35">
+                      {c.icalUrl}
+                    </p>
+                  </div>
+                  <span
+                    className={`shrink-0 rounded-full border px-1.5 py-0.5 text-[9px] font-medium ${
+                      c.enabled
+                        ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-300"
+                        : "border-white/15 bg-white/5 text-white/50"
+                    }`}
+                  >
+                    {c.enabled ? "Syncing" : "Paused"}
+                  </span>
+                  <div className="flex shrink-0 items-center gap-0.5">
+                    <button
+                      type="button"
+                      className={actionBtn}
+                      onClick={() => handleSyncNow(c.id)}
+                      disabled={syncing === c.id}
+                      aria-label="Sync now"
+                      title="Sync now"
+                    >
+                      {syncing === c.id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-3.5 w-3.5" />
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded-md px-2 py-1.5 text-[11px] font-medium text-white/40 transition-colors hover:bg-white/10 hover:text-white"
+                      onClick={async () => {
+                        const ok = await updateConfig(c.id, { enabled: !c.enabled });
+                        if (!ok) toast.error("Couldn't update the feed.");
+                      }}
+                    >
+                      {c.enabled ? "Pause" : "Resume"}
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded-md p-1.5 text-white/40 transition-colors hover:bg-red-500/10 hover:text-red-400"
+                      onClick={() => handleDeleteFeed(c)}
+                      aria-label="Disconnect feed"
+                      title="Disconnect feed and remove its events"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </section>
+          ) : null}
+
+          {/* Synced events — deletable & editable; deletes are tombstoned */}
           {syncedEvents.length > 0 ? (
             <section className="space-y-2">
               <p className="flex items-center gap-1.5 px-1 text-[10px] font-bold uppercase tracking-wider text-white/30">
                 <Globe className="h-3 w-3" /> Synced events ({syncedEvents.length})
-                · from Google Calendar feeds
+                · from calendar feeds
               </p>
               <div className="space-y-1">
                 {syncedEvents.map((ev) => (
                   <div
                     key={ev.id}
-                    className="flex items-center gap-3 rounded-md px-3 py-2 text-xs"
+                    className="flex items-center gap-3 rounded-md px-3 py-2 text-xs hover:bg-white/5"
                   >
                     <span className="w-24 shrink-0 tabular-nums text-white/40">
                       {ev.date}
@@ -286,16 +457,83 @@ export function EventsPanel() {
                     <span className="flex-1 truncate text-white/60">
                       {ev.title}
                     </span>
-                    <span className="rounded-full border border-white/15 bg-white/5 px-1.5 py-0.5 text-[9px] font-medium text-white/40">
+                    <span
+                      className="rounded-full border border-white/15 bg-white/5 px-1.5 py-0.5 text-[9px] font-medium text-white/40"
+                      title={
+                        ev.sourceCalendarId
+                          ? `From feed: ${feedNameById.get(ev.sourceCalendarId) ?? ev.sourceCalendarId}`
+                          : undefined
+                      }
+                    >
                       Synced
                     </span>
+                    <div className="flex shrink-0 items-center gap-0.5">
+                      <button
+                        type="button"
+                        className={actionBtn}
+                        onClick={() => {
+                          setEditingEvent(ev);
+                          setDialogOpen(true);
+                        }}
+                        aria-label="Edit event (detaches it from the feed)"
+                        title="Edit — this detaches the event from the feed so your changes stick"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded-md p-1.5 text-white/40 transition-colors hover:bg-red-500/10 hover:text-red-400"
+                        onClick={() => handleDelete(ev)}
+                        aria-label="Delete event"
+                        title="Delete — the feed is blocked from re-adding it"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
               <p className="px-1 text-[10px] text-white/25">
-                Synced events come from connected calendar feeds. Manage feeds on
-                the community calendar page.
+                Deleting a synced event blocks the feed from re-adding it.
+                Editing one detaches it from the feed so your changes stick.
               </p>
+            </section>
+          ) : null}
+
+          {/* Member-hosted meetups (also shown on /events) — moderation */}
+          {!meetupsLoading && meetups.length > 0 ? (
+            <section className="space-y-2">
+              <p className="flex items-center gap-1.5 px-1 text-[10px] font-bold uppercase tracking-wider text-white/30">
+                <Users className="h-3 w-3" /> Member meetups ({meetups.length})
+                · hosted by members, shown on /events
+              </p>
+              <div className="space-y-1">
+                {meetups.map((m) => (
+                  <div
+                    key={m.id}
+                    className="flex items-center gap-3 rounded-md px-3 py-2 text-xs hover:bg-white/5"
+                  >
+                    <span className="w-24 shrink-0 tabular-nums text-white/40">
+                      {m.date}
+                    </span>
+                    <span className="flex-1 truncate text-white/60">
+                      {m.title}
+                    </span>
+                    <span className="max-w-28 truncate rounded-full border border-white/15 bg-white/5 px-1.5 py-0.5 text-[9px] font-medium text-white/40">
+                      {m.hostName}
+                    </span>
+                    <button
+                      type="button"
+                      className="shrink-0 rounded-md p-1.5 text-white/40 transition-colors hover:bg-red-500/10 hover:text-red-400"
+                      onClick={() => handleDeleteMeetup(m.id, m.title)}
+                      aria-label="Remove meetup"
+                      title="Remove this member meetup"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
             </section>
           ) : null}
         </div>
@@ -389,7 +627,9 @@ function EventDialog({
     setEndDate(event?.endDate ?? "");
     setStartTime(event?.startTime ?? "");
     setEndTime(event?.endTime ?? "");
-    setType(event?.type ?? "social");
+    // "synced" isn't a pickable type — editing a synced event detaches it,
+    // so it needs a real category (defaults to Social).
+    setType(event?.type && event.type !== "synced" ? event.type : "social");
     setLocation(event?.location ?? "");
     setLink(event?.link ?? "");
     setLinkLabel(event?.linkLabel ?? "");
@@ -402,7 +642,8 @@ function EventDialog({
     baselineRef.current = JSON.stringify({
       title: event?.title ?? "", description: event?.description ?? "", date: event?.date ?? "",
       endDate: event?.endDate ?? "", startTime: event?.startTime ?? "", endTime: event?.endTime ?? "",
-      type: event?.type ?? "social", location: event?.location ?? "",
+      type: event?.type && event.type !== "synced" ? event.type : "social",
+      location: event?.location ?? "",
       link: event?.link ?? "", linkLabel: event?.linkLabel ?? "",
       capacity: typeof event?.capacity === "number" && event.capacity > 0 ? String(event.capacity) : "",
       published: event?.published !== false,

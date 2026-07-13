@@ -6,27 +6,18 @@ import { motion, useReducedMotion } from "framer-motion";
 import { MapPin, Plane } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTrips } from "@/lib/use-trips";
+import { useDestinationsContent } from "@/lib/use-site-content";
 import { EditableText } from "@/components/inline/editable-text";
 import { EditableImage } from "@/components/inline/editable-image";
 
-// Curated, aspirational gallery — imagery is editorial and stays fixed.
-// Live trip counts are layered on top from the CRM (see countByCountry),
-// so a destination only advertises "N trips" when admin-published trips
-// actually exist for that country.
-const DESTINATIONS = [
-  { name: "Mexico", emoji: "🇲🇽", gradient: "from-[var(--magenta)] to-[#C44B3F]", image: "/trips/cancun-aug-26.jpg" },
-  { name: "Colombia", emoji: "🇨🇴", gradient: "from-[#DAA520] to-[#C44B3F]", image: "/trips/colombia-dec-26.jpg" },
-  { name: "Bali", emoji: "🏝️", gradient: "from-[#2D8B6F] to-[#DAA520]", image: "/trips/bali-jun-26.jpg" },
-  { name: "Japan", emoji: "🇯🇵", gradient: "from-[var(--magenta)] to-[#FF6BA8]", image: "/trips/japan-nov-26.jpg" },
-  { name: "Kenya", emoji: "🦁", gradient: "from-[#DAA520] to-[#8B4513]", image: "/trips/safari-jul-26.jpg" },
-  { name: "Morocco", emoji: "🇲🇦", gradient: "from-[#C44B3F] to-[#DAA520]", image: "/trips/morocco-may-26.jpg" },
-  { name: "Peru", emoji: "🇵🇪", gradient: "from-[#9B2C8A] to-[var(--magenta)]", image: "/destinations/peru.jpg" },
-  { name: "Greece", emoji: "🇬🇷", gradient: "from-[#2D6BB8] to-[#2D8B6F]", image: "/destinations/greece.jpg" },
-];
-
+// Tiles are managed in Admin → Content → Destinations (cms_config, coded
+// defaults as fallback). Live trip counts are layered on top from the CRM
+// (see countByCountry), so a destination only advertises "N trips" when
+// admin-published trips actually exist for that country.
 export function Destinations() {
   const prefersReducedMotion = useReducedMotion();
   const { trips } = useTrips();
+  const { items: destinations } = useDestinationsContent();
 
   // Count published trips per country, keyed case-insensitively so a CRM
   // entry of "mexico" still matches the "Mexico" gallery tile.
@@ -62,11 +53,11 @@ export function Destinations() {
         </motion.div>
 
         <div className="mt-14 grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-4">
-          {DESTINATIONS.map((dest, i) => {
+          {destinations.map((dest, i) => {
             const liveCount = countByCountry.get(dest.name.toLowerCase()) ?? 0;
             return (
               <motion.div
-                key={dest.name}
+                key={`${dest.name}-${i}`}
                 initial={prefersReducedMotion ? false : { opacity: 0, y: 28 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}

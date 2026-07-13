@@ -12,9 +12,16 @@ import {
   Plane,
   Inbox,
   FileSignature,
+  PenSquare,
 } from "lucide-react";
 
 const TILES = [
+  {
+    href: "/admin",
+    icon: PenSquare,
+    title: "Site editor",
+    desc: "Edit the public website — pages, content, photos, SEO, and the page builder.",
+  },
   {
     href: "/community/admin/trips",
     icon: Plane,
@@ -49,7 +56,7 @@ const TILES = [
     href: "/community/admin/members",
     icon: UserCog,
     title: "Members",
-    desc: "Live Firestore directory. Edit roles, see presence, ban/mute, and remove profiles.",
+    desc: "Live member directory. Edit roles, see presence, ban/mute, and remove profiles.",
   },
   {
     href: "/community/admin/moderation",

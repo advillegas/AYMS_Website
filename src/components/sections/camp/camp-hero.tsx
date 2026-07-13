@@ -2,16 +2,11 @@
 
 import Image from "next/image";
 import { motion, useReducedMotion } from "framer-motion";
-import { MapPin, Calendar, Users, Flame } from "lucide-react";
+import { Flame } from "lucide-react";
 import { EditableText } from "@/components/inline/editable-text";
 import { EditableImage } from "@/components/inline/editable-image";
-import { CheckoutButtons } from "./shared";
-
-const FACTS = [
-  { icon: MapPin, label: "San Bernardino County, CA" },
-  { icon: Calendar, label: "August 28–30, 2026" },
-  { icon: Users, label: "Latina Women ~21+" },
-];
+import { CampCtaButtons } from "./camp-cta-buttons";
+import { CampFacts } from "./camp-facts";
 
 export function CampHero() {
   const reduceMotion = useReducedMotion();
@@ -57,15 +52,8 @@ export function CampHero() {
           >
             An all-inclusive nostalgic weekend designed for Latina women craving connection, laughter, and the kind of friendships that feel like home.
           </EditableText>
-          <div className="mt-7 flex flex-wrap items-center justify-center gap-x-6 gap-y-3">
-            {FACTS.map((f, i) => (
-              <span key={f.label} className="flex items-center gap-2 text-sm font-medium text-ink-soft">
-                <f.icon className="h-4 w-4 text-[#FF7F50]" aria-hidden="true" />
-                <EditableText id={`camp.fact.${i}`} as="span">{f.label}</EditableText>
-              </span>
-            ))}
-          </div>
-          <CheckoutButtons className="mt-9 items-center justify-center" />
+          <CampFacts className="mt-7" />
+          <CampCtaButtons className="mt-9 items-center justify-center" />
         </motion.div>
       </div>
 

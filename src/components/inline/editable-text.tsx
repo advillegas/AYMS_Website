@@ -1,9 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { useOverrideText, saveOverrideText } from "@/lib/use-site-content";
 import { useInlineEdit } from "@/lib/use-inline-edit";
+import { isRichTextEmpty } from "@/lib/rich-text";
+import { RichTextEditor } from "@/components/inline/rich-text-editor";
+import { RichTextStatic } from "@/components/inline/rich-text-static";
 import { cn } from "@/lib/utils";
 
 type Tag = "h1" | "h2" | "h3" | "h4" | "h5" | "p" | "span" | "div" | "li" | "strong";
@@ -20,48 +23,38 @@ interface Props {
 
 /**
  * Text that an admin can edit in place. In edit mode it shows a dashed
- * outline; the element only becomes contentEditable AFTER it's tapped — so
- * the page still scrolls normally (critical on touch devices, where an
- * always-editable page traps scroll/taps). Saves on blur to the shared
- * overrides doc and go live for everyone.
+ * outline; the element only becomes editable AFTER it's tapped — so the page
+ * still scrolls normally (critical on touch devices, where an always-editable
+ * page traps scroll/taps). While editing, a floating toolbar offers rich
+ * formatting (bold/italic/underline, size, brand fonts, Spanish accents…).
+ * Saves on blur/Done to the shared overrides doc and goes live for everyone.
+ *
+ * Stored values stay plain strings unless formatting is applied, in which
+ * case whitelisted inline HTML is stored; both render correctly everywhere
+ * via RichTextStatic.
  */
 export function EditableText({ id, children, as = "span", className, multiline }: Props) {
   const value = useOverrideText(id, children);
   const editing = useInlineEdit((s) => s.enabled);
   const [active, setActive] = useState(false);
-  const ref = useRef<HTMLElement>(null);
-  const Tag = as as React.ElementType;
 
-  // When this element is activated, seed it with the current text and focus it.
-  useEffect(() => {
-    if (active && ref.current) {
-      ref.current.textContent = value;
-      ref.current.focus();
-      // Place caret at the end.
-      const sel = window.getSelection();
-      if (sel) {
-        const range = document.createRange();
-        range.selectNodeContents(ref.current);
-        range.collapse(false);
-        sel.removeAllRanges();
-        sel.addRange(range);
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active]);
-
-  // Leaving edit mode entirely cancels any active editing.
-  useEffect(() => {
-    if (!editing) setActive(false);
-  }, [editing]);
+  // Leaving edit mode entirely cancels any active editing (state adjustment
+  // during render — no effect, no extra committed frame).
+  const [prevEditing, setPrevEditing] = useState(editing);
+  if (prevEditing !== editing) {
+    setPrevEditing(editing);
+    if (!editing && active) setActive(false);
+  }
 
   if (!editing) {
-    return <Tag className={className}>{value}</Tag>;
+    return <RichTextStatic as={as} value={value} className={className} />;
   }
 
   if (!active) {
     return (
-      <Tag
+      <RichTextStatic
+        as={as}
+        value={value}
         className={cn(
           className,
           "cursor-pointer rounded-[3px] outline-dashed outline-1 outline-[var(--magenta)]/50 transition-[outline-color] hover:outline-[var(--magenta)]",
@@ -80,41 +73,29 @@ export function EditableText({ id, children, as = "span", className, multiline }
             setActive(true);
           }
         }}
-      >
-        {value}
-      </Tag>
+      />
     );
   }
 
   return (
-    <Tag
-      ref={ref}
+    <RichTextEditor
+      as={as}
+      value={value}
+      multiline={multiline}
+      autoFocus
+      showDone
       className={cn(className, "rounded-[3px] outline outline-2 outline-[var(--magenta)]")}
-      contentEditable
-      suppressContentEditableWarning
-      spellCheck={false}
-      role="textbox"
-      onBlur={(e: React.FocusEvent<HTMLElement>) => {
-        const text = (e.currentTarget.textContent ?? "").replace(/\u00a0/g, " ").trim();
+      onCommit={(out) => {
         setActive(false);
-        if (!text) return; // empty discards the edit; the default text returns
-        if (text === value) return;
-        void saveOverrideText(id, text).then((ok) => {
+        if (isRichTextEmpty(out)) return; // empty discards; the default returns
+        if (out === value) return;
+        void saveOverrideText(id, out).then((ok) => {
           if (!ok) {
             toast.error("Couldn't save that change — check your connection and try again.");
           }
         });
       }}
-      onKeyDown={(e: React.KeyboardEvent<HTMLElement>) => {
-        if (e.key === "Enter" && !multiline) {
-          e.preventDefault();
-          (e.currentTarget as HTMLElement).blur();
-        }
-        if (e.key === "Escape") {
-          e.preventDefault();
-          setActive(false);
-        }
-      }}
+      onCancel={() => setActive(false)}
     />
   );
 }

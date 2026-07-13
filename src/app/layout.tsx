@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "sonner";
 import { ChatProvider } from "@/components/chatbot/chat-provider";
 import { ConfirmProvider } from "@/components/ui/confirm-dialog";
+import { ImageCropperProvider } from "@/components/admin/image-cropper";
 import { AuthBootstrap } from "@/components/auth-bootstrap";
 import { OrganizationJsonLd, WebSiteJsonLd } from "@/components/seo/json-ld";
 import { SiteThemeVars } from "@/components/site-theme-vars";
@@ -167,6 +168,7 @@ export default function RootLayout({
         >
           <TooltipProvider>
             <ConfirmProvider>
+            <ImageCropperProvider>
             <AuthBootstrap />
             <SiteThemeVars />
             <div
@@ -179,6 +181,7 @@ export default function RootLayout({
               <ChatProvider />
               <InlineEditBar />
               <Toaster richColors position="bottom-right" />
+            </ImageCropperProvider>
             </ConfirmProvider>
           </TooltipProvider>
         </ThemeProvider>

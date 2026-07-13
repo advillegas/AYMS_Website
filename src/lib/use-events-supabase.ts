@@ -10,10 +10,7 @@ import { useCallback, useEffect, useState } from "react";
 import { getSupabase } from "./supabase";
 import { subscribeQuery, tsToIso } from "./supabase-helpers";
 import { ensureSupabaseSession } from "./ensure-session";
-import {
-  COMMUNITY_EVENTS,
-  type CalendarEvent,
-} from "./events-data";
+import { type CalendarEvent } from "./events-data";
 import type {
   EventType,
   FirestoreEvent,
@@ -73,33 +70,38 @@ function rowToEvent(r: EventRow): FirestoreEvent {
   };
 }
 
-let seeded = false;
-async function seedIfEmpty(): Promise<void> {
-  if (seeded) return;
+/**
+ * Tombstone a feed UID on its sync config so /api/calendar/sync never
+ * re-creates the event. Best-effort read-modify-write; requires the
+ * `suppressed_uids` column (supabase/events-suppression.sql).
+ */
+async function suppressSyncUidSupabase(
+  sourceCalendarId: string,
+  sourceUid: string,
+): Promise<void> {
   const sb = getSupabase();
   if (!sb) return;
-  seeded = true;
   try {
-    const { count } = await sb
-      .from("events")
-      .select("id", { count: "exact", head: true });
-    if ((count ?? 0) > 0) return;
-    const rows = COMMUNITY_EVENTS.map((e) => ({
-      id: e.id,
-      title: e.title,
-      description: e.description,
-      date: e.date,
-      end_date: e.endDate ?? null,
-      type: e.type,
-      location: e.location,
-      capacity: e.capacity ?? null,
-      image: e.image ?? null,
-      published: e.published ?? true,
-    }));
-    await sb.from("events").upsert(rows);
+    const { data, error } = await sb
+      .from("calendar_sync_configs")
+      .select("suppressed_uids")
+      .eq("id", sourceCalendarId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!data) return; // feed already deleted — nothing to suppress
+    const current = Array.isArray(
+      (data as { suppressed_uids?: unknown }).suppressed_uids,
+    )
+      ? ((data as { suppressed_uids: string[] }).suppressed_uids)
+      : [];
+    if (current.includes(sourceUid)) return;
+    const { error: upErr } = await sb
+      .from("calendar_sync_configs")
+      .update({ suppressed_uids: [...current, sourceUid] })
+      .eq("id", sourceCalendarId);
+    if (upErr) throw new Error(upErr.message);
   } catch (err) {
-    console.warn("[events:sb] seed failed", err);
-    seeded = false;
+    console.warn("[events:sb] could not tombstone synced uid", err);
   }
 }
 
@@ -108,7 +110,6 @@ export function useEventsSupabase(): UseEventsResult {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    void seedIfEmpty();
     const unsub = subscribeQuery<EventRow>(
       "events",
       (sb) => sb.from("events").select("*").limit(500),
@@ -122,10 +123,10 @@ export function useEventsSupabase(): UseEventsResult {
         setLoading(false);
       },
       (msg) => {
+        // The database is the only source of truth — an error renders an
+        // empty list, never phantom placeholder events.
         console.warn("[events:sb] query failed", msg);
-        setEvents(
-          COMMUNITY_EVENTS.map((e) => ({ ...e, type: e.type as EventType })),
-        );
+        setEvents([]);
         setLoading(false);
       },
     );
@@ -199,6 +200,27 @@ export function useEventsSupabase(): UseEventsResult {
         if (col) row[col] = v === undefined ? null : v;
       }
       await ensureSupabaseSession(sb);
+
+      // Editing a feed-synced event detaches it into a manual event and
+      // tombstones its UID so the next sync can't clobber the edit.
+      try {
+        const { data } = await sb
+          .from("events")
+          .select("source_calendar_id, source_uid")
+          .eq("id", id)
+          .maybeSingle();
+        const src = data as
+          | { source_calendar_id: string | null; source_uid: string | null }
+          | null;
+        if (src?.source_calendar_id && src?.source_uid) {
+          await suppressSyncUidSupabase(src.source_calendar_id, src.source_uid);
+          row.source_calendar_id = null;
+          row.source_uid = null;
+        }
+      } catch {
+        /* detach is best-effort; the update below still applies */
+      }
+
       const { error } = await sb.from("events").update(row).eq("id", id);
       if (error) {
         console.error("[events:sb] update failed", error.message);
@@ -215,6 +237,23 @@ export function useEventsSupabase(): UseEventsResult {
     // Guarantee an authenticated session so RLS doesn't silently reject the
     // delete on a lapsed token.
     await ensureSupabaseSession(sb);
+    // Tombstone feed-synced events BEFORE deleting so the cron sync can
+    // never resurrect them.
+    try {
+      const { data } = await sb
+        .from("events")
+        .select("source_calendar_id, source_uid")
+        .eq("id", id)
+        .maybeSingle();
+      const src = data as
+        | { source_calendar_id: string | null; source_uid: string | null }
+        | null;
+      if (src?.source_calendar_id && src?.source_uid) {
+        await suppressSyncUidSupabase(src.source_calendar_id, src.source_uid);
+      }
+    } catch {
+      /* suppression is best-effort; deletion still proceeds */
+    }
     const { error } = await sb.from("events").delete().eq("id", id);
     if (error) {
       console.error("[events:sb] delete failed", error.message);
@@ -235,6 +274,8 @@ interface SyncRow {
   last_sync_error: string | null;
   last_sync_count: number | null;
   enabled: boolean;
+  /** Optional until supabase/events-suppression.sql is applied. */
+  suppressed_uids?: string[] | null;
   created_by: string | null;
   created_at: string | null;
 }
@@ -249,6 +290,7 @@ function rowToSync(r: SyncRow): CalendarSyncConfig {
     lastSyncError: r.last_sync_error ?? undefined,
     lastSyncCount: r.last_sync_count ?? undefined,
     enabled: r.enabled ?? true,
+    suppressedUids: Array.isArray(r.suppressed_uids) ? r.suppressed_uids : [],
     createdBy: r.created_by ?? "",
     createdAt: tsToIso(r.created_at),
   };
@@ -314,6 +356,7 @@ export function useSyncConfigsSupabase(): {
         lastSyncError: "last_sync_error",
         lastSyncCount: "last_sync_count",
         enabled: "enabled",
+        suppressedUids: "suppressed_uids",
         createdBy: "created_by",
       };
       const row: Record<string, unknown> = {};

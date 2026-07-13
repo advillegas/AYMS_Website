@@ -170,6 +170,40 @@ export const DEFAULT_EXPERIENCES: ExperiencesContent = {
   ],
 };
 
+export interface DestinationItem {
+  name: string;
+  emoji: string;
+  /** Tailwind gradient stops behind the photo. */
+  gradient: string;
+  image: string;
+}
+export interface DestinationsContent {
+  items: DestinationItem[];
+}
+export const DEFAULT_DESTINATIONS: DestinationsContent = {
+  items: [
+    { name: "Mexico", emoji: "🇲🇽", gradient: "from-[var(--magenta)] to-[#C44B3F]", image: "/trips/cancun-aug-26.jpg" },
+    { name: "Colombia", emoji: "🇨🇴", gradient: "from-[#DAA520] to-[#C44B3F]", image: "/trips/colombia-dec-26.jpg" },
+    { name: "Bali", emoji: "🏝️", gradient: "from-[#2D8B6F] to-[#DAA520]", image: "/trips/bali-jun-26.jpg" },
+    { name: "Japan", emoji: "🇯🇵", gradient: "from-[var(--magenta)] to-[#FF6BA8]", image: "/trips/japan-nov-26.jpg" },
+    { name: "Kenya", emoji: "🦁", gradient: "from-[#DAA520] to-[#8B4513]", image: "/trips/safari-jul-26.jpg" },
+    { name: "Morocco", emoji: "🇲🇦", gradient: "from-[#C44B3F] to-[#DAA520]", image: "/trips/morocco-may-26.jpg" },
+    { name: "Peru", emoji: "🇵🇪", gradient: "from-[#9B2C8A] to-[var(--magenta)]", image: "/destinations/peru.jpg" },
+    { name: "Greece", emoji: "🇬🇷", gradient: "from-[#2D6BB8] to-[#2D8B6F]", image: "/destinations/greece.jpg" },
+  ],
+};
+
+export const DESTINATIONS_KEY = "home.destinations.tiles";
+
+/**
+ * Destination gallery tiles. A deliberately-emptied list is respected
+ * (admin removed every tile → section renders without the grid).
+ */
+export function useDestinationsContent(): DestinationsContent {
+  const c = useDomain<DestinationsContent>(DESTINATIONS_KEY, DEFAULT_DESTINATIONS);
+  return { items: Array.isArray(c.items) ? c.items : DEFAULT_DESTINATIONS.items };
+}
+
 export interface MarqueeContent {
   words: string[];
 }
@@ -411,6 +445,248 @@ export function useFlipCards(key: string, defaults: FlipCardItem[]): FlipCardIte
   useEffect(() => useSiteContentStore.getState().subscribe(), []);
   if (Array.isArray(raw) && raw.length) return raw as FlipCardItem[];
   return defaults;
+}
+
+/* ------------------ Camp: CTA buttons + sponsor banner ------------- */
+
+export interface CampCtaButton {
+  id: string;
+  label: string;
+  /**
+   * Destination. "#waitlist" (or empty) opens the built-in waitlist
+   * lead-capture form; "/path" navigates internally; anything else is an
+   * external URL.
+   */
+  href: string;
+  visible: boolean;
+}
+export interface CampCtaContent {
+  buttons: CampCtaButton[];
+}
+
+export const WAITLIST_HREF = "#waitlist";
+
+/** Default camp CTA: the waitlist capture flow (no hardcoded buy links). */
+export const DEFAULT_CAMP_CTA: CampCtaContent = {
+  buttons: [
+    {
+      id: "cta-waitlist",
+      label: "Join the waitlist",
+      href: WAITLIST_HREF,
+      visible: true,
+    },
+  ],
+};
+
+export const CAMP_CTA_KEY = "camp.cta";
+
+/**
+ * Camp CTA buttons. Unlike the list domains above, a deliberately-emptied
+ * array is respected (admin removed every button → render none).
+ */
+export function useCampCta(): CampCtaContent {
+  const c = useDomain<CampCtaContent>(CAMP_CTA_KEY, DEFAULT_CAMP_CTA);
+  return {
+    buttons: Array.isArray(c.buttons) ? c.buttons : DEFAULT_CAMP_CTA.buttons,
+  };
+}
+
+export interface CampFactItem {
+  id: string;
+  /** Lucide icon name (see lib/section-icons.ts). */
+  icon: string;
+  label: string;
+}
+export interface CampFactsContent {
+  items: CampFactItem[];
+}
+export const DEFAULT_CAMP_FACTS: CampFactsContent = {
+  items: [
+    { id: "f1", icon: "MapPin", label: "San Bernardino County, CA" },
+    { id: "f2", icon: "Calendar", label: "August 28–30, 2026" },
+    { id: "f3", icon: "Users", label: "Latina Women ~21+" },
+  ],
+};
+
+export const CAMP_FACTS_KEY = "camp.facts";
+
+/**
+ * Camp hero fact chips. A deliberately-emptied list is respected
+ * (admin removed every fact → row renders empty).
+ */
+export function useCampFacts(): CampFactsContent {
+  const c = useDomain<CampFactsContent>(CAMP_FACTS_KEY, DEFAULT_CAMP_FACTS);
+  return { items: Array.isArray(c.items) ? c.items : DEFAULT_CAMP_FACTS.items };
+}
+
+export interface SponsorItem {
+  id: string;
+  /** Uploaded photo/logo URL (Supabase Storage `media` bucket). */
+  image: string;
+  /** Optional display name (shown under the logo + used as alt text). */
+  name: string;
+  /** Optional link to the sponsor's site. */
+  href: string;
+}
+export interface CampSponsorsContent {
+  items: SponsorItem[];
+}
+export const DEFAULT_CAMP_SPONSORS: CampSponsorsContent = { items: [] };
+
+export const CAMP_SPONSORS_KEY = "camp.sponsors";
+
+export function useCampSponsors(): CampSponsorsContent {
+  const c = useDomain<CampSponsorsContent>(
+    CAMP_SPONSORS_KEY,
+    DEFAULT_CAMP_SPONSORS,
+  );
+  return { items: Array.isArray(c.items) ? c.items : [] };
+}
+
+/* ---------------------------- chatbot ------------------------------- */
+
+export interface ChatbotContent {
+  /**
+   * Owner-authored knowledge appended to the AI assistant's system prompt
+   * (plain text / simple markdown). Use it to correct or extend what the
+   * bot knows without a code change. Server reads it directly from
+   * cms_config in /api/chat.
+   */
+  extraKnowledge: string;
+}
+export const DEFAULT_CHATBOT: ChatbotContent = { extraKnowledge: "" };
+
+export const CHATBOT_KEY = "chatbot";
+
+export function useChatbotContent(): ChatbotContent {
+  return useDomain<ChatbotContent>(CHATBOT_KEY, DEFAULT_CHATBOT);
+}
+
+/* ---------------------------- footer -------------------------------- */
+
+export interface FooterLinkItem {
+  label: string;
+  href: string;
+}
+export interface FooterColumn {
+  heading: string;
+  links: FooterLinkItem[];
+}
+export interface FooterContent {
+  columns: FooterColumn[];
+}
+export const DEFAULT_FOOTER: FooterContent = {
+  columns: [
+    {
+      heading: "Explore",
+      links: [
+        { label: "Trips", href: "/trips" },
+        { label: "Concierge", href: "/concierge" },
+        { label: "Events", href: "/events" },
+        { label: "Featured", href: "/featured" },
+        { label: "Gallery", href: "/gallery" },
+      ],
+    },
+    {
+      heading: "Community",
+      links: [
+        { label: "Become an Amiga", href: "/register" },
+        { label: "Log In", href: "/login" },
+        { label: "FAQ", href: "/faq" },
+        { label: "About AYMS", href: "/llm" },
+      ],
+    },
+  ],
+};
+
+export const FOOTER_KEY = "footer.columns";
+
+/**
+ * Footer link columns. A deliberately-emptied list is respected
+ * (admin removed every column → no link columns render).
+ */
+export function useFooterContent(): FooterContent {
+  const c = useDomain<FooterContent>(FOOTER_KEY, DEFAULT_FOOTER);
+  return { columns: Array.isArray(c.columns) ? c.columns : DEFAULT_FOOTER.columns };
+}
+
+/* ----------------------- /links (link-in-bio) ---------------------- */
+
+export interface LinksSocialItem {
+  id: string;
+  /** Platform key (see lib/social-icons.tsx) — drives the glyph. */
+  platform: string;
+  href: string;
+  label: string;
+}
+export interface LinksChipItem {
+  id: string;
+  label: string;
+  href: string;
+}
+export interface LinksLinkItem {
+  id: string;
+  emoji: string;
+  label: string;
+  href: string;
+}
+export interface LinksPageContent {
+  titleBefore: string;
+  titleAccent: string;
+  handle: string;
+  bio: string;
+  /** Avatar image URL (upload or path under /public). */
+  avatar: string;
+  socials: LinksSocialItem[];
+  chips: LinksChipItem[];
+  links: LinksLinkItem[];
+}
+
+export const DEFAULT_LINKS_PAGE: LinksPageContent = {
+  titleBefore: "Amigas y Más ",
+  titleAccent: "Social",
+  handle: "@amigasymassocial",
+  bio: "La comunidad de viajes para Latinas — group trips, summer camp & events que se sienten como home. ♡",
+  avatar: "/ayms-logo.svg",
+  socials: [
+    { id: "s1", platform: "email", href: "/#contact", label: "Email" },
+    { id: "s2", platform: "tiktok", href: "https://tiktok.com/@amigasymassocial", label: "TikTok" },
+    { id: "s3", platform: "instagram", href: "https://instagram.com/amigasymassocial", label: "Instagram" },
+  ],
+  chips: [
+    { id: "c1", label: "Home", href: "https://beacons.ai/amigasymassocial/home" },
+    { id: "c2", label: "AYMS Mardi Gras 2027", href: "https://beacons.ai/amigasymassocial/aymsmardigras2027" },
+    { id: "c3", label: "Amigas en Boston", href: "https://beacons.ai/amigasymassocial/amigasenboston" },
+    { id: "c4", label: "Amigas in Jamaica", href: "https://beacons.ai/amigasymassocial/amigasinjamaica" },
+    { id: "c5", label: "Amigas in Australia", href: "https://beacons.ai/amigasymassocial/amigasinaustralia" },
+  ],
+  links: [
+    { id: "l1", emoji: "🌸", label: "NOMINATE AN AMIGA: AMIGAS SUMMER CAMP.", href: "https://docs.google.com/forms/d/e/1FAIpQLSem5H6ihrzrcYir9KNHOwdlEBmJXKUhJx3keGhKb690XWgdtA/viewform?usp=sharing&ouid=114693344536179256373" },
+    { id: "l2", emoji: "☀️", label: "Amigas Summer Camp", href: "https://amigasymassocial.com/summer-camp/" },
+    { id: "l3", emoji: "🇮🇹", label: "Amigas Y Mas takes on Italy- Rome to Sorrento!", href: "https://amigasymas.trutravels.com/join-the-amigas/8-day-slice-of-italy-tour" },
+    { id: "l4", emoji: "🇬🇷", label: "9 Day Greece Island Hopper - Join Amigas Y Mas for a Euro Summer Island Hopping Greece!", href: "https://amigasymas.trutravels.com/girls-trip/greece-island-hopper#" },
+    { id: "l5", emoji: "🪔", label: "India and Holi Fest with Amigas y Más Social", href: "https://trovatrip.com/trip/asia/india/india-with-sally-romero-mar-2027" },
+    { id: "l6", emoji: "🇲🇦", label: "Join the Amigas in Morocco!", href: "https://amigasymas.trutravels.com/9-day-morocco-uncovered#_included" },
+    { id: "l7", emoji: "🇧🇷", label: "Join las amigas in Brazil!", href: "https://amigasymas.trutravels.com/join-the-amigas/6-day-rio-carnival#_included" },
+    { id: "l8", emoji: "🥂", label: "RSVP to Ponte Las Pilates & Brunch | Partiful", href: "https://partiful.com/e/q247Iyihymdlc7Q1wznR?c=tHrubA1O" },
+    { id: "l9", emoji: "💖", label: "Become a member of Amigas y Mas Social", href: "https://whop.com/amigas-y-mas-social/" },
+  ],
+};
+
+export const LINKS_PAGE_KEY = "links";
+
+/**
+ * /links page content. Deliberately-emptied lists are respected (admin
+ * removed every chip → render none), matching the camp-CTA behavior.
+ */
+export function useLinksPageContent(): LinksPageContent {
+  const c = useDomain<LinksPageContent>(LINKS_PAGE_KEY, DEFAULT_LINKS_PAGE);
+  return {
+    ...c,
+    socials: Array.isArray(c.socials) ? c.socials : DEFAULT_LINKS_PAGE.socials,
+    chips: Array.isArray(c.chips) ? c.chips : DEFAULT_LINKS_PAGE.chips,
+    links: Array.isArray(c.links) ? c.links : DEFAULT_LINKS_PAGE.links,
+  };
 }
 
 /** Editable contact / social link tiles (Contact section). */

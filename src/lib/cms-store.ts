@@ -68,6 +68,8 @@ export const SYSTEM_PAGES = [
   { slug: "gallery", title: "Gallery", href: "/gallery" },
   { slug: "faq", title: "FAQ", href: "/faq" },
   { slug: "featured", title: "Featured Event", href: "/featured" },
+  { slug: "privacy", title: "Privacy Policy", href: "/privacy" },
+  { slug: "terms", title: "Terms of Service", href: "/terms" },
 ];
 
 /** True for the core marketing pages backed by coded React (home, trips, …). */
@@ -93,7 +95,8 @@ interface CmsState {
   setPageElements: (slug: string, elements: BuilderElement[]) => Promise<boolean>;
   /** Publish a page live; resolves to the remote write success. */
   publishPage: (slug: string) => Promise<boolean>;
-  unpublishPage: (slug: string) => void;
+  /** Hide a page from visitors again; resolves to the remote write success. */
+  unpublishPage: (slug: string) => Promise<boolean>;
   /** Fetch recent published-version snapshots for rollback (Supabase). */
   listVersions: (slug: string) => Promise<CmsVersion[]>;
   /** Restore a snapshot's elements as the live published content; resolves to the write success. */
@@ -325,21 +328,34 @@ function fsDeleteTemplate(id: string): void {
   );
 }
 
-/** Snapshot a page version on publish (Supabase only; no-op on Firebase). */
+/**
+ * Snapshot a page version on publish. Version history lives in Supabase
+ * (`cms_page_versions`) in BOTH backend modes: the Revert UI always reads
+ * via sbListVersions, so gating this write on the community-data flag
+ * (useSupabaseBackend) left production (Firebase mode) with a picker that
+ * could never show anything. Snapshot whenever the Supabase client exists;
+ * failures are non-fatal (warn + skip), and restore goes through the
+ * normal page-write path for whichever backend is active.
+ */
 function fsWriteVersion(slug: string, title: string, elements: BuilderElement[]): void {
   if (!isValidSlug(slug)) return;
-  if (useSupabaseBackend) {
-    void sbWriteVersion(slug, title, elements);
-  }
+  void sbWriteVersion(slug, title, elements);
 }
 
-/** Toggle a page's published flag (optimistic local + FS write-through). */
-function setPublished(
+/** Toggle a page's published flag (optimistic local + FS write-through).
+ *  If the backend write fails the optimistic flip (and its localStorage
+ *  mirror) is reverted, so the UI never shows a Live/Draft state that
+ *  didn't actually persist. */
+async function setPublished(
   set: (fn: (s: CmsState) => Partial<CmsState> | CmsState) => void,
   get: () => CmsState,
   slug: string,
   isPublished: boolean,
 ): Promise<boolean> {
+  const before = get().pages[slug];
+  if (!before) return false;
+  const prevPublished = before.isPublished;
+  const prevUpdatedAt = before.updatedAt;
   set((s) => {
     const page = s.pages[slug];
     if (!page) return s;
@@ -351,7 +367,22 @@ function setPublished(
     return { pages };
   });
   const p = get().pages[slug];
-  return p ? fsWritePage(p) : Promise.resolve(false);
+  const ok = p ? await fsWritePage(p) : false;
+  if (!ok) {
+    set((s) => {
+      const page = s.pages[slug];
+      // Skip the revert if a realtime snapshot already reasserted the
+      // server state while the failed write was in flight.
+      if (!page || page.isPublished === prevPublished) return s;
+      const pages = {
+        ...s.pages,
+        [slug]: { ...page, isPublished: prevPublished, updatedAt: prevUpdatedAt },
+      };
+      lsSet(CMS_PAGES_KEY, pages);
+      return { pages };
+    });
+  }
+  return ok;
 }
 
 /* --------------------- starter-template merge ---------------------- */
@@ -487,12 +518,10 @@ export const useCms = create<CmsState>((set, get) => ({
     const ok = await setPublished(set, get, slug, true);
     // Snapshot the just-published version so a bad edit can be rolled back.
     const p = get().pages[slug];
-    if (p && p.elements.length > 0) fsWriteVersion(slug, p.title, p.elements);
+    if (ok && p && p.elements.length > 0) fsWriteVersion(slug, p.title, p.elements);
     return ok;
   },
-  unpublishPage: (slug) => {
-    void setPublished(set, get, slug, false);
-  },
+  unpublishPage: (slug) => setPublished(set, get, slug, false),
 
   listVersions: (slug) => sbListVersions(slug),
 

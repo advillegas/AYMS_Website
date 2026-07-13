@@ -24,8 +24,6 @@ import {
   Calendar as CalIcon,
   Trash2,
   RotateCcw,
-  Wifi,
-  WifiOff,
   Ban,
   MicOff,
   Mic,
@@ -44,6 +42,7 @@ import {
 } from "@/lib/use-moderation-store";
 import { isFirebaseConfigured } from "@/lib/firebase";
 import { getSupabase, useSupabaseBackend } from "@/lib/supabase";
+import { BackendBadge } from "@/components/admin/backend-badge";
 import {
   AvatarStatusOverlay,
   statusLabel,
@@ -91,7 +90,7 @@ export default function AdminMembersPage() {
             Members admin
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Live view of every registered member, sourced from Firestore.
+            Live view of every registered member, sourced from your backend.
           </p>
           <div className="mt-2 flex flex-wrap gap-3 text-xs">
             <SummaryChip
@@ -104,24 +103,7 @@ export default function AdminMembersPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <span
-            className={cn(
-              "inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-medium",
-              isLive
-                ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-                : "bg-amber-500/10 text-amber-700 dark:text-amber-300",
-            )}
-          >
-            {isLive ? (
-              <>
-                <Wifi className="h-3 w-3" /> Firebase live
-              </>
-            ) : (
-              <>
-                <WifiOff className="h-3 w-3" /> Local only
-              </>
-            )}
-          </span>
+          <BackendBadge live={isLive} />
         </div>
       </div>
 

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEditMode } from "@/lib/edit-mode";
 import { useBuilder, type BuilderElement } from "@/lib/builder-store";
 import { useCms, type CmsVersion, SYSTEM_PAGES, systemPageHref } from "@/lib/cms-store";
+import { useTogglePublish, TOGGLE_PUBLISH_HINT } from "@/lib/use-toggle-publish";
 import { pageHasSections } from "@/lib/sections/registry";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { Button } from "@/components/ui/button";
@@ -35,7 +36,7 @@ interface Props {
   slug: string;
   isSystem: boolean;
   onReset: () => void;
-  onUnpublish: () => void;
+  onUnpublish: () => Promise<boolean>;
   onListVersions: () => Promise<CmsVersion[]>;
   onRestoreVersion: (elements: BuilderElement[]) => void;
 }
@@ -102,6 +103,7 @@ export function SectionToolbar({
   }, [liveElements, savedPage, canUndo]);
   const meta = STATUS_META[status];
   const isDirty = status === "unsaved";
+  const { toggling: statusToggling, toggle: togglePublish } = useTogglePublish(slug);
 
   const [pagesOpen, setPagesOpen] = useState(false);
   const [revertOpen, setRevertOpen] = useState(false);
@@ -160,8 +162,9 @@ export function SectionToolbar({
       destructive: true,
     });
     if (!ok) return;
-    onUnpublish();
-    toast.success("Unpublished — the original page is live again.");
+    const saved = await onUnpublish();
+    if (saved) toast.success("Unpublished — the original page is live again.");
+    else toast.error("Couldn't unpublish — check your connection and try again.");
   }
 
   async function handleRestore(v: CmsVersion) {
@@ -229,7 +232,14 @@ export function SectionToolbar({
         >
           <PanelLeft className="h-3.5 w-3.5" aria-hidden="true" />
         </button>
-        <div role="status" aria-live="polite" title={meta.label} className="flex items-center gap-1.5">
+        <button
+          type="button"
+          onDoubleClick={() => void togglePublish()}
+          disabled={statusToggling}
+          title={`${meta.label} — ${TOGGLE_PUBLISH_HINT}`}
+          aria-label={`Builder status: ${meta.label}. ${TOGGLE_PUBLISH_HINT}.`}
+          className="flex select-none items-center gap-1.5 rounded-md px-1.5 py-1 transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099] disabled:opacity-50"
+        >
           <span className="relative flex h-2 w-2" aria-hidden="true">
             {meta.ping && (
               <span className={`absolute inline-flex h-full w-full animate-ping rounded-full opacity-75 ${meta.dot}`} />
@@ -239,8 +249,10 @@ export function SectionToolbar({
           <span aria-hidden="true" className={`hidden text-[11px] font-semibold sm:inline ${meta.text}`}>
             {meta.label}
           </span>
-          <span className="sr-only">Builder status: {meta.label}</span>
-        </div>
+          <span role="status" aria-live="polite" className="sr-only">
+            Builder status: {meta.label}
+          </span>
+        </button>
         {/* Page switcher — jump between pages without leaving the builder */}
         <div className="relative ml-1">
           <button

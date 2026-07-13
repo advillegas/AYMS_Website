@@ -32,12 +32,10 @@ import {
   Ticket,
   Hourglass,
   Mail,
-  Wifi,
-  WifiOff,
   FileSignature,
 } from "lucide-react";
 import { format } from "date-fns";
-import { isFirebaseConfigured } from "@/lib/firebase";
+import { BackendBadge, BACKEND_LIVE } from "@/components/admin/backend-badge";
 import { useTrips } from "@/lib/use-trips";
 import { useNewsletterList } from "@/lib/use-newsletter";
 import { useAgreements } from "@/lib/use-agreements";
@@ -154,35 +152,19 @@ export default function AdminLeadsPage() {
             </h1>
             <p className="text-sm text-muted-foreground mt-1">
               Your revenue pipeline — trip reservations and newsletter
-              signups as they come in, live from Firestore.
+              signups as they come in, live from your backend.
             </p>
           </div>
-          <span
-            className={cn(
-              "inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-medium",
-              isFirebaseConfigured
-                ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-                : "bg-amber-500/10 text-amber-700 dark:text-amber-300",
-            )}
-          >
-            {isFirebaseConfigured ? (
-              <>
-                <Wifi className="h-3 w-3" /> Firebase live
-              </>
-            ) : (
-              <>
-                <WifiOff className="h-3 w-3" /> Local only
-              </>
-            )}
-          </span>
+          <BackendBadge />
         </div>
 
-        {!isFirebaseConfigured && (
+        {!BACKEND_LIVE && (
           <Card className="border-amber-500/30 bg-amber-500/5">
             <CardContent className="pt-4 text-sm text-amber-900 dark:text-amber-200">
-              Connect Firebase to see leads. Add the{" "}
-              <code className="text-xs">NEXT_PUBLIC_FIREBASE_*</code> env vars
-              so reservations and newsletter signups sync here in real time.
+              Connect a backend to see leads. Add the{" "}
+              <code className="text-xs">NEXT_PUBLIC_FIREBASE_*</code> (or
+              Supabase) env vars so reservations and newsletter signups sync
+              here in real time.
             </CardContent>
           </Card>
         )}
@@ -250,7 +232,7 @@ export default function AdminLeadsPage() {
             ) : resError ? (
               <p className="text-xs text-destructive py-4 text-center">
                 Couldn&apos;t load reservations. Check your connection and
-                Firestore permissions, then refresh — this isn&apos;t an empty
+                backend permissions, then refresh — this isn&apos;t an empty
                 pipeline.
               </p>
             ) : visibleReservations.length === 0 ? (

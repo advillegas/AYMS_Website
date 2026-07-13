@@ -63,20 +63,21 @@ function statusLabel(status: string | null, spotsLeft: number | null): string {
   }
 }
 
-/** Returns { liveTrips, liveEvents } markdown blocks, or empty strings. */
+/** Returns { liveTrips, liveEvents, extraKnowledge } blocks, or empty strings. */
 async function fetchLiveContext(): Promise<{
   liveTrips: string;
   liveEvents: string;
+  extraKnowledge: string;
 }> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !key) return { liveTrips: "", liveEvents: "" };
+  if (!url || !key) return { liveTrips: "", liveEvents: "", extraKnowledge: "" };
 
   try {
     const sb = createClient(url, key, { auth: { persistSession: false } });
     const todayIso = new Date().toISOString().slice(0, 10);
 
-    const [tripsRes, eventsRes] = await Promise.all([
+    const [tripsRes, eventsRes, chatbotRes] = await Promise.all([
       sb
         .from("trips")
         .select(
@@ -89,6 +90,8 @@ async function fetchLiveContext(): Promise<{
         .gte("date", todayIso)
         .order("date", { ascending: true })
         .limit(30),
+      // Owner-authored bot notes from Admin → Content → Chatbot.
+      sb.from("cms_config").select("value").eq("key", "chatbot").maybeSingle(),
     ]);
 
     let liveTrips = "";
@@ -131,10 +134,16 @@ async function fetchLiveContext(): Promise<{
       }
     }
 
-    return { liveTrips, liveEvents };
+    let extraKnowledge = "";
+    if (!chatbotRes.error && chatbotRes.data) {
+      const v = (chatbotRes.data as { value?: { extraKnowledge?: unknown } }).value;
+      if (v && typeof v.extraKnowledge === "string") extraKnowledge = v.extraKnowledge;
+    }
+
+    return { liveTrips, liveEvents, extraKnowledge };
   } catch (err) {
     console.warn("[chat] live context fetch failed", err);
-    return { liveTrips: "", liveEvents: "" };
+    return { liveTrips: "", liveEvents: "", extraKnowledge: "" };
   }
 }
 
@@ -210,12 +219,13 @@ export async function POST(req: Request) {
   const modelMessages = await convertToModelMessages(messages);
 
   // Ground the bot in current site data (published trips + upcoming
-  // calendar events). Falls back to the static baseline on any failure.
-  const { liveTrips, liveEvents } = await fetchLiveContext();
+  // calendar events + owner notes). Falls back to the static baseline on
+  // any failure.
+  const { liveTrips, liveEvents, extraKnowledge } = await fetchLiveContext();
 
   const result = streamText({
     model: anthropic("claude-haiku-4-5"),
-    system: buildSystemPrompt({ liveTrips, liveEvents }),
+    system: buildSystemPrompt({ liveTrips, liveEvents, extraKnowledge }),
     messages: modelMessages,
     // Lower temperature → tighter adherence to the scope-lock + anti-
     // injection rules (less creative drift on adversarial prompts).

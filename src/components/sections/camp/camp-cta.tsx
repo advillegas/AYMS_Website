@@ -3,7 +3,8 @@
 import { motion, useReducedMotion } from "framer-motion";
 import { EditableText } from "@/components/inline/editable-text";
 import { EditableImage } from "@/components/inline/editable-image";
-import { CheckoutButtons, EASE } from "./shared";
+import { CampCtaButtons } from "./camp-cta-buttons";
+import { EASE } from "./shared";
 
 const CTA_PHOTOS = ["/camp/cta-1.png", "/camp/cta-2.png", "/camp/cta-3.png", "/camp/cta-4.png"];
 
@@ -28,7 +29,7 @@ export function CampCta() {
           <EditableText id="camp.cta.subtitle" as="p" multiline className="mx-auto mt-4 max-w-xl text-lead text-ink-soft">
             Spots are limited and these weekends fill fast. Lock in your bunk and we&apos;ll handle the rest.
           </EditableText>
-          <CheckoutButtons className="mt-8 items-center justify-center" />
+          <CampCtaButtons className="mt-8 items-center justify-center" />
         </motion.div>
         <motion.div {...reveal} className="mt-14 grid grid-cols-2 gap-4 sm:grid-cols-4">
           {CTA_PHOTOS.map((src, i) => (

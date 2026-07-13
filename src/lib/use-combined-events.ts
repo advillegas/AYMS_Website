@@ -17,8 +17,8 @@
  */
 
 import { useMemo } from "react";
-import { useEvents } from "./use-events";
-import { useMeetups } from "./use-meetups";
+import { useEvents, type FirestoreEvent } from "./use-events";
+import { useMeetups, type MeetupInput } from "./use-meetups";
 import type { CalendarEvent } from "./events-data";
 
 export interface CombinedEventsResult {
@@ -38,11 +38,44 @@ export interface CombinedEventsResult {
    * sync can't re-create them. Admin-only by security rules.
    */
   deleteItem: (id: string) => Promise<boolean>;
+  /**
+   * Edit any item in the merged feed, routing to the correct backend.
+   * For meetups only the fields that exist on a meetup are applied
+   * (title/description/date/startTime/location/capacity/link). Editing a
+   * feed-synced event detaches it + tombstones its UID (see useEvents).
+   */
+  updateItem: (id: string, patch: Partial<FirestoreEvent>) => Promise<boolean>;
+}
+
+/** Project an event-shaped patch onto the fields a meetup actually has. */
+function toMeetupPatch(patch: Partial<FirestoreEvent>): Partial<MeetupInput> {
+  const mu: Partial<MeetupInput> = {};
+  if (patch.title !== undefined) mu.title = patch.title;
+  if (patch.description !== undefined) mu.description = patch.description;
+  if (patch.date !== undefined) mu.date = patch.date;
+  if (patch.location !== undefined) mu.location = patch.location;
+  // Clearable optionals: forward the key even when the value is undefined
+  // so blanking the field in the edit dialog unsets it.
+  if ("startTime" in patch) mu.startTime = patch.startTime;
+  if ("capacity" in patch) mu.capacity = patch.capacity;
+  if ("link" in patch) mu.link = patch.link;
+  if ("linkLabel" in patch) mu.linkLabel = patch.linkLabel;
+  return mu;
 }
 
 export function useCombinedEvents(): CombinedEventsResult {
-  const { events: rawEvents, loading: eventsLoading, deleteEvent } = useEvents();
-  const { meetups, loading: meetupsLoading, deleteMeetup } = useMeetups();
+  const {
+    events: rawEvents,
+    loading: eventsLoading,
+    deleteEvent,
+    updateEvent,
+  } = useEvents();
+  const {
+    meetups,
+    loading: meetupsLoading,
+    deleteMeetup,
+    updateMeetup,
+  } = useMeetups();
 
   const meetupIds = useMemo(
     () => new Set(meetups.map((m) => m.id)),
@@ -87,5 +120,9 @@ export function useCombinedEvents(): CombinedEventsResult {
     isSynced: (id: string) => syncedIds.has(id),
     deleteItem: (id: string) =>
       meetupIds.has(id) ? deleteMeetup(id) : deleteEvent(id),
+    updateItem: (id: string, patch: Partial<FirestoreEvent>) =>
+      meetupIds.has(id)
+        ? updateMeetup(id, toMeetupPatch(patch))
+        : updateEvent(id, patch),
   };
 }

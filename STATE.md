@@ -18,16 +18,22 @@ match. Consequences:
 - `supabase/events-suppression.sql` now REQUIRED (events agent consolidating).
 - All new features must implement the Supabase branch as primary.
 
-## In flight (run 19)
+## Run 19 results (both subagents landed)
 
-- Dashboard/CRM + activity tracking subagent (relaunched post-billing,
-  interrupted + corrected to Supabase-primary; `activity_events` table +
-  `supabase/activity-events.sql`, rebuilt analytics w/ recharts, per-member
-  activity, concierge admin UI).
-- Events subagent: junk rows `qwerty`/`qwert` live in Supabase `events` table
-  (NOT in code — grep clean). Probe live DB, root-cause un-deletable events
-  under Supabase path, purge junk rows, map-view edit/delete parity, apply/
-  consolidate suppression SQL.
+- Dashboard/CRM subagent DONE: activity tracking pipeline (page views + 9
+  action types, Supabase-primary, fire-and-forget), analytics rebuilt on
+  recharts (8 KPIs, 6 chart blocks, live feed), per-member activity pane,
+  concierge admin UI w/ status triage. Pushed as 50810b6. OWNER ACTION:
+  run `supabase/activity-events.sql` in the SQL editor.
+- Events subagent DONE: junk rows were in the Supabase **meetups** table
+  (merged into /events feed). qwerty + qwert deleted by agent; trailing
+  "qwerty." purged by main agent (0 qwert* remaining, verified live).
+  Root causes fixed: RLS-filtered deletes reported fake success (now
+  row-count-verified), unapplied suppression SQL let the 15-min cron
+  resurrect synced deletes (now cms_config tombstone fallback works even
+  before SQL applied), map view had no edit/delete (now full parity),
+  meetups now admin-editable. OWNER ACTION: run
+  `supabase/events-suppression.sql` when convenient.
 
 ## Mission
 
@@ -78,11 +84,11 @@ Patch the holes in admin features and optimize the admin experience:
 - [x] **Camp page** — DONE (fix subagent): editable CTAs default "Join the
       waitlist" → leads pipeline; sponsor banner section; zero-dep canvas
       cropper in all admin image uploads. Needs human interactive QA.
-- [ ] **Admin dashboard/CRM + activity tracking** — IN FLIGHT (run 19
-      subagent, billing unblocked, Supabase-primary).
-- [ ] **Events: admin must edit/remove ALL events; junk rows qwerty/qwert
-      un-deletable** — IN FLIGHT (run 19 subagent; rows live in Supabase
-      `events` data, not code).
+- [x] **Admin dashboard/CRM + activity tracking** — DONE (run 19 subagent,
+      pushed 50810b6; owner must apply supabase/activity-events.sql).
+- [x] **Events: admin can edit/remove ALL events; junk qwert* rows purged
+      from live DB** — DONE (run 19 subagent + main agent purge; owner
+      should apply supabase/events-suppression.sql).
 - [ ] ~~Deployed Firestore rules stale~~ — DEPRIORITIZED: Firebase is legacy
       now (Supabase live). Only matters if flag ever flips back.
 - [ ] Apply `supabase/events-suppression.sql` — NOW REQUIRED (Supabase live);

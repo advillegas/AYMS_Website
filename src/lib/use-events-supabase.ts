@@ -71,9 +71,54 @@ function rowToEvent(r: EventRow): FirestoreEvent {
 }
 
 /**
- * Tombstone a feed UID on its sync config so /api/calendar/sync never
- * re-creates the event. Best-effort read-modify-write; requires the
- * `suppressed_uids` column (supabase/events-suppression.sql).
+ * cms_config key holding fallback sync tombstones while the
+ * calendar_sync_configs.suppressed_uids column hasn't been applied yet
+ * (supabase/events-suppression.sql). Shape: { [configId]: string[] }.
+ * The sync route honors BOTH sources, so deletes of synced events stick
+ * either way.
+ */
+export const SUPPRESSED_UIDS_CONFIG_KEY = "events.suppressedUids";
+
+/** Best-effort fallback tombstone in cms_config (writable by any
+ * authenticated editor, readable by the service-role sync route). */
+async function suppressViaCmsConfig(
+  sourceCalendarId: string,
+  sourceUid: string,
+): Promise<void> {
+  const sb = getSupabase();
+  if (!sb) return;
+  const { data } = await sb
+    .from("cms_config")
+    .select("value")
+    .eq("key", SUPPRESSED_UIDS_CONFIG_KEY)
+    .maybeSingle();
+  const value =
+    data && typeof (data as { value?: unknown }).value === "object" &&
+    (data as { value: unknown }).value !== null
+      ? ({ ...(data as { value: Record<string, unknown> }).value })
+      : {};
+  const current = Array.isArray(value[sourceCalendarId])
+    ? (value[sourceCalendarId] as string[])
+    : [];
+  if (current.includes(sourceUid)) return;
+  value[sourceCalendarId] = [...current, sourceUid];
+  const { error } = await sb.from("cms_config").upsert(
+    {
+      key: SUPPRESSED_UIDS_CONFIG_KEY,
+      value,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "key" },
+  );
+  if (error) throw new Error(error.message);
+}
+
+/**
+ * Tombstone a feed UID so /api/calendar/sync never re-creates the event.
+ * Primary store: `calendar_sync_configs.suppressed_uids`
+ * (supabase/events-suppression.sql). Until that column exists on the live
+ * database, fall back to a cms_config doc — the sync route reads both, so
+ * deleting a synced event sticks even before the SQL is applied.
  */
 async function suppressSyncUidSupabase(
   sourceCalendarId: string,
@@ -101,7 +146,17 @@ async function suppressSyncUidSupabase(
       .eq("id", sourceCalendarId);
     if (upErr) throw new Error(upErr.message);
   } catch (err) {
-    console.warn("[events:sb] could not tombstone synced uid", err);
+    // Column missing (42703) or write rejected — degrade to the fallback
+    // store rather than letting the cron resurrect the event.
+    try {
+      await suppressViaCmsConfig(sourceCalendarId, sourceUid);
+    } catch (fallbackErr) {
+      console.warn(
+        "[events:sb] could not tombstone synced uid",
+        err,
+        fallbackErr,
+      );
+    }
   }
 }
 
@@ -221,9 +276,21 @@ export function useEventsSupabase(): UseEventsResult {
         /* detach is best-effort; the update below still applies */
       }
 
-      const { error } = await sb.from("events").update(row).eq("id", id);
+      // `.select("id")` makes RLS rejections observable: an update the
+      // policy filters out affects 0 rows but reports NO error, which used
+      // to read as success — the edit "saved" and then reverted on the next
+      // poll. Requiring a returned row turns that into a real failure.
+      const { data, error } = await sb
+        .from("events")
+        .update(row)
+        .eq("id", id)
+        .select("id");
       if (error) {
         console.error("[events:sb] update failed", error.message);
+        return false;
+      }
+      if (!data || data.length === 0) {
+        console.error("[events:sb] update matched no rows (RLS or missing id)", id);
         return false;
       }
       return true;
@@ -254,9 +321,20 @@ export function useEventsSupabase(): UseEventsResult {
     } catch {
       /* suppression is best-effort; deletion still proceeds */
     }
-    const { error } = await sb.from("events").delete().eq("id", id);
+    // `.select("id")` so an RLS-filtered delete (0 rows, no error) reads as
+    // the failure it is — otherwise the admin gets a success toast while the
+    // event quietly survives and "comes back" on the next refresh.
+    const { data, error } = await sb
+      .from("events")
+      .delete()
+      .eq("id", id)
+      .select("id");
     if (error) {
       console.error("[events:sb] delete failed", error.message);
+      return false;
+    }
+    if (!data || data.length === 0) {
+      console.error("[events:sb] delete matched no rows (RLS or missing id)", id);
       return false;
     }
     return true;

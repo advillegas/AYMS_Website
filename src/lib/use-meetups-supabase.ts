@@ -136,16 +136,19 @@ export function useMeetupsSupabase(): UseMeetupsResult {
       const sb = getSupabase();
       if (!sb) return false;
       await ensureSupabaseSession(sb);
+      // Presence-based (`in`) checks so an explicit `undefined` CLEARS an
+      // optional field (start time, capacity, link) — the admin edit dialog
+      // sends blanked fields as undefined and expects them to unset.
       const row: Record<string, unknown> = {};
       if (patch.title !== undefined) row.title = patch.title.trim();
       if (patch.description !== undefined)
         row.description = patch.description.trim();
       if (patch.date !== undefined) row.date = patch.date;
-      if (patch.startTime !== undefined)
+      if ("startTime" in patch)
         row.start_time = patch.startTime?.trim() || null;
-      if (patch.capacity !== undefined) row.capacity = patch.capacity ?? null;
-      if (patch.link !== undefined) row.link = patch.link?.trim() || null;
-      if (patch.linkLabel !== undefined)
+      if ("capacity" in patch) row.capacity = patch.capacity ?? null;
+      if ("link" in patch) row.link = patch.link?.trim() || null;
+      if ("linkLabel" in patch)
         row.link_label = patch.linkLabel?.trim() || null;
       // Re-geocode when the location changes.
       if (patch.location !== undefined) {
@@ -156,9 +159,20 @@ export function useMeetupsSupabase(): UseMeetupsResult {
         row.lat = geo?.lat ?? null;
         row.lng = geo?.lng ?? null;
       }
-      const { error } = await sb.from("meetups").update(row).eq("id", id);
+      // `.select("id")` makes RLS rejections observable: a filtered update
+      // affects 0 rows with NO error, which used to read as success while
+      // the change silently never persisted.
+      const { data, error } = await sb
+        .from("meetups")
+        .update(row)
+        .eq("id", id)
+        .select("id");
       if (error) {
         console.error("[meetups:sb] update failed", error.message);
+        return false;
+      }
+      if (!data || data.length === 0) {
+        console.error("[meetups:sb] update matched no rows (RLS or missing id)", id);
         return false;
       }
       return true;
@@ -170,9 +184,20 @@ export function useMeetupsSupabase(): UseMeetupsResult {
     const sb = getSupabase();
     if (!sb) return false;
     await ensureSupabaseSession(sb);
-    const { error } = await sb.from("meetups").delete().eq("id", id);
+    // `.select("id")` so an RLS-filtered delete (0 rows, no error) reads as
+    // the failure it is — without it the admin saw "Deleted" while the row
+    // survived and reappeared on the next poll.
+    const { data, error } = await sb
+      .from("meetups")
+      .delete()
+      .eq("id", id)
+      .select("id");
     if (error) {
       console.error("[meetups:sb] delete failed", error.message);
+      return false;
+    }
+    if (!data || data.length === 0) {
+      console.error("[meetups:sb] delete matched no rows (RLS or missing id)", id);
       return false;
     }
     return true;

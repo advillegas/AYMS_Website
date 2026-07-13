@@ -20,7 +20,7 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { format, parseISO, isValid } from "date-fns";
-import { Navigation } from "lucide-react";
+import { Navigation, Pencil, Trash2 } from "lucide-react";
 import { haversineDistance, type GeoCoord } from "@/lib/geo";
 import type { CalendarEvent } from "@/lib/events-data";
 
@@ -102,6 +102,14 @@ export interface EventsMapProps {
   focus?: GeoCoord | null;
   onSelect: (e: CalendarEvent) => void;
   heightClass?: string;
+  /**
+   * Admin in-place edit mode: when true (and the handlers are provided)
+   * every pin popup gains Edit / Delete buttons, giving the map view the
+   * same management affordances as the list view.
+   */
+  editing?: boolean;
+  onEdit?: (e: CalendarEvent) => void;
+  onDelete?: (e: CalendarEvent) => void;
 }
 
 export default function EventsMap({
@@ -110,6 +118,9 @@ export default function EventsMap({
   focus,
   onSelect,
   heightClass = "h-[460px] sm:h-[560px]",
+  editing = false,
+  onEdit,
+  onDelete,
 }: EventsMapProps) {
   const mappable = useMemo(
     () =>
@@ -187,6 +198,30 @@ export default function EventsMap({
                   >
                     View details &rarr;
                   </button>
+                  {editing && (onEdit || onDelete) && (
+                    <div className="mt-1.5 flex gap-1.5">
+                      {onEdit && (
+                        <button
+                          type="button"
+                          onClick={() => onEdit(e)}
+                          aria-label={`Edit ${e.title}`}
+                          className="inline-flex flex-1 items-center justify-center gap-1 rounded-full border border-[#221019]/20 bg-white px-2 py-1 text-[11px] font-semibold text-[#221019] transition hover:bg-[#FF0099]/5"
+                        >
+                          <Pencil className="h-3 w-3" aria-hidden="true" /> Edit
+                        </button>
+                      )}
+                      {onDelete && (
+                        <button
+                          type="button"
+                          onClick={() => onDelete(e)}
+                          aria-label={`Delete ${e.title}`}
+                          className="inline-flex flex-1 items-center justify-center gap-1 rounded-full bg-red-600 px-2 py-1 text-[11px] font-semibold text-white transition hover:brightness-110"
+                        >
+                          <Trash2 className="h-3 w-3" aria-hidden="true" /> Delete
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               </Popup>
             </Marker>

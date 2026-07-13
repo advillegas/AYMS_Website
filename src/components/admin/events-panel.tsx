@@ -36,7 +36,7 @@ import {
   type FirestoreEvent,
   type CalendarSyncConfig,
 } from "@/lib/use-events";
-import { useMeetups } from "@/lib/use-meetups";
+import { useMeetups, type Meetup } from "@/lib/use-meetups";
 import { geocodeLocation } from "@/lib/geo";
 import { useFormDraft } from "@/lib/use-form-draft";
 import { DraftBanner, DraftSavedHint } from "@/components/admin/draft-banner";
@@ -71,6 +71,25 @@ function isPublished(e: FirestoreEvent): boolean {
   return e.published !== false;
 }
 
+/** Map a member meetup into the dialog's event shape for editing. */
+function meetupToDialogEvent(m: Meetup): FirestoreEvent {
+  return {
+    id: m.id,
+    title: m.title,
+    description: m.description,
+    date: m.date,
+    startTime: m.startTime,
+    type: "meetup",
+    location: m.location,
+    capacity: m.capacity,
+    link: m.link,
+    linkLabel: m.linkLabel,
+    lat: m.lat ?? undefined,
+    lng: m.lng ?? undefined,
+    hostId: m.hostId,
+  };
+}
+
 /**
  * Embeddable Events manager for the unified /admin dashboard — the editor
  * the admin lands in from "/events → Edit this page". EVERY event that can
@@ -88,10 +107,12 @@ export function EventsPanel() {
   const { events, loading, addEvent, updateEvent, deleteEvent } = useEvents();
   const { configs, loading: configsLoading, updateConfig, deleteConfig } =
     useSyncConfigs();
-  const { meetups, loading: meetupsLoading, deleteMeetup } = useMeetups();
+  const { meetups, loading: meetupsLoading, updateMeetup, deleteMeetup } =
+    useMeetups();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<FirestoreEvent | null>(null);
+  const [editingMeetup, setEditingMeetup] = useState<Meetup | null>(null);
   const [syncing, setSyncing] = useState<string | null>(null);
 
   const manualEvents = useMemo(
@@ -210,7 +231,26 @@ export function EventsPanel() {
   }
 
   async function handleSave(data: Partial<FirestoreEvent>) {
-    if (editingEvent) {
+    if (editingMeetup) {
+      // Member meetups live in their own table — apply only the fields a
+      // meetup has (the dialog hides the rest in meetup mode).
+      const ok = await updateMeetup(editingMeetup.id, {
+        title: data.title,
+        description: data.description,
+        date: data.date,
+        startTime: data.startTime,
+        location: data.location,
+        capacity: data.capacity,
+        link: data.link,
+        linkLabel: data.linkLabel,
+      });
+      if (ok) {
+        toast.success("Meetup updated.");
+        setDialogOpen(false);
+      } else {
+        toast.error("Couldn't update the meetup.");
+      }
+    } else if (editingEvent) {
       const ok = await updateEvent(editingEvent.id, data);
       if (ok) {
         toast.success("Event updated.");
@@ -268,6 +308,7 @@ export function EventsPanel() {
           <Button
             onClick={() => {
               setEditingEvent(null);
+              setEditingMeetup(null);
               setDialogOpen(true);
             }}
             className="h-8 gap-1.5 bg-gradient-to-r from-[#FF0099] to-[#B51760] text-xs text-white hover:brightness-110"
@@ -335,6 +376,7 @@ export function EventsPanel() {
                         className={actionBtn}
                         onClick={() => {
                           setEditingEvent(ev);
+                          setEditingMeetup(null);
                           setDialogOpen(true);
                         }}
                         aria-label="Edit event"
@@ -473,6 +515,7 @@ export function EventsPanel() {
                         className={actionBtn}
                         onClick={() => {
                           setEditingEvent(ev);
+                          setEditingMeetup(null);
                           setDialogOpen(true);
                         }}
                         aria-label="Edit event (detaches it from the feed)"
@@ -522,15 +565,30 @@ export function EventsPanel() {
                     <span className="max-w-28 truncate rounded-full border border-white/15 bg-white/5 px-1.5 py-0.5 text-[9px] font-medium text-white/40">
                       {m.hostName}
                     </span>
-                    <button
-                      type="button"
-                      className="shrink-0 rounded-md p-1.5 text-white/40 transition-colors hover:bg-red-500/10 hover:text-red-400"
-                      onClick={() => handleDeleteMeetup(m.id, m.title)}
-                      aria-label="Remove meetup"
-                      title="Remove this member meetup"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
+                    <div className="flex shrink-0 items-center gap-0.5">
+                      <button
+                        type="button"
+                        className={actionBtn}
+                        onClick={() => {
+                          setEditingMeetup(m);
+                          setEditingEvent(null);
+                          setDialogOpen(true);
+                        }}
+                        aria-label="Edit meetup"
+                        title="Edit this member meetup"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded-md p-1.5 text-white/40 transition-colors hover:bg-red-500/10 hover:text-red-400"
+                        onClick={() => handleDeleteMeetup(m.id, m.title)}
+                        aria-label="Remove meetup"
+                        title="Remove this member meetup"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -542,7 +600,8 @@ export function EventsPanel() {
       <EventDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
-        event={editingEvent}
+        event={editingMeetup ? meetupToDialogEvent(editingMeetup) : editingEvent}
+        meetup={!!editingMeetup}
         onSave={handleSave}
       />
     </div>
@@ -554,22 +613,27 @@ export function EventsPanel() {
 /* ------------------------------------------------------------------ */
 
 /**
- * Create / edit dialog for a community event. Mirrors the EventDialog on
- * the community calendar page (which isn't exported). Controlled fields
- * are (re)initialized whenever the dialog opens or the target event
- * changes (keyed on `[open, event?.id]`) so typing is never clobbered
- * mid-edit.
+ * Create / edit dialog for a community event. Exported so /events can
+ * reuse it for in-place editing (list, map and detail views). Controlled
+ * fields are (re)initialized whenever the dialog opens or the target
+ * event changes (keyed on `[open, event?.id]`) so typing is never
+ * clobbered mid-edit. With `meetup` set the fields that don't exist on a
+ * member meetup (end date/time, type, publish gate) are hidden and the
+ * save payload simply omits them.
  */
-function EventDialog({
+export function EventDialog({
   open,
   onOpenChange,
   event,
   onSave,
+  meetup = false,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   event: FirestoreEvent | null;
   onSave: (data: Partial<FirestoreEvent>) => Promise<void>;
+  /** Editing a member-hosted meetup (fewer fields, different copy). */
+  meetup?: boolean;
 }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -682,11 +746,15 @@ function EventDialog({
     >
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{isEdit ? "Edit Event" : "Create Event"}</DialogTitle>
+          <DialogTitle>
+            {meetup ? "Edit Meetup" : isEdit ? "Edit Event" : "Create Event"}
+          </DialogTitle>
           <DialogDescription>
-            {isEdit
-              ? "Update the event details."
-              : "Add a new community event to the calendar."}
+            {meetup
+              ? "Update this member-hosted meetup for everyone."
+              : isEdit
+                ? "Update the event details."
+                : "Add a new community event to the calendar."}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-2">
@@ -724,49 +792,64 @@ function EventDialog({
                 onChange={(e) => setDate(e.target.value)}
               />
             </div>
-            <div className="grid gap-1.5">
-              <Label>End date (optional)</Label>
-              <Input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-              />
-            </div>
+            {meetup ? (
+              <div className="grid gap-1.5">
+                <Label>Start time (optional)</Label>
+                <Input
+                  type="time"
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                />
+              </div>
+            ) : (
+              <div className="grid gap-1.5">
+                <Label>End date (optional)</Label>
+                <Input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                />
+              </div>
+            )}
           </div>
+          {!meetup && (
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-1.5">
+                <Label>Start time (optional)</Label>
+                <Input
+                  type="time"
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label>End time (optional)</Label>
+                <Input
+                  type="time"
+                  value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)}
+                />
+              </div>
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-3">
-            <div className="grid gap-1.5">
-              <Label>Start time (optional)</Label>
-              <Input
-                type="time"
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-              />
-            </div>
-            <div className="grid gap-1.5">
-              <Label>End time (optional)</Label>
-              <Input
-                type="time"
-                value={endTime}
-                onChange={(e) => setEndTime(e.target.value)}
-              />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="grid gap-1.5">
-              <Label>Type</Label>
-              <select
-                value={type}
-                onChange={(e) => setType(e.target.value)}
-                className="h-9 rounded-md border border-input bg-background px-3 text-sm"
-              >
-                {EVENT_TYPES.map((t) => (
-                  <option key={t.value} value={t.value}>
-                    {t.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="grid gap-1.5">
+            {!meetup && (
+              <div className="grid gap-1.5">
+                <Label>Type</Label>
+                <select
+                  value={type}
+                  onChange={(e) => setType(e.target.value)}
+                  className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+                >
+                  {EVENT_TYPES.map((t) => (
+                    <option key={t.value} value={t.value}>
+                      {t.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+            <div className={meetup ? "col-span-2 grid gap-1.5" : "grid gap-1.5"}>
               <Label>Location</Label>
               <Input
                 value={location}
@@ -800,28 +883,30 @@ function EventDialog({
               placeholder="e.g. Buy tickets, Pay deposit, RSVP"
             />
           </div>
-          <div className="grid gap-1.5">
-            <Label>Visibility</Label>
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                size="sm"
-                variant={published ? "default" : "outline"}
-                onClick={() => setPublished((p) => !p)}
-                className={published ? "bg-primary hover:bg-magenta" : undefined}
-              >
-                {published ? (
-                  <Globe className="mr-1 h-3.5 w-3.5" />
-                ) : (
-                  <Pencil className="mr-1 h-3.5 w-3.5" />
-                )}
-                {published ? "Published" : "Draft"}
-              </Button>
+          {!meetup && (
+            <div className="grid gap-1.5">
+              <Label>Visibility</Label>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={published ? "default" : "outline"}
+                  onClick={() => setPublished((p) => !p)}
+                  className={published ? "bg-primary hover:bg-magenta" : undefined}
+                >
+                  {published ? (
+                    <Globe className="mr-1 h-3.5 w-3.5" />
+                  ) : (
+                    <Pencil className="mr-1 h-3.5 w-3.5" />
+                  )}
+                  {published ? "Published" : "Draft"}
+                </Button>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Drafts are hidden from the public site.
+              </p>
             </div>
-            <p className="text-[11px] text-muted-foreground">
-              Drafts are hidden from the public site.
-            </p>
-          </div>
+          )}
           <div className="grid gap-1.5">
             <Label>Capacity (optional)</Label>
             <Input

@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { useSupabaseBackend } from "@/lib/supabase";
 import { getServiceClient } from "@/lib/supabase-server";
 
@@ -339,6 +340,38 @@ interface SyncResult {
   error?: string;
 }
 
+/**
+ * cms_config key holding FALLBACK tombstones written by the client while
+ * the calendar_sync_configs.suppressed_uids column is missing (i.e. until
+ * supabase/events-suppression.sql has been applied). Shape:
+ * { [configId]: string[] }. Kept in sync with use-events-supabase.ts.
+ */
+const SUPPRESSED_UIDS_CONFIG_KEY = "events.suppressedUids";
+
+async function loadFallbackSuppressed(
+  svc: SupabaseClient,
+): Promise<Record<string, string[]>> {
+  try {
+    const { data } = await svc
+      .from("cms_config")
+      .select("value")
+      .eq("key", SUPPRESSED_UIDS_CONFIG_KEY)
+      .maybeSingle();
+    const value = (data as { value?: unknown } | null)?.value;
+    if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+    const out: Record<string, string[]> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      if (Array.isArray(v)) {
+        out[k] = v.filter((s): s is string => typeof s === "string");
+      }
+    }
+    return out;
+  } catch {
+    // cms_config missing or unreadable — the primary column still applies.
+    return {};
+  }
+}
+
 async function syncViaSupabase(): Promise<NextResponse> {
   const svc = getServiceClient();
   if (!svc) {
@@ -363,6 +396,11 @@ async function syncViaSupabase(): Promise<NextResponse> {
       return NextResponse.json({ synced: 0, message: "No feeds configured" });
     }
 
+    // Fallback tombstones (cms_config) — merged with each config's own
+    // suppressed_uids so admin deletes stick even before the suppression
+    // SQL has been applied to this database.
+    const fallbackSuppressed = await loadFallbackSuppressed(svc);
+
     const results: SyncResult[] = [];
 
     for (const config of configs) {
@@ -370,9 +408,10 @@ async function syncViaSupabase(): Promise<NextResponse> {
       const configName = config.name ?? "";
       const icalUrl = config.ical_url ?? "";
       // Feed UIDs the admin deleted or detached — never re-create them.
-      const suppressed = new Set(
-        Array.isArray(config.suppressed_uids) ? config.suppressed_uids : [],
-      );
+      const suppressed = new Set([
+        ...(Array.isArray(config.suppressed_uids) ? config.suppressed_uids : []),
+        ...(fallbackSuppressed[configId] ?? []),
+      ]);
 
       if (!config.enabled) {
         console.debug("[calendar-sync] skipping disabled:", configName);

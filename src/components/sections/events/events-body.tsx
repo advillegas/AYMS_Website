@@ -14,12 +14,15 @@ import {
   Navigation,
   Loader2,
   ExternalLink,
+  Pencil,
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useCombinedEvents } from "@/lib/use-combined-events";
 import { useInlineEdit } from "@/lib/use-inline-edit";
 import { useConfirm } from "@/components/ui/confirm-dialog";
+import { EventDialog } from "@/components/admin/events-panel";
+import type { FirestoreEvent } from "@/lib/use-events";
 import type { CalendarEvent } from "@/lib/events-data";
 import type { GeoCoord } from "@/lib/geo";
 import { ensureHttp } from "@/lib/url";
@@ -95,15 +98,18 @@ const FILTERS = ["All", "Social", "Meetup", "Trip", "Camp"] as const;
  */
 export function EventsBody() {
   // Unified feed: published admin events + member meetups in one category.
-  const { events, loading, isMeetup, isSynced, deleteItem } =
+  const { events, loading, isMeetup, isSynced, deleteItem, updateItem } =
     useCombinedEvents();
-  // In-place edit mode (admin-only toggle) adds a delete control + source
-  // badge to every event card, so "random" events can be removed right
-  // here on /events, whatever backend table they came from.
+  // In-place edit mode (admin-only toggle) adds edit + delete controls and
+  // a source badge to every event card — list, map popups and the detail
+  // dialog alike — so ANY event can be changed or removed right here on
+  // /events, whatever backend table it came from.
   const editing = useInlineEdit((s) => s.enabled);
   const confirmDialog = useConfirm();
   const [filter, setFilter] = useState<string>("All");
   const [detail, setDetail] = useState<CalendarEvent | null>(null);
+  const [editTarget, setEditTarget] = useState<CalendarEvent | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
   const [view, setView] = useState<"list" | "map">("list");
   // `origin` drives distance labels + the blue "you" dot; `focus` recenters
   // the map (a fresh object each time so re-selecting the same place flies).
@@ -147,8 +153,34 @@ export function EventsBody() {
     });
     if (!ok) return;
     const done = await deleteItem(ev.id);
-    if (done) toast.success("Deleted — it won't come back.");
-    else toast.error("Couldn't delete. Check you're signed in as admin.");
+    if (done) {
+      toast.success("Deleted — it won't come back.");
+      setDetail((d) => (d?.id === ev.id ? null : d));
+    } else {
+      toast.error("Couldn't delete. Check you're signed in as admin.");
+    }
+  }
+
+  function handleAdminEdit(ev: CalendarEvent) {
+    setDetail(null);
+    setEditTarget(ev);
+    setEditOpen(true);
+  }
+
+  async function handleEditSave(data: Partial<FirestoreEvent>) {
+    if (!editTarget) return;
+    const synced = isSynced(editTarget.id);
+    const ok = await updateItem(editTarget.id, data);
+    if (ok) {
+      toast.success(
+        synced
+          ? "Event updated — it's detached from the calendar feed so your changes stick."
+          : "Event updated for everyone.",
+      );
+      setEditOpen(false);
+    } else {
+      toast.error("Couldn't save. Check you're signed in as admin.");
+    }
   }
 
   function handleLocate() {
@@ -266,6 +298,9 @@ export function EventsBody() {
               origin={origin}
               focus={focus}
               onSelect={(e) => setDetail(e)}
+              editing={editing}
+              onEdit={handleAdminEdit}
+              onDelete={(e) => void handleAdminDelete(e)}
             />
 
             <p className="mt-3 text-center text-xs text-ink-soft">
@@ -359,7 +394,7 @@ export function EventsBody() {
                     transition={{ delay: reduceMotion ? 0 : i * 0.06, ease: [0.16, 1, 0.3, 1] }}
                     className="relative mb-4"
                   >
-                    {/* Admin edit-mode controls: source badge + delete. */}
+                    {/* Admin edit-mode controls: source badge + edit + delete. */}
                     {editing && (
                       <div className="absolute -right-2 -top-2 z-10 flex items-center gap-1.5">
                         {isSynced(ev.id) && (
@@ -372,6 +407,22 @@ export function EventsBody() {
                             Member meetup
                           </span>
                         )}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAdminEdit(ev);
+                          }}
+                          aria-label={`Edit ${ev.title}`}
+                          title={
+                            isSynced(ev.id)
+                              ? "Edit — this detaches the event from the calendar feed so your changes stick"
+                              : "Edit this event for everyone"
+                          }
+                          className="flex h-7 w-7 items-center justify-center rounded-full bg-[#221019] text-white shadow-lg transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#221019] focus-visible:ring-offset-1"
+                        >
+                          <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+                        </button>
                         <button
                           type="button"
                           onClick={(e) => {
@@ -524,10 +575,45 @@ export function EventsBody() {
                   />
                 </>
               )}
+              {/* Admin edit-mode controls — reachable from the map popups'
+                  "View details" too, so the map view manages events without
+                  leaving the page. */}
+              {editing && (
+                <>
+                  <Separator className="border-rosa/20" />
+                  <div className="flex items-center justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleAdminEdit(detail)}
+                      className="inline-flex h-9 items-center gap-1.5 rounded-full border border-[#221019]/15 px-4 text-sm font-semibold text-ink transition-colors hover:bg-[#FF0099]/5 hover:text-[#B51760]"
+                    >
+                      <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleAdminDelete(detail)}
+                      className="inline-flex h-9 items-center gap-1.5 rounded-full bg-red-600 px-4 text-sm font-semibold text-white transition hover:brightness-110"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                      Delete
+                    </button>
+                  </div>
+                </>
+              )}
             </>
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Shared admin edit dialog (same editor as the /admin Events panel). */}
+      <EventDialog
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        event={editTarget}
+        meetup={editTarget ? isMeetup(editTarget.id) : false}
+        onSave={handleEditSave}
+      />
     </>
   );
 }

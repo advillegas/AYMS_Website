@@ -322,6 +322,51 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    /* ------------------------- activity events -------------------------- */
+    // Product-analytics event stream written fire-and-forget by the client
+    // tracker (src/lib/activity-tracker.ts) — page views + key actions.
+    // LEGACY/SECONDARY path: production runs the Supabase mirror
+    // (supabase/activity-events.sql); this block keeps the flag-off path
+    // working. World create (anonymous page views) with strict field
+    // validation; the stream is admin-read-only. Events are immutable —
+    // delete is the admin retention/pruning hook (no cron wired yet).
+    match /activityEvents/{eventId} {
+      allow create: if request.resource.data.keys().hasOnly(
+                        ['type', 'path', 'userId', 'sessionId', 'tsISO', 'meta', 'createdAt'])
+                    && request.resource.data.type is string
+                    && request.resource.data.type.size() > 0
+                    && request.resource.data.type.size() <= 40
+                    && request.resource.data.path is string
+                    && request.resource.data.path.size() <= 500
+                    && (request.resource.data.userId == null
+                        || (request.resource.data.userId is string
+                            && request.resource.data.userId.size() <= 128))
+                    && request.resource.data.sessionId is string
+                    && request.resource.data.sessionId.size() <= 80
+                    && request.resource.data.tsISO is string
+                    && request.resource.data.tsISO.size() <= 40
+                    && request.resource.data.meta is map;
+      allow read, delete: if isAdmin();
+      allow update: if false;
+    }
+
+    /* ------------------------ concierge inquiries ----------------------- */
+    // Public trip-planning lead form (src/lib/use-concierge.ts). Anyone may
+    // submit (validated, status pinned to 'new'); the pipeline itself —
+    // reads + the new→contacted→closed status cycle in the admin CRM — is
+    // admin-only. Mirrors the newsletterSignups public-insert pattern and
+    // the Supabase concierge_inquiries table (supabase/concierge-inquiries.sql).
+    match /conciergeInquiries/{inquiryId} {
+      allow create: if request.resource.data.name is string
+                    && request.resource.data.name.size() > 0
+                    && request.resource.data.name.size() < 200
+                    && request.resource.data.email is string
+                    && request.resource.data.email.size() > 3
+                    && request.resource.data.email.size() < 320
+                    && request.resource.data.status == 'new';
+      allow read, update, delete: if isAdmin();
+    }
+
     /* ---------------------------- catch-all ---------------------------- */
     // Anything not matched above is denied. Specific allows above are NOT
     // overridden by this — it is only a safety net for unmodeled paths.

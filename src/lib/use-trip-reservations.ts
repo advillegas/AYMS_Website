@@ -43,6 +43,7 @@ import {
 import { useAuth } from "./store";
 import { pushNotification } from "./notify";
 import { getTripById } from "./trips-data";
+import { trackEvent } from "./activity-tracker";
 
 /* ------------------------------------------------------------------ */
 /* Types                                                               */
@@ -135,9 +136,10 @@ export function useTripReservations(
   tripId: string | null | undefined,
   totalSpots: number,
 ): UseTripReservationsResult {
-  return useSupabaseBackend
-    ? useTripReservationsSupabase(tripId, totalSpots)
-    : useTripReservationsFirebase(tripId, totalSpots);
+  // House dual-backend dispatch: useSupabaseBackend is a build-time
+  // constant, so hook order is stable for the life of the app.
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  return useSupabaseBackend ? useTripReservationsSupabase(tripId, totalSpots) : useTripReservationsFirebase(tripId, totalSpots);
 }
 
 function useTripReservationsFirebase(
@@ -150,6 +152,7 @@ function useTripReservationsFirebase(
 
   useEffect(() => {
     if (!tripId || !isFirebaseConfigured) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- house guard pattern (pre-existing)
       setReservations([]);
       setLoading(false);
       return;
@@ -255,6 +258,10 @@ function useTripReservationsFirebase(
               : "We'll let you know the moment a seat opens up.",
           href: "/community/my-events",
         });
+        trackEvent(
+          status === "waitlist" ? "waitlist_join" : "trip_reservation",
+          { tripId },
+        );
         return status;
       } catch (err) {
         console.error("[trip-reservations] reserve failed", err);
@@ -308,9 +315,8 @@ export function useMyTripReservations(): {
   reservations: TripReservation[];
   loading: boolean;
 } {
-  return useSupabaseBackend
-    ? useMyTripReservationsSupabase()
-    : useMyTripReservationsFirebase();
+  // eslint-disable-next-line react-hooks/rules-of-hooks -- build-time constant switch (house pattern)
+  return useSupabaseBackend ? useMyTripReservationsSupabase() : useMyTripReservationsFirebase();
 }
 
 function useMyTripReservationsFirebase(): {
@@ -323,6 +329,7 @@ function useMyTripReservationsFirebase(): {
 
   useEffect(() => {
     if (!uid || !isFirebaseConfigured) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- house guard pattern (pre-existing)
       setReservations([]);
       setLoading(false);
       return;

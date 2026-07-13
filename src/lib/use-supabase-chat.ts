@@ -23,6 +23,7 @@ import {
   useModerationSync,
   isMuteActive,
 } from "./use-moderation-store";
+import { trackEvent } from "./activity-tracker";
 import { toast } from "sonner";
 import type {
   RichMessage,
@@ -157,6 +158,7 @@ export function useChannelChatSupabase(channelId: string): UseChannelChatResult 
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- house guard pattern (pre-existing)
     setLoading(true);
     setError(null);
     setPendingMessages([]);
@@ -311,6 +313,12 @@ export function useChannelChatSupabase(channelId: string): UseChannelChatResult 
       setPendingMessages((prev) =>
         prev.map((p) => (p.id === tempId ? { ...p, _pending: false } : p)),
       );
+
+      // Analytics: count + channel id only — never the message text.
+      trackEvent("message_sent", {
+        channelId,
+        thread: !!opts.threadParentId,
+      });
 
       if (opts.threadParentId) {
         const parent = fbMessages.find((m) => m.id === opts.threadParentId);
@@ -484,6 +492,7 @@ export function useThreadMessagesSupabase(parentId: string | null): {
 
   useEffect(() => {
     if (!parentId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- house guard pattern (pre-existing)
       setReplies([]);
       return;
     }

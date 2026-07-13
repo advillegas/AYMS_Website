@@ -36,6 +36,7 @@ import {
   useModerationSync,
   isMuteActive,
 } from "./use-moderation-store";
+import { trackEvent } from "./activity-tracker";
 import { toast } from "sonner";
 
 export interface GifAttachment {
@@ -265,9 +266,10 @@ function passesGeoFilter(
  * thread replies are excluded; use useThreadMessages for those).
  */
 export function useChannelChat(channelId: string): UseChannelChatResult {
-  return useSupabaseBackend
-    ? useChannelChatSupabase(channelId)
-    : useChannelChatFirebase(channelId);
+  // House dual-backend dispatch: useSupabaseBackend is a build-time
+  // constant, so hook order is stable for the life of the app.
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  return useSupabaseBackend ? useChannelChatSupabase(channelId) : useChannelChatFirebase(channelId);
 }
 
 function useChannelChatFirebase(channelId: string): UseChannelChatResult {
@@ -308,6 +310,7 @@ function useChannelChatFirebase(channelId: string): UseChannelChatResult {
     const db = getDb();
     if (!db) return;
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- house guard pattern (pre-existing)
     setLoading(true);
     setError(null);
     setPendingMessages([]);
@@ -494,6 +497,12 @@ function useChannelChatFirebase(channelId: string): UseChannelChatResult {
         // Remove the optimistic message — the snapshot will deliver
         // the real one momentarily.
         setPendingMessages((prev) => prev.filter((p) => p.id !== tempId));
+
+        // Analytics: count + channel id only — never the message text.
+        trackEvent("message_sent", {
+          channelId,
+          thread: !!opts.threadParentId,
+        });
 
         if (opts.threadParentId) {
           try {
@@ -809,9 +818,8 @@ export function useThreadMessages(parentId: string | null): {
   replies: RichMessage[];
   loading: boolean;
 } {
-  return useSupabaseBackend
-    ? useThreadMessagesSupabase(parentId)
-    : useThreadMessagesFirebase(parentId);
+  // eslint-disable-next-line react-hooks/rules-of-hooks -- build-time constant switch (house pattern)
+  return useSupabaseBackend ? useThreadMessagesSupabase(parentId) : useThreadMessagesFirebase(parentId);
 }
 
 function useThreadMessagesFirebase(parentId: string | null): {
@@ -823,6 +831,7 @@ function useThreadMessagesFirebase(parentId: string | null): {
 
   useEffect(() => {
     if (!parentId || !isFirebaseConfigured) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- house guard pattern (pre-existing)
       setReplies([]);
       return;
     }

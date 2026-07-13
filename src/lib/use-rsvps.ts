@@ -33,6 +33,7 @@ import { getCurrentUid, getDb, isFirebaseConfigured } from "./firebase";
 import { useSupabaseBackend } from "./supabase";
 import { useMyRsvpRefsSupabase, useRsvpsSupabase } from "./use-rsvps-supabase";
 import { useAuth } from "./store";
+import { trackEvent } from "./activity-tracker";
 
 /* ------------------------------------------------------------------ */
 /* Types                                                               */
@@ -111,9 +112,10 @@ export function useRsvps(
   targetType: RsvpTargetType,
   targetId: string | null | undefined,
 ): UseRsvpsResult {
-  return useSupabaseBackend
-    ? useRsvpsSupabase(targetType, targetId)
-    : useRsvpsFirebase(targetType, targetId);
+  // House dual-backend dispatch: useSupabaseBackend is a build-time
+  // constant, so hook order is stable for the life of the app.
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  return useSupabaseBackend ? useRsvpsSupabase(targetType, targetId) : useRsvpsFirebase(targetType, targetId);
 }
 
 function useRsvpsFirebase(
@@ -126,6 +128,7 @@ function useRsvpsFirebase(
 
   useEffect(() => {
     if (!targetId || !isFirebaseConfigured) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- house guard pattern (pre-existing)
       setRsvps([]);
       setLoading(false);
       return;
@@ -194,6 +197,7 @@ function useRsvpsFirebase(
           status,
           createdAt: serverTimestamp(),
         });
+        trackEvent("event_rsvp", { targetType, targetId, status });
         return status;
       } catch (err) {
         console.error("[rsvps] toggle failed", err);
@@ -254,9 +258,8 @@ export interface MyRsvpRef {
 export function useMyRsvpRefs(
   targets: Array<{ type: RsvpTargetType; id: string }>,
 ): { refs: MyRsvpRef[]; loading: boolean } {
-  return useSupabaseBackend
-    ? useMyRsvpRefsSupabase(targets)
-    : useMyRsvpRefsFirebase(targets);
+  // eslint-disable-next-line react-hooks/rules-of-hooks -- build-time constant switch (house pattern)
+  return useSupabaseBackend ? useMyRsvpRefsSupabase(targets) : useMyRsvpRefsFirebase(targets);
 }
 
 function useMyRsvpRefsFirebase(

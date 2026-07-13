@@ -3,14 +3,18 @@
 /**
  * Admin analytics dashboard (community admin · LIGHT Card theme).
  *
- * Read-only at-a-glance metrics aggregated client-side from the live
- * Firestore snapshots the rest of the app already reads (no new deps,
- * no backend job). Charts are hand-rolled inline SVG — a line for
- * member growth, bars for daily message volume + per-channel activity.
+ * Full CRM overview built on two data planes:
+ *   1. Existing community collections (users, messages, events,
+ *      newsletter signups, reservations, agreements, concierge
+ *      inquiries) — real data from day one, via the dual-backend hooks
+ *      (Supabase primary in production, Firestore behind the flag).
+ *   2. The tracked `activity_events` stream (src/lib/activity-tracker.ts)
+ *      — page views, DAU/WAU, funnels, RSVP tallies and the live feed.
+ *      Empty until the first deploy with tracking; every activity-based
+ *      block degrades to a "collecting…" empty state.
  *
- * Gated by `viewAdminPanel` (the admin layout already gates the whole
- * /community/admin area, but we re-check so a direct hit still degrades
- * gracefully).
+ * Charts are recharts (already a dependency). Gated by `viewAdminPanel`
+ * (the admin layout gates the whole area; we re-check for direct hits).
  */
 
 import { useMemo } from "react";
@@ -21,62 +25,103 @@ import {
   CardHeader,
 } from "@/components/ui/card";
 import {
+  Activity,
   BarChart3,
-  ShieldOff,
-  Users,
-  UserPlus,
-  MessageSquare,
   CalendarDays,
-  Hash,
-  Wifi,
-  WifiOff,
+  ConciergeBell,
+  Eye,
+  FileSignature,
+  Hourglass,
+  LogIn,
+  Mail,
+  MailPlus,
+  MessageSquare,
+  MousePointerClick,
+  ShieldOff,
+  Ticket,
   TrendingUp,
+  UserPlus,
+  Users,
 } from "lucide-react";
-import { format } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
+import {
+  Area,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  ComposedChart,
+  Legend,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { cn } from "@/lib/utils";
 import { useMe } from "@/lib/use-roles-store";
+import { BackendBadge } from "@/components/admin/backend-badge";
 import {
   useAdminMetrics,
   type MonthPoint,
-  type DayPoint,
-  type ChannelActivity,
+  type StackedDailyMessages,
   type UpcomingEvent,
 } from "@/lib/use-admin-metrics";
+import {
+  useActivityAnalytics,
+  type ActivityDayPoint,
+  type ActionSlice,
+  type TopPage,
+} from "@/lib/use-activity-analytics";
+import { type ActivityEvent } from "@/lib/activity-tracker";
+import { useNewsletterList } from "@/lib/use-newsletter";
+import { useAllReservations } from "@/lib/use-all-reservations";
+import { useAgreements } from "@/lib/use-agreements";
+import { useConciergeInquiries } from "@/lib/use-concierge";
+import { useCommunityMembers } from "@/lib/use-community-members";
+import { useEvents } from "@/lib/use-events";
+import { useMeetups } from "@/lib/use-meetups";
+import { useTrips } from "@/lib/use-trips";
+import { useChannels } from "@/lib/use-channels-store";
 
 /* ------------------------------------------------------------------ */
-/* Small presentational helpers                                        */
+/* Brand palette + shared chart bits                                   */
 /* ------------------------------------------------------------------ */
 
-function StatCard({
-  icon: Icon,
-  label,
-  value,
-  hint,
+const PINK = "#FF0099";
+const MAGENTA = "#B51760";
+const SERIES_COLORS = [
+  PINK,
+  "#7C3AED",
+  "#0EA5E9",
+  "#F59E0B",
+  "#10B981",
+  "#94A3B8",
+];
+
+const TOOLTIP_STYLE: React.CSSProperties = {
+  fontSize: 12,
+  borderRadius: 10,
+  border: "1px solid rgba(0,0,0,0.08)",
+  boxShadow: "0 4px 16px rgba(0,0,0,0.08)",
+};
+
+const AXIS_TICK = { fontSize: 10 } as const;
+
+function ChartBox({
+  height = "h-52",
+  children,
 }: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  value: string | number;
-  hint?: string;
+  height?: string;
+  children: React.ReactElement;
 }) {
   return (
-    <Card className="h-full">
-      <CardContent className="flex items-start gap-3 pt-1">
-        <span className="rounded-lg bg-primary/10 p-2 text-primary">
-          <Icon className="h-5 w-5" />
-        </span>
-        <div className="min-w-0">
-          <p className="text-2xl font-bold leading-none tabular-nums">
-            {value}
-          </p>
-          <p className="text-xs font-medium text-foreground/80 mt-1">
-            {label}
-          </p>
-          {hint ? (
-            <p className="text-[11px] text-muted-foreground mt-0.5">{hint}</p>
-          ) : null}
-        </div>
-      </CardContent>
-    </Card>
+    <div className={cn("w-full", height)}>
+      <ResponsiveContainer width="100%" height="100%">
+        {children}
+      </ResponsiveContainer>
+    </div>
   );
 }
 
@@ -104,169 +149,284 @@ function SectionHeader({
 
 function EmptyChart({ message }: { message: string }) {
   return (
-    <div className="flex h-40 items-center justify-center rounded-lg border border-dashed border-foreground/10 text-xs text-muted-foreground">
+    <div className="flex h-40 items-center justify-center rounded-lg border border-dashed border-foreground/10 px-6 text-center text-xs text-muted-foreground">
       {message}
     </div>
   );
 }
 
+/** Empty state for blocks fed by the (new) tracking pipeline. */
+const TRACKING_EMPTY =
+  "No tracked activity yet — collection starts with the first deploy of the tracker. Check back soon.";
+
 /* ------------------------------------------------------------------ */
-/* Member-growth line chart (cumulative total + per-month joins)       */
+/* KPI cards                                                           */
 /* ------------------------------------------------------------------ */
 
-function GrowthChart({ data }: { data: MonthPoint[] }) {
-  const hasData = data.some((d) => d.total > 0);
-  const geom = useMemo(() => {
-    const W = 640;
-    const H = 200;
-    const padX = 8;
-    const padTop = 12;
-    const padBottom = 28;
-    const innerW = W - padX * 2;
-    const innerH = H - padTop - padBottom;
-    const maxTotal = Math.max(1, ...data.map((d) => d.total));
-    const n = data.length;
-    const stepX = n > 1 ? innerW / (n - 1) : 0;
-    const x = (i: number) => padX + i * stepX;
-    const y = (v: number) => padTop + innerH - (v / maxTotal) * innerH;
-
-    const linePts = data.map((d, i) => `${x(i)},${y(d.total)}`).join(" ");
-    const areaPts =
-      n > 0
-        ? `${x(0)},${padTop + innerH} ${linePts} ${x(n - 1)},${padTop + innerH}`
-        : "";
-    return { W, H, padTop, innerH, x, y, linePts, areaPts, maxTotal };
-  }, [data]);
-
-  if (!hasData) {
-    return <EmptyChart message="No member history yet." />;
-  }
-
+function StatCard({
+  icon: Icon,
+  label,
+  value,
+  hint,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: string | number;
+  hint?: string;
+}) {
   return (
-    <svg
-      viewBox={`0 0 ${geom.W} ${geom.H}`}
-      className="w-full"
-      role="img"
-      aria-label="Cumulative member growth over the last 12 months"
-      preserveAspectRatio="none"
-    >
-      <defs>
-        <linearGradient id="growthFill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#FF0099" stopOpacity="0.25" />
-          <stop offset="100%" stopColor="#B51760" stopOpacity="0.02" />
-        </linearGradient>
-      </defs>
-      {/* baseline */}
-      <line
-        x1="0"
-        y1={geom.padTop + geom.innerH}
-        x2={geom.W}
-        y2={geom.padTop + geom.innerH}
-        className="stroke-foreground/10"
-        strokeWidth="1"
-      />
-      {geom.areaPts ? (
-        <polygon points={geom.areaPts} fill="url(#growthFill)" />
-      ) : null}
-      <polyline
-        points={geom.linePts}
-        fill="none"
-        stroke="#FF0099"
-        strokeWidth="2.5"
-        strokeLinejoin="round"
-        strokeLinecap="round"
-      />
-      {data.map((d, i) => (
-        <g key={d.key}>
-          <circle cx={geom.x(i)} cy={geom.y(d.total)} r="2.5" fill="#B51760">
-            <title>
-              {d.label}: {d.total} members
-              {d.joined ? ` (+${d.joined})` : ""}
-            </title>
-          </circle>
-          {i % 2 === 0 ? (
-            <text
-              x={geom.x(i)}
-              y={geom.H - 8}
-              textAnchor="middle"
-              className="fill-muted-foreground"
-              style={{ fontSize: 10 }}
-            >
-              {d.label}
-            </text>
+    <Card className="h-full">
+      <CardContent className="flex items-start gap-3 pt-1">
+        <span className="rounded-lg bg-primary/10 p-2 text-primary">
+          <Icon className="h-5 w-5" />
+        </span>
+        <div className="min-w-0">
+          <p className="text-2xl font-bold leading-none tabular-nums">
+            {value}
+          </p>
+          <p className="text-xs font-medium text-foreground/80 mt-1">{label}</p>
+          {hint ? (
+            <p className="text-[11px] text-muted-foreground mt-0.5">{hint}</p>
           ) : null}
-        </g>
-      ))}
-    </svg>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
 /* ------------------------------------------------------------------ */
-/* Daily message-volume bar chart (last 14 days)                       */
+/* Charts                                                              */
 /* ------------------------------------------------------------------ */
 
-function DailyVolumeChart({ data }: { data: DayPoint[] }) {
-  const max = Math.max(1, ...data.map((d) => d.count));
-  const hasData = data.some((d) => d.count > 0);
+function MemberGrowthChart({ data }: { data: MonthPoint[] }) {
+  if (!data.some((d) => d.total > 0)) {
+    return <EmptyChart message="No member history yet." />;
+  }
+  return (
+    <ChartBox>
+      <ComposedChart data={data} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
+        <defs>
+          <linearGradient id="memberFill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={PINK} stopOpacity={0.28} />
+            <stop offset="100%" stopColor={MAGENTA} stopOpacity={0.02} />
+          </linearGradient>
+        </defs>
+        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0,0,0,0.06)" />
+        <XAxis dataKey="label" tick={AXIS_TICK} interval={1} axisLine={false} tickLine={false} />
+        <YAxis tick={AXIS_TICK} axisLine={false} tickLine={false} allowDecimals={false} />
+        <Tooltip contentStyle={TOOLTIP_STYLE} />
+        <Bar dataKey="joined" name="New joins" fill={MAGENTA} fillOpacity={0.3} radius={[3, 3, 0, 0]} />
+        <Area
+          type="monotone"
+          dataKey="total"
+          name="Total members"
+          stroke={PINK}
+          strokeWidth={2.5}
+          fill="url(#memberFill)"
+        />
+      </ComposedChart>
+    </ChartBox>
+  );
+}
+
+function NewsletterGrowthChart({ data }: { data: MonthPoint[] }) {
+  if (!data.some((d) => d.total > 0)) {
+    return <EmptyChart message="No newsletter signups yet." />;
+  }
+  return (
+    <ChartBox>
+      <ComposedChart data={data} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
+        <defs>
+          <linearGradient id="newsFill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#7C3AED" stopOpacity={0.25} />
+            <stop offset="100%" stopColor="#7C3AED" stopOpacity={0.02} />
+          </linearGradient>
+        </defs>
+        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0,0,0,0.06)" />
+        <XAxis dataKey="label" tick={AXIS_TICK} interval={1} axisLine={false} tickLine={false} />
+        <YAxis tick={AXIS_TICK} axisLine={false} tickLine={false} allowDecimals={false} />
+        <Tooltip contentStyle={TOOLTIP_STYLE} />
+        <Bar dataKey="joined" name="New signups" fill="#7C3AED" fillOpacity={0.3} radius={[3, 3, 0, 0]} />
+        <Area
+          type="monotone"
+          dataKey="total"
+          name="Total subscribers"
+          stroke="#7C3AED"
+          strokeWidth={2.5}
+          fill="url(#newsFill)"
+        />
+      </ComposedChart>
+    </ChartBox>
+  );
+}
+
+function MessagesStackedChart({ data }: { data: StackedDailyMessages }) {
+  const hasData = data.days.some((d) =>
+    data.channelNames.some((n) => ((d[n] as number) ?? 0) > 0),
+  );
   if (!hasData) {
     return <EmptyChart message="No messages in the last 14 days." />;
   }
   return (
-    <div className="flex h-40 items-end gap-1.5">
-      {data.map((d, i) => {
-        const pct = (d.count / max) * 100;
-        const showLabel = i % 2 === 0;
-        return (
-          <div
-            key={d.key}
-            className="group/bar flex flex-1 flex-col items-center justify-end gap-1"
-            title={`${d.label}: ${d.count} message${d.count === 1 ? "" : "s"}`}
-          >
-            <span className="text-[10px] font-medium text-muted-foreground opacity-0 transition-opacity group-hover/bar:opacity-100">
-              {d.count}
-            </span>
-            <div
-              className="w-full rounded-t bg-gradient-to-t from-[#B51760] to-[#FF0099] transition-all"
-              style={{ height: `${Math.max(2, pct)}%` }}
-            />
-            <span className="text-[9px] text-muted-foreground">
-              {showLabel ? d.label.split(" ")[1] : ""}
-            </span>
-          </div>
-        );
-      })}
-    </div>
+    <ChartBox>
+      <BarChart data={data.days} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
+        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0,0,0,0.06)" />
+        <XAxis dataKey="label" tick={AXIS_TICK} interval={1} axisLine={false} tickLine={false} />
+        <YAxis tick={AXIS_TICK} axisLine={false} tickLine={false} allowDecimals={false} />
+        <Tooltip contentStyle={TOOLTIP_STYLE} />
+        <Legend wrapperStyle={{ fontSize: 11 }} />
+        {data.channelNames.map((name, i) => (
+          <Bar
+            key={name}
+            dataKey={name}
+            stackId="msgs"
+            fill={SERIES_COLORS[i % SERIES_COLORS.length]}
+          />
+        ))}
+      </BarChart>
+    </ChartBox>
   );
 }
 
-/* ------------------------------------------------------------------ */
-/* Channel-activity horizontal bars (last 30 days)                     */
-/* ------------------------------------------------------------------ */
-
-function ChannelActivityChart({ data }: { data: ChannelActivity[] }) {
-  const max = Math.max(1, ...data.map((d) => d.count));
-  if (data.length === 0) {
-    return <EmptyChart message="No channel activity in the last 30 days." />;
+function PageViewsChart({
+  data,
+  hasData,
+}: {
+  data: ActivityDayPoint[];
+  hasData: boolean;
+}) {
+  if (!hasData || !data.some((d) => d.count > 0)) {
+    return <EmptyChart message={TRACKING_EMPTY} />;
   }
   return (
-    <div className="space-y-2.5">
-      {data.map((c) => {
-        const pct = (c.count / max) * 100;
+    <ChartBox>
+      <ComposedChart data={data} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
+        <defs>
+          <linearGradient id="viewsFill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#0EA5E9" stopOpacity={0.28} />
+            <stop offset="100%" stopColor="#0EA5E9" stopOpacity={0.02} />
+          </linearGradient>
+        </defs>
+        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0,0,0,0.06)" />
+        <XAxis dataKey="label" tick={AXIS_TICK} interval={1} axisLine={false} tickLine={false} />
+        <YAxis tick={AXIS_TICK} axisLine={false} tickLine={false} allowDecimals={false} />
+        <Tooltip contentStyle={TOOLTIP_STYLE} />
+        <Area
+          type="monotone"
+          dataKey="count"
+          name="Page views"
+          stroke="#0EA5E9"
+          strokeWidth={2.5}
+          fill="url(#viewsFill)"
+        />
+      </ComposedChart>
+    </ChartBox>
+  );
+}
+
+function ActionsPieChart({
+  data,
+  hasData,
+}: {
+  data: ActionSlice[];
+  hasData: boolean;
+}) {
+  if (!hasData || data.length === 0) {
+    return <EmptyChart message={TRACKING_EMPTY} />;
+  }
+  return (
+    <ChartBox>
+      <PieChart>
+        <Tooltip contentStyle={TOOLTIP_STYLE} />
+        <Legend wrapperStyle={{ fontSize: 11 }} />
+        <Pie
+          data={data}
+          dataKey="count"
+          nameKey="label"
+          innerRadius={42}
+          outerRadius={70}
+          paddingAngle={2}
+          strokeWidth={0}
+        >
+          {data.map((s, i) => (
+            <Cell key={s.type} fill={SERIES_COLORS[i % SERIES_COLORS.length]} />
+          ))}
+        </Pie>
+      </PieChart>
+    </ChartBox>
+  );
+}
+
+function RsvpsChart({
+  data,
+  hasData,
+}: {
+  data: Array<{ name: string; count: number }>;
+  hasData: boolean;
+}) {
+  if (!hasData || data.length === 0) {
+    return <EmptyChart message={TRACKING_EMPTY} />;
+  }
+  return (
+    <ChartBox>
+      <BarChart
+        data={data}
+        layout="vertical"
+        margin={{ top: 4, right: 16, left: 8, bottom: 0 }}
+      >
+        <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="rgba(0,0,0,0.06)" />
+        <XAxis type="number" tick={AXIS_TICK} allowDecimals={false} axisLine={false} tickLine={false} />
+        <YAxis
+          type="category"
+          dataKey="name"
+          width={130}
+          tick={AXIS_TICK}
+          axisLine={false}
+          tickLine={false}
+        />
+        <Tooltip contentStyle={TOOLTIP_STYLE} />
+        <Bar dataKey="count" name="RSVPs" fill={PINK} radius={[0, 3, 3, 0]} />
+      </BarChart>
+    </ChartBox>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Reservation funnel (real collections + tracked views)               */
+/* ------------------------------------------------------------------ */
+
+function FunnelBars({
+  stages,
+}: {
+  stages: Array<{ label: string; value: number; note?: string }>;
+}) {
+  const max = Math.max(1, ...stages.map((s) => s.value));
+  return (
+    <div className="space-y-3">
+      {stages.map((s, i) => {
+        const pct = (s.value / max) * 100;
         return (
-          <div key={c.channelId} className="flex items-center gap-3">
-            <div className="flex w-32 shrink-0 items-center gap-1 truncate text-xs font-medium">
-              <Hash className="h-3 w-3 shrink-0 text-muted-foreground" />
-              <span className="truncate">{c.name}</span>
+          <div key={s.label}>
+            <div className="mb-1 flex items-baseline justify-between gap-2">
+              <span className="text-xs font-medium">{s.label}</span>
+              <span className="text-xs font-semibold tabular-nums">
+                {s.value.toLocaleString()}
+                {s.note ? (
+                  <span className="ml-1 font-normal text-muted-foreground">
+                    {s.note}
+                  </span>
+                ) : null}
+              </span>
             </div>
-            <div className="relative h-5 flex-1 overflow-hidden rounded bg-foreground/5">
+            <div className="h-5 overflow-hidden rounded bg-foreground/5">
               <div
-                className="absolute inset-y-0 left-0 rounded bg-gradient-to-r from-[#FF0099] to-[#B51760]"
-                style={{ width: `${Math.max(3, pct)}%` }}
+                className="h-full rounded bg-gradient-to-r from-[#FF0099] to-[#B51760]"
+                style={{
+                  width: `${Math.max(2, pct)}%`,
+                  opacity: 1 - i * 0.18,
+                }}
               />
             </div>
-            <span className="w-10 shrink-0 text-right text-xs font-semibold tabular-nums">
-              {c.count}
-            </span>
           </div>
         );
       })}
@@ -275,7 +435,168 @@ function ChannelActivityChart({ data }: { data: ChannelActivity[] }) {
 }
 
 /* ------------------------------------------------------------------ */
-/* Upcoming events list                                                */
+/* Top pages table                                                     */
+/* ------------------------------------------------------------------ */
+
+function TopPagesTable({
+  pages,
+  hasData,
+}: {
+  pages: TopPage[];
+  hasData: boolean;
+}) {
+  if (!hasData || pages.length === 0) {
+    return <EmptyChart message={TRACKING_EMPTY} />;
+  }
+  const max = Math.max(1, ...pages.map((p) => p.count));
+  return (
+    <div className="space-y-1.5">
+      <div className="flex justify-between px-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
+        <span>Path</span>
+        <span>Views (7d)</span>
+      </div>
+      {pages.map((p) => (
+        <div key={p.path} className="relative overflow-hidden rounded-md">
+          <div
+            className="absolute inset-y-0 left-0 bg-primary/5"
+            style={{ width: `${(p.count / max) * 100}%` }}
+          />
+          <div className="relative flex items-center justify-between gap-3 px-2 py-1.5 text-sm">
+            <span className="truncate font-mono text-xs">{p.path}</span>
+            <span className="shrink-0 text-xs font-semibold tabular-nums">
+              {p.count.toLocaleString()}
+            </span>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Live activity feed                                                  */
+/* ------------------------------------------------------------------ */
+
+const FEED_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
+  page_view: Eye,
+  sign_in: LogIn,
+  sign_up: UserPlus,
+  trip_reservation: Ticket,
+  waitlist_join: Hourglass,
+  newsletter_signup: MailPlus,
+  concierge_inquiry: ConciergeBell,
+  message_sent: MessageSquare,
+  event_rsvp: CalendarDays,
+  agreement_signed: FileSignature,
+};
+
+interface FeedLookups {
+  nameById: Map<string, string>;
+  tripTitleById: Map<string, string>;
+  eventTitleById: Map<string, string>;
+  channelNameById: Map<string, string>;
+}
+
+function feedLine(e: ActivityEvent, l: FeedLookups): string {
+  const name = e.userId
+    ? (l.nameById.get(e.userId) ?? "A member")
+    : "Anonymous";
+  const tripId = typeof e.meta.tripId === "string" ? e.meta.tripId : "";
+  const trip = l.tripTitleById.get(tripId) ?? "a trip";
+  switch (e.type) {
+    case "page_view":
+      return `${name} viewed ${e.path || "/"}`;
+    case "sign_in":
+      return `${name} signed in`;
+    case "sign_up":
+      return `${name} created an account`;
+    case "trip_reservation":
+      return `${name} reserved a spot on ${trip}`;
+    case "waitlist_join":
+      return `${name} joined the waitlist for ${trip}`;
+    case "newsletter_signup": {
+      const source = typeof e.meta.source === "string" ? e.meta.source : "";
+      return `New newsletter signup${source ? ` (${source})` : ""}`;
+    }
+    case "concierge_inquiry": {
+      const dest =
+        typeof e.meta.destination === "string" ? e.meta.destination : "";
+      return `New concierge inquiry${dest ? ` — ${dest}` : ""}`;
+    }
+    case "message_sent": {
+      const ch =
+        typeof e.meta.channelId === "string"
+          ? (l.channelNameById.get(e.meta.channelId) ?? e.meta.channelId)
+          : "chat";
+      return `${name} posted in #${ch}`;
+    }
+    case "event_rsvp": {
+      const targetId =
+        typeof e.meta.targetId === "string" ? e.meta.targetId : "";
+      const title = l.eventTitleById.get(targetId) ?? "an event";
+      const interested = e.meta.status === "interested";
+      return interested
+        ? `${name} is interested in ${title}`
+        : `${name} RSVP'd to ${title}`;
+    }
+    case "agreement_signed":
+      return `${name} signed an agreement`;
+    default:
+      return `${name} · ${e.type}`;
+  }
+}
+
+function ActivityFeed({
+  events,
+  lookups,
+  hasData,
+}: {
+  events: ActivityEvent[];
+  lookups: FeedLookups;
+  hasData: boolean;
+}) {
+  if (!hasData || events.length === 0) {
+    return <EmptyChart message={TRACKING_EMPTY} />;
+  }
+  return (
+    <ul className="divide-y divide-border max-h-96 overflow-y-auto overscroll-contain">
+      {events.map((e) => {
+        const Icon = FEED_ICON[e.type] ?? MousePointerClick;
+        let ago = "";
+        if (e.tsISO) {
+          try {
+            ago = formatDistanceToNow(new Date(e.tsISO), { addSuffix: true });
+          } catch {
+            ago = "";
+          }
+        }
+        return (
+          <li key={e.id} className="flex items-center gap-3 px-2 py-2">
+            <span
+              className={cn(
+                "rounded-md p-1.5 shrink-0",
+                e.type === "page_view"
+                  ? "bg-foreground/5 text-muted-foreground"
+                  : "bg-primary/10 text-primary",
+              )}
+            >
+              <Icon className="h-3.5 w-3.5" />
+            </span>
+            <p className="min-w-0 flex-1 truncate text-sm">
+              {feedLine(e, lookups)}
+            </p>
+            <span className="shrink-0 text-[11px] text-muted-foreground tabular-nums">
+              {ago}
+            </span>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Upcoming events (carried over from the previous dashboard)          */
 /* ------------------------------------------------------------------ */
 
 const EVENT_TONE: Record<string, string> = {
@@ -331,7 +652,94 @@ function UpcomingEvents({ events }: { events: UpcomingEvent[] }) {
 export default function AnalyticsPage() {
   const { hasPermission } = useMe();
   const canView = hasPermission("viewAdminPanel");
+
   const m = useAdminMetrics();
+  const a = useActivityAnalytics();
+  const { signups } = useNewsletterList();
+  const { reservations } = useAllReservations();
+  const { agreements } = useAgreements();
+  const { inquiries } = useConciergeInquiries();
+  const { members } = useCommunityMembers();
+  const { events: calEvents } = useEvents();
+  const { meetups } = useMeetups();
+  const { trips } = useTrips();
+  const channels = useChannels((s) => s.channels);
+
+  /* ---- lookups for the feed + RSVP chart ------------------------- */
+  const lookups = useMemo<FeedLookups>(() => {
+    const nameById = new Map<string, string>();
+    for (const mem of members) nameById.set(mem.id, mem.name);
+    const tripTitleById = new Map<string, string>();
+    for (const t of trips) tripTitleById.set(t.id, t.title);
+    const eventTitleById = new Map<string, string>();
+    for (const e of calEvents) eventTitleById.set(e.id, e.title);
+    for (const mu of meetups) eventTitleById.set(mu.id, mu.title);
+    const channelNameById = new Map<string, string>();
+    for (const c of channels) channelNameById.set(c.id, c.name);
+    return { nameById, tripTitleById, eventTitleById, channelNameById };
+  }, [members, trips, calEvents, meetups, channels]);
+
+  /* ---- newsletter growth (12 months, cumulative) ------------------ */
+  const newsletterGrowth = useMemo<MonthPoint[]>(() => {
+    const now = new Date();
+    const byMonth = new Map<string, number>();
+    for (const s of signups) {
+      if (!s.createdAt) continue;
+      const d = new Date(s.createdAt);
+      if (Number.isNaN(d.getTime())) continue;
+      const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      byMonth.set(k, (byMonth.get(k) ?? 0) + 1);
+    }
+    const keys: string[] = [];
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      keys.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+    }
+    let total = 0;
+    for (const [k, n] of byMonth) if (k < keys[0]) total += n;
+    const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    return keys.map((k) => {
+      const joined = byMonth.get(k) ?? 0;
+      total += joined;
+      const mi = Math.max(0, Math.min(11, Number(k.slice(5)) - 1));
+      return { key: k, label: `${MONTHS[mi]} ’${k.slice(2, 4)}`, joined, total };
+    });
+  }, [signups]);
+
+  /* ---- funnel + KPI derivations ----------------------------------- */
+  const activeReservations = useMemo(
+    () => reservations.filter((r) => r.status !== "cancelled"),
+    [reservations],
+  );
+  const waitlistCount = useMemo(
+    () => reservations.filter((r) => r.status === "waitlist").length,
+    [reservations],
+  );
+  const signedAgreements = useMemo(
+    () =>
+      agreements.filter(
+        (ag) => ag.status === "prospect_signed" || ag.status === "completed",
+      ).length,
+    [agreements],
+  );
+  const openLeads = useMemo(
+    () => inquiries.filter((i) => i.status !== "closed").length,
+    [inquiries],
+  );
+
+  const rsvpChartData = useMemo(
+    () =>
+      a.rsvpsByTarget.slice(0, 8).map((r) => {
+        const raw =
+          lookups.eventTitleById.get(r.targetId) ??
+          (r.targetType === "meetup" ? "A meetup" : "An event");
+        return {
+          name: raw.length > 22 ? `${raw.slice(0, 21)}…` : raw,
+          count: r.count,
+        };
+      }),
+    [a.rsvpsByTarget, lookups.eventTitleById],
+  );
 
   if (!canView) {
     return (
@@ -347,9 +755,11 @@ export default function AnalyticsPage() {
     );
   }
 
+  const dash = (v: string | number) => (m.loading ? "—" : v);
+
   return (
     <div className="h-full overflow-auto p-4 lg:p-6">
-      <div className="mx-auto max-w-5xl">
+      <div className="mx-auto max-w-6xl">
         {/* Header */}
         <div className="mb-6 flex items-start justify-between gap-3">
           <div>
@@ -358,132 +768,240 @@ export default function AnalyticsPage() {
               Analytics
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Member growth, channel activity, and what&apos;s coming up.
+              Members, traffic, engagement, and the revenue funnel — live
+              from your backend.
             </p>
           </div>
-          <span
-            className={cn(
-              "mt-1 inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-medium",
-              m.isLive
-                ? "bg-emerald-500/10 text-emerald-600"
-                : "bg-foreground/5 text-muted-foreground",
-            )}
-            title={
-              m.isLive
-                ? "Live data from Firestore"
-                : "Firestore not configured — showing empty states"
-            }
-          >
-            {m.isLive ? (
-              <Wifi className="h-3 w-3" />
-            ) : (
-              <WifiOff className="h-3 w-3" />
-            )}
-            {m.isLive ? "Live" : "Offline"}
-          </span>
+          <BackendBadge className="mt-1" />
         </div>
 
-        {/* Stat cards */}
+        {/* KPI cards */}
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <StatCard
             icon={Users}
             label="Total members"
-            value={m.loading ? "—" : m.totalMembers.toLocaleString()}
+            value={dash(m.totalMembers.toLocaleString())}
+            hint={m.loading ? undefined : `+${m.newMembers30d} in 30 days`}
           />
           <StatCard
             icon={UserPlus}
-            label="New this month"
-            value={m.loading ? "—" : m.newThisMonth.toLocaleString()}
-            hint={format(new Date(), "MMMM")}
+            label="New members (7d)"
+            value={dash(m.newMembers7d.toLocaleString())}
+            hint={m.loading ? undefined : `${m.newMembers30d} in 30 days`}
+          />
+          <StatCard
+            icon={Activity}
+            label="Active today"
+            value={a.hasData ? a.dau.toLocaleString() : "—"}
+            hint={
+              a.hasData ? `${a.wau.toLocaleString()} this week` : "tracked"
+            }
+          />
+          <StatCard
+            icon={Eye}
+            label="Page views (7d)"
+            value={a.hasData ? a.pageViews7d.toLocaleString() : "—"}
+            hint={a.hasData ? undefined : "tracked"}
           />
           <StatCard
             icon={MessageSquare}
-            label="Messages (30d)"
-            value={m.loading ? "—" : m.messages30d.toLocaleString()}
+            label="Messages (24h)"
+            value={dash(m.messages24h.toLocaleString())}
+            hint={m.loading ? undefined : `${m.messages7d} in 7 days`}
+          />
+          <StatCard
+            icon={Mail}
+            label="Newsletter subscribers"
+            value={signups.length.toLocaleString()}
+          />
+          <StatCard
+            icon={ConciergeBell}
+            label="Open concierge leads"
+            value={openLeads.toLocaleString()}
+            hint={`${inquiries.length} total inquiries`}
           />
           <StatCard
             icon={CalendarDays}
             label="Upcoming events"
-            value={m.loading ? "—" : m.upcomingCount.toLocaleString()}
+            value={dash(m.upcomingCount.toLocaleString())}
           />
         </div>
 
-        {/* Member growth */}
-        <Card className="mt-4">
-          <SectionHeader
-            icon={TrendingUp}
-            title="Member growth"
-            subtitle="Cumulative members over the last 12 months"
-          />
-          <CardContent>
-            {m.loading ? (
-              <EmptyChart message="Loading…" />
-            ) : (
-              <GrowthChart data={m.memberGrowth} />
-            )}
-          </CardContent>
-        </Card>
+        {/* Growth charts */}
+        <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          <Card>
+            <SectionHeader
+              icon={TrendingUp}
+              title="Member growth"
+              subtitle="Cumulative members + monthly joins, last 12 months"
+            />
+            <CardContent>
+              {m.loading ? (
+                <EmptyChart message="Loading…" />
+              ) : (
+                <MemberGrowthChart data={m.memberGrowth} />
+              )}
+            </CardContent>
+          </Card>
+          <Card>
+            <SectionHeader
+              icon={MailPlus}
+              title="Newsletter growth"
+              subtitle="Cumulative subscribers + monthly signups, last 12 months"
+            />
+            <CardContent>
+              <NewsletterGrowthChart data={newsletterGrowth} />
+            </CardContent>
+          </Card>
+        </div>
 
-        {/* Daily volume + channel activity */}
+        {/* Engagement charts */}
         <div className="mt-4 grid gap-4 lg:grid-cols-2">
           <Card>
             <SectionHeader
               icon={MessageSquare}
-              title="Message volume"
-              subtitle="Messages per day, last 14 days"
+              title="Messages per day"
+              subtitle="Last 14 days, stacked by channel"
             />
             <CardContent>
               {m.loading ? (
                 <EmptyChart message="Loading…" />
               ) : (
-                <DailyVolumeChart data={m.dailyMessages} />
+                <MessagesStackedChart data={m.stackedDailyMessages} />
               )}
             </CardContent>
           </Card>
-
           <Card>
             <SectionHeader
-              icon={Hash}
-              title="Channel activity"
-              subtitle="Most active channels, last 30 days"
+              icon={Eye}
+              title="Page views per day"
+              subtitle="Last 14 days, from the activity tracker"
             />
             <CardContent>
-              {m.loading ? (
-                <EmptyChart message="Loading…" />
-              ) : (
-                <ChannelActivityChart data={m.channelActivity} />
-              )}
+              <PageViewsChart data={a.pageViewsPerDay} hasData={a.hasData} />
             </CardContent>
           </Card>
         </div>
 
-        {/* Upcoming events */}
-        <Card className="mt-4">
-          <SectionHeader
-            icon={CalendarDays}
-            title="Upcoming events"
-            subtitle={
-              m.upcomingCount > 0
-                ? `${m.upcomingCount} scheduled`
-                : "Nothing scheduled yet"
-            }
-          />
-          <CardContent>
-            {m.loading ? (
-              <EmptyChart message="Loading…" />
-            ) : (
-              <UpcomingEvents events={m.upcomingEvents} />
-            )}
-            <div className="mt-3 text-right">
-              <Link
-                href="/community/admin/calendar"
-                className="text-xs font-medium text-primary hover:underline"
-              >
-                Manage calendar →
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Funnel + top pages */}
+        <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          <Card>
+            <SectionHeader
+              icon={Ticket}
+              title="Reservation funnel"
+              subtitle="Trip traffic → reservations → signed agreements"
+            />
+            <CardContent>
+              <FunnelBars
+                stages={[
+                  {
+                    label: "Trip page views (30d, tracked)",
+                    value: a.tripViews30d,
+                    note: a.hasData ? undefined : "collecting…",
+                  },
+                  {
+                    label: "Reservations (all time)",
+                    value: activeReservations.length,
+                    note:
+                      waitlistCount > 0
+                        ? `incl. ${waitlistCount} waitlisted`
+                        : undefined,
+                  },
+                  {
+                    label: "Agreements signed (all time)",
+                    value: signedAgreements,
+                  },
+                ]}
+              />
+              <p className="mt-3 text-[11px] text-muted-foreground">
+                Reservations and agreements come from your live pipeline;
+                trip views start counting from the tracker&apos;s first
+                deploy.
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <SectionHeader
+              icon={MousePointerClick}
+              title="Top pages"
+              subtitle="Most-viewed paths, last 7 days"
+            />
+            <CardContent>
+              <TopPagesTable pages={a.topPages} hasData={a.hasData} />
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* RSVPs + action mix */}
+        <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          <Card>
+            <SectionHeader
+              icon={CalendarDays}
+              title="RSVPs per event"
+              subtitle="Tracked RSVP taps by event or meetup"
+            />
+            <CardContent>
+              <RsvpsChart data={rsvpChartData} hasData={a.hasData} />
+            </CardContent>
+          </Card>
+          <Card>
+            <SectionHeader
+              icon={Activity}
+              title="Action mix"
+              subtitle="Tracked member actions, last 7 days"
+            />
+            <CardContent>
+              <ActionsPieChart
+                data={a.actionBreakdown7d}
+                hasData={a.hasData}
+              />
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Live feed + upcoming */}
+        <div className="mt-4 grid gap-4 lg:grid-cols-[1.6fr_1fr]">
+          <Card>
+            <SectionHeader
+              icon={Activity}
+              title="Live activity"
+              subtitle="Latest tracked events across the site"
+            />
+            <CardContent>
+              <ActivityFeed
+                events={a.events.slice(0, 30)}
+                lookups={lookups}
+                hasData={a.hasData}
+              />
+            </CardContent>
+          </Card>
+          <Card>
+            <SectionHeader
+              icon={CalendarDays}
+              title="Upcoming events"
+              subtitle={
+                m.upcomingCount > 0
+                  ? `${m.upcomingCount} scheduled`
+                  : "Nothing scheduled yet"
+              }
+            />
+            <CardContent>
+              {m.loading ? (
+                <EmptyChart message="Loading…" />
+              ) : (
+                <UpcomingEvents events={m.upcomingEvents} />
+              )}
+              <div className="mt-3 text-right">
+                <Link
+                  href="/community/admin/calendar"
+                  className="text-xs font-medium text-primary hover:underline"
+                >
+                  Manage calendar →
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );

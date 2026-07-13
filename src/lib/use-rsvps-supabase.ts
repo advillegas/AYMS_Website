@@ -12,6 +12,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { getSupabase } from "./supabase";
 import { subscribeQuery, tsToIso, nowIso } from "./supabase-helpers";
 import { useAuth } from "./store";
+import { trackEvent } from "./activity-tracker";
 import type {
   MyRsvpRef,
   Rsvp,
@@ -123,6 +124,7 @@ export function useRsvpsSupabase(
           { onConflict: "target_type,target_id,user_id" },
         );
         if (error) throw new Error(error.message);
+        trackEvent("event_rsvp", { targetType, targetId, status });
         return status;
       } catch (err) {
         console.error("[rsvps:sb] toggle failed", err);
@@ -187,6 +189,7 @@ export function useMyRsvpRefsSupabase(
 
   useEffect(() => {
     if (!uid || !sig) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- house guard pattern (pre-existing)
       setRows([]);
       setLoading(false);
       return;

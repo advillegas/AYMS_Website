@@ -70,6 +70,23 @@ export interface ChannelActivity {
   count: number;
 }
 
+/**
+ * One day of message volume split by channel display name (top
+ * channels + "Other"), shaped for a recharts stacked BarChart. The
+ * per-channel counts live on dynamic keys next to key/label.
+ */
+export interface StackedDayPoint {
+  key: string;
+  label: string;
+  [channelName: string]: string | number;
+}
+
+export interface StackedDailyMessages {
+  days: StackedDayPoint[];
+  /** Stack order (busiest first, "Other" last when present). */
+  channelNames: string[];
+}
+
 export interface UpcomingEvent {
   id: string;
   title: string;
@@ -84,12 +101,18 @@ export interface AdminMetrics {
   /** Headline counters. */
   totalMembers: number;
   newThisMonth: number;
+  newMembers7d: number;
+  newMembers30d: number;
+  messages24h: number;
+  messages7d: number;
   messages30d: number;
   upcomingCount: number;
   /** Series. */
   memberGrowth: MonthPoint[];
   channelActivity: ChannelActivity[];
   dailyMessages: DayPoint[];
+  /** dailyMessages split by channel (stacked-bar shape). */
+  stackedDailyMessages: StackedDailyMessages;
   upcomingEvents: UpcomingEvent[];
 }
 
@@ -357,22 +380,45 @@ export function useAdminMetrics(): AdminMetrics {
     const thisMonthKey = monthKey(now);
     const newThisMonth = joinsByMonth.get(thisMonthKey) ?? 0;
 
+    /* ---- new members, trailing 7/30 days ------------------------- */
+    const joinCut7 = new Date(now);
+    joinCut7.setDate(joinCut7.getDate() - 7);
+    const joinCut30 = new Date(now);
+    joinCut30.setDate(joinCut30.getDate() - 30);
+    let newMembers7d = 0;
+    let newMembers30d = 0;
+    for (const u of users) {
+      const dt = parseDate(u.joinedDate);
+      if (!dt) continue;
+      if (dt >= joinCut7) newMembers7d += 1;
+      if (dt >= joinCut30) newMembers30d += 1;
+    }
+
     /* ---- channel activity + daily volume (last 30 / 14 days) ----- */
     const cutoff30 = new Date(now);
     cutoff30.setDate(cutoff30.getDate() - 30);
     const cutoff14 = new Date(now);
     cutoff14.setDate(cutoff14.getDate() - 14);
     cutoff14.setHours(0, 0, 0, 0);
+    const cutoff7 = new Date(now);
+    cutoff7.setDate(cutoff7.getDate() - 7);
+    const cutoff24h = new Date(now.getTime() - 24 * 3600_000);
 
     const countByChannel = new Map<string, number>();
     const countByDay = new Map<string, number>();
+    // channelId → (dayKey → count), for the stacked series.
+    const countByChannelDay = new Map<string, Map<string, number>>();
     let messages30d = 0;
+    let messages7d = 0;
+    let messages24h = 0;
 
     for (const m of messages) {
       const dt = tsToDate(m.createdAt);
       if (!dt) continue;
       if (dt >= cutoff30) {
         messages30d += 1;
+        if (dt >= cutoff7) messages7d += 1;
+        if (dt >= cutoff24h) messages24h += 1;
         if (m.channelId) {
           countByChannel.set(
             m.channelId,
@@ -383,6 +429,13 @@ export function useAdminMetrics(): AdminMetrics {
       if (dt >= cutoff14) {
         const k = dayKey(dt);
         countByDay.set(k, (countByDay.get(k) ?? 0) + 1);
+        const ch = m.channelId ?? "unknown";
+        let perDay = countByChannelDay.get(ch);
+        if (!perDay) {
+          perDay = new Map<string, number>();
+          countByChannelDay.set(ch, perDay);
+        }
+        perDay.set(k, (perDay.get(k) ?? 0) + 1);
       }
     }
 
@@ -411,6 +464,36 @@ export function useAdminMetrics(): AdminMetrics {
       });
     }
 
+    /* ---- stacked message volume (top channels + Other, 14 days) -- */
+    const topChannelIds = Array.from(countByChannelDay.entries())
+      .map(([id, perDay]) => ({
+        id,
+        total: Array.from(perDay.values()).reduce((a, b) => a + b, 0),
+      }))
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 4)
+      .map((c) => c.id);
+    const nameFor = (id: string) => channelNameById.get(id) ?? id;
+    const stackNames = topChannelIds.map(nameFor);
+    const hasOther = countByChannelDay.size > topChannelIds.length;
+    if (hasOther) stackNames.push("Other");
+
+    const stackedDays: StackedDayPoint[] = dailyMessages.map((d) => {
+      const row: StackedDayPoint = { key: d.key, label: d.label };
+      for (const name of stackNames) row[name] = 0;
+      for (const [chId, perDay] of countByChannelDay) {
+        const n = perDay.get(d.key) ?? 0;
+        if (n === 0) continue;
+        const name = topChannelIds.includes(chId) ? nameFor(chId) : "Other";
+        row[name] = ((row[name] as number) ?? 0) + n;
+      }
+      return row;
+    });
+    const stackedDailyMessages: StackedDailyMessages = {
+      days: stackedDays,
+      channelNames: stackNames,
+    };
+
     /* ---- upcoming events ----------------------------------------- */
     const todayKey = dayKey(now);
     const upcoming = events
@@ -429,11 +512,16 @@ export function useAdminMetrics(): AdminMetrics {
       isLive: isFirebaseConfigured || useSupabaseBackend,
       totalMembers,
       newThisMonth,
+      newMembers7d,
+      newMembers30d,
+      messages24h,
+      messages7d,
       messages30d,
       upcomingCount: upcoming.length,
       memberGrowth,
       channelActivity,
       dailyMessages,
+      stackedDailyMessages,
       upcomingEvents,
     };
   }, [

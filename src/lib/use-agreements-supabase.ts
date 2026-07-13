@@ -10,6 +10,7 @@ import { useCallback, useEffect, useState } from "react";
 import { getSupabase } from "./supabase";
 import { subscribeQuery, tsToIso } from "./supabase-helpers";
 import { getCurrentUid } from "./firebase";
+import { trackEvent } from "./activity-tracker";
 import {
   canTransition,
   disclosuresSatisfied,
@@ -206,13 +207,20 @@ export function useAgreementsSupabase(
         console.warn("[agreements:sb] disclosures incomplete");
         return false;
       }
-      return updateAgreement(id, {
+      const ok = await updateAgreement(id, {
         status: "prospect_signed",
         prospectSignerName: input.signerName,
         prospectSignatureText: input.signatureText,
         prospectSignedAt: new Date().toISOString(),
         disclosures: input.disclosures,
       });
+      if (ok) {
+        trackEvent("agreement_signed", {
+          agreementId: id,
+          tripId: cur.tripId ?? null,
+        });
+      }
+      return ok;
     },
     [agreements, updateAgreement],
   );

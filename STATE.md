@@ -1,13 +1,33 @@
 # Loop State — AYMS_Website (Amigas Y Más Social)
 
-Last run: 2026-07-12T08:50-07:00 (run 18 — capstone build PASSED; loop DORMANT)
-Loop mode: DORMANT (autonomous backlog drained; full build green). Wake by
-  messaging the agent — triggers: Cursor invoice paid → relaunch dashboard/CRM
-  subagent; Firestore rules deploy decision; RLS hardening go-ahead; new
-  owner-reported issues.
+Last run: 2026-07-12T18:45-07:00 (run 19 — REACTIVATED: billing paid, work
+  pushed to origin/main as 852cde6, two subagents in flight)
+Loop mode: ACTIVE.
 Kill switch: set `loop-pause-all: true` below and the loop exits on next wake.
 
 loop-pause-all: false
+
+## BACKEND CORRECTION (owner, 2026-07-12 evening)
+
+**Supabase is now the LIVE production backend** ("we moved everything to
+supabase"). Local `.env.local` flipped to `NEXT_PUBLIC_USE_SUPABASE=true` to
+match. Consequences:
+- Stale-Firestore-rules item is now LEGACY/low priority.
+- Supabase RLS permissive-everywhere is now a PRODUCTION security hole → top
+  of watch list.
+- `supabase/events-suppression.sql` now REQUIRED (events agent consolidating).
+- All new features must implement the Supabase branch as primary.
+
+## In flight (run 19)
+
+- Dashboard/CRM + activity tracking subagent (relaunched post-billing,
+  interrupted + corrected to Supabase-primary; `activity_events` table +
+  `supabase/activity-events.sql`, rebuilt analytics w/ recharts, per-member
+  activity, concierge admin UI).
+- Events subagent: junk rows `qwerty`/`qwert` live in Supabase `events` table
+  (NOT in code — grep clean). Probe live DB, root-cause un-deletable events
+  under Supabase path, purge junk rows, map-view edit/delete parity, apply/
+  consolidate suppression SQL.
 
 ## Mission
 
@@ -58,17 +78,15 @@ Patch the holes in admin features and optimize the admin experience:
 - [x] **Camp page** — DONE (fix subagent): editable CTAs default "Join the
       waitlist" → leads pipeline; sponsor banner section; zero-dep canvas
       cropper in all admin image uploads. Needs human interactive QA.
-- [ ] **Admin dashboard/CRM + activity tracking** — **BLOCKED: Cursor unpaid
-      invoice killed the subagent before it started building** (only recharts
-      install landed). RELAUNCH after billing is settled.
-- [ ] **Deployed Firestore rules look stale** (fix-agent discovery): rules
-      say `admin@ayms.com`, code uses `admin@amigasymassocial.com`; dev
-      console shows trips permission-denied. Likely root cause of silent
-      admin write failures. Human decision: deploy updated rules
-      (`firebase deploy --only firestore:rules`) after review.
-- [ ] Apply `supabase/events-suppression.sql` manually (only matters if
-      Supabase flag flips on; **Firebase is the ACTIVE backend** —
-      NEXT_PUBLIC_USE_SUPABASE=false).
+- [ ] **Admin dashboard/CRM + activity tracking** — IN FLIGHT (run 19
+      subagent, billing unblocked, Supabase-primary).
+- [ ] **Events: admin must edit/remove ALL events; junk rows qwerty/qwert
+      un-deletable** — IN FLIGHT (run 19 subagent; rows live in Supabase
+      `events` data, not code).
+- [ ] ~~Deployed Firestore rules stale~~ — DEPRIORITIZED: Firebase is legacy
+      now (Supabase live). Only matters if flag ever flips back.
+- [ ] Apply `supabase/events-suppression.sql` — NOW REQUIRED (Supabase live);
+      events subagent consolidating; owner runs it in Supabase SQL editor.
 - [ ] **Editor coverage gaps** (fix agent landed; patching directly) — from audit:
       1. ~~`/links` page fully hardcoded~~ — DONE (main agent 2026-07-11):
          content moved to `cms_config.links` w/ coded defaults; new
@@ -124,7 +142,10 @@ Patch the holes in admin features and optimize the admin experience:
 
 ## Watch List
 
-- Supabase RLS permissive + `media` bucket open ("HARDEN before launch").
+- **Supabase RLS permissive + `media` bucket open — NOW URGENT: Supabase is
+  the live production backend.** Anyone with the public anon key can write/
+  delete community + CMS data. Needs owner go-ahead for a hardening pass
+  (policies exist in supabase/cms-hardening.sql as a starting point).
 - `builder-store.ts` still has localStorage-only template/publish keys.
 - Agreement legal templates still PLACEHOLDER (`src/lib/agreements-data.ts`).
 - ~~meetups missing from Supabase schema~~ — table exists now (verified).

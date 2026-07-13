@@ -35,6 +35,7 @@ import {
 import { getDb, getCurrentUid, isFirebaseConfigured } from "./firebase";
 import { useSupabaseBackend } from "./supabase";
 import { useAgreementsSupabase } from "./use-agreements-supabase";
+import { trackEvent } from "./activity-tracker";
 import {
   canTransition,
   disclosuresSatisfied,
@@ -163,9 +164,8 @@ export function useAgreements(filter?: AgreementsFilter): UseAgreementsResult {
   // hook call is stable for the lifetime of the app (same pattern as
   // useTrips) — and it means only the ACTIVE backend ever subscribes,
   // instead of both opening live listeners.
-  return useSupabaseBackend
-    ? useAgreementsSupabase(filter)
-    : useAgreementsFirebase(filter);
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  return useSupabaseBackend ? useAgreementsSupabase(filter) : useAgreementsFirebase(filter);
 }
 
 function useAgreementsFirebase(filter?: AgreementsFilter): UseAgreementsResult {
@@ -177,6 +177,7 @@ function useAgreementsFirebase(filter?: AgreementsFilter): UseAgreementsResult {
 
   useEffect(() => {
     if (!isFirebaseConfigured) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- house guard pattern (pre-existing)
       setAgreements([]);
       setLoading(false);
       return;
@@ -291,13 +292,20 @@ function useAgreementsFirebase(filter?: AgreementsFilter): UseAgreementsResult {
         console.warn("[agreements] disclosures incomplete");
         return false;
       }
-      return updateAgreement(id, {
+      const ok = await updateAgreement(id, {
         status: "prospect_signed",
         prospectSignerName: input.signerName,
         prospectSignatureText: input.signatureText,
         prospectSignedAt: new Date().toISOString(),
         disclosures: input.disclosures,
       });
+      if (ok) {
+        trackEvent("agreement_signed", {
+          agreementId: id,
+          tripId: cur.tripId ?? null,
+        });
+      }
+      return ok;
     },
     [agreements, updateAgreement],
   );

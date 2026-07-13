@@ -43,6 +43,7 @@ import {
 import { isFirebaseConfigured } from "@/lib/firebase";
 import { getSupabase, useSupabaseBackend } from "@/lib/supabase";
 import { BackendBadge } from "@/components/admin/backend-badge";
+import { MemberActivitySection } from "@/components/admin/member-activity";
 import {
   AvatarStatusOverlay,
   statusLabel,
@@ -592,6 +593,10 @@ function MemberDetail({ member, onClose }: MemberDetailProps) {
             </div>
           </>
         )}
+
+        <Separator />
+
+        <MemberActivitySection userId={member.id} />
 
         <Separator />
 

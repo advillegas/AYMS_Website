@@ -13,6 +13,7 @@ import {
   Inbox,
   FileSignature,
   PenSquare,
+  ConciergeBell,
 } from "lucide-react";
 
 const TILES = [
@@ -33,6 +34,12 @@ const TILES = [
     icon: Inbox,
     title: "Leads & inquiries",
     desc: "Trip reservations, waitlists, and newsletter signups — your pipeline in one place.",
+  },
+  {
+    href: "/community/admin/concierge",
+    icon: ConciergeBell,
+    title: "Concierge inquiries",
+    desc: "Trip-planning requests from the concierge form — triage new, contacted, and closed leads.",
   },
   {
     href: "/community/admin/agreements",
@@ -68,7 +75,7 @@ const TILES = [
     href: "/community/admin/analytics",
     icon: BarChart3,
     title: "Analytics",
-    desc: "Member growth, channel activity, and upcoming events at a glance.",
+    desc: "KPIs, growth and traffic charts, the reservation funnel, and a live activity feed.",
   },
   {
     href: "/community/admin/calendar",

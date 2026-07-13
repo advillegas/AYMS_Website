@@ -36,6 +36,7 @@ import {
 import { getDb, isFirebaseConfigured } from "./firebase";
 import { getSupabase, useSupabaseBackend } from "./supabase";
 import { subscribeQuery, tsToIso as sbTsToIso } from "./supabase-helpers";
+import { trackEvent } from "./activity-tracker";
 
 /* ------------------------------------------------------------------ */
 /* Firestore schema                                                    */
@@ -299,6 +300,16 @@ export function useNewsletter(): UseNewsletterResult {
   const subscribe = useCallback(
     async (input: SubscribeInput): Promise<SubscribeResult> => {
       setSubmitting(true);
+      // Analytics: log genuinely-new signups only (not dupes/failures).
+      const trackIfNew = (r: SubscribeResult): SubscribeResult => {
+        if (r.status === "subscribed") {
+          trackEvent("newsletter_signup", {
+            source: input.source,
+            tripId: input.tripId ?? null,
+          });
+        }
+        return r;
+      };
       try {
         // Try the rate-limited API route first.
         try {
@@ -313,7 +324,7 @@ export function useNewsletter(): UseNewsletterResult {
             | null;
 
           if (res.ok && data && "status" in data) {
-            return data as SubscribeResult;
+            return trackIfNew(data as SubscribeResult);
           }
           if (res.status === 429) {
             return {
@@ -330,7 +341,7 @@ export function useNewsletter(): UseNewsletterResult {
         }
 
         // Fallback: write directly from the client (also de-dupes).
-        return await subscribeToNewsletter(input);
+        return trackIfNew(await subscribeToNewsletter(input));
       } finally {
         setSubmitting(false);
       }

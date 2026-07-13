@@ -15,6 +15,7 @@ import { subscribeQuery, tsToIso, nowIso } from "./supabase-helpers";
 import { useAuth } from "./store";
 import { pushNotification } from "./notify";
 import { getTripById } from "./trips-data";
+import { trackEvent } from "./activity-tracker";
 import type {
   ReservationStatus,
   TripReservation,
@@ -170,6 +171,10 @@ export function useTripReservationsSupabase(
               : "We'll let you know the moment a seat opens up.",
           href: "/community/my-events",
         });
+        trackEvent(
+          status === "waitlist" ? "waitlist_join" : "trip_reservation",
+          { tripId },
+        );
         return status;
       } catch (err) {
         console.error("[trip-reservations:sb] reserve failed", err);
@@ -224,6 +229,7 @@ export function useMyTripReservationsSupabase(): {
 
   useEffect(() => {
     if (!uid) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- house guard pattern (pre-existing)
       setReservations([]);
       setLoading(false);
       return;

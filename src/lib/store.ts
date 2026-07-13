@@ -14,6 +14,7 @@ import {
 import { isFirebaseConfigured } from "./firebase";
 import { useSupabaseBackend } from "./supabase";
 import { CONFIRM_EMAIL, ensureSupabaseAdminSession } from "./supabase-auth";
+import { trackEvent } from "./activity-tracker";
 import type { NameDisplay } from "./name-format";
 
 // Re-exported so existing consumers (UI components) can keep importing
@@ -340,6 +341,7 @@ export const useAuth = create<AuthState>()(
             // already provisioned admin@amigasymassocial.com server-side; this
             // signs in so admin writes carry a JWT RLS can see.
             if (useSupabaseBackend) void ensureSupabaseAdminSession(password);
+            trackEvent("sign_in", { method: "admin" });
             return { ok: true };
           }
           if (!data.fallback && data.error) {
@@ -356,6 +358,7 @@ export const useAuth = create<AuthState>()(
             const fbUser = await firebaseSignIn(id, password);
             if (fbUser) {
               set({ user: fbUser, isAuthenticated: true });
+              trackEvent("sign_in", { method: "password" });
               return { ok: true };
             }
           } catch (e) {
@@ -406,6 +409,7 @@ export const useAuth = create<AuthState>()(
         // Mirror legacy users into Firestore on login so they
         // start showing up in the members list.
         void upsertUserProfile(user);
+        trackEvent("sign_in", { method: "legacy" });
         return { ok: true };
       },
 
@@ -437,10 +441,12 @@ export const useAuth = create<AuthState>()(
               // page a pending result so it can show "check your
               // inbox"; the users row is seeded on the first real
               // sign-in after confirmation.
+              trackEvent("sign_up", { method: "password", pending: true });
               return { ok: true, pending: "confirm-email" };
             }
             if (fbUser) {
               set({ user: fbUser, isAuthenticated: true });
+              trackEvent("sign_up", { method: "password" });
               return { ok: true };
             }
           } catch (e) {
@@ -490,6 +496,7 @@ export const useAuth = create<AuthState>()(
         // Best-effort Firestore mirror so even legacy registrations
         // appear in the members list as soon as Firebase comes online.
         void upsertUserProfile(user);
+        trackEvent("sign_up", { method: "legacy" });
         return { ok: true };
       },
 
@@ -507,7 +514,8 @@ export const useAuth = create<AuthState>()(
             if (useSupabaseBackend) {
               // Supabase OAuth is a full-page redirect: null means the
               // browser is about to navigate away, not a failure. The
-              // session is applied on return by onSupabaseAuthChange.
+              // session is applied on return by onSupabaseAuthChange
+              // (that return path isn't tracked — see activity-tracker).
               return { ok: true, pending: "oauth-redirect" };
             }
             return {
@@ -516,6 +524,7 @@ export const useAuth = create<AuthState>()(
             };
           }
           set({ user: fbUser, isAuthenticated: true });
+          trackEvent("sign_in", { method: "google" });
           return { ok: true };
         } catch (e) {
           return { ok: false, error: friendlyAuthError(e) };

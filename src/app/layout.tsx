@@ -7,6 +7,7 @@ import { ChatProvider } from "@/components/chatbot/chat-provider";
 import { ConfirmProvider } from "@/components/ui/confirm-dialog";
 import { ImageCropperProvider } from "@/components/admin/image-cropper";
 import { AuthBootstrap } from "@/components/auth-bootstrap";
+import { ActivityTracker } from "@/components/activity-tracker";
 import { OrganizationJsonLd, WebSiteJsonLd } from "@/components/seo/json-ld";
 import { SiteThemeVars } from "@/components/site-theme-vars";
 import { InlineEditBar } from "@/components/inline/inline-edit-bar";
@@ -170,6 +171,7 @@ export default function RootLayout({
             <ConfirmProvider>
             <ImageCropperProvider>
             <AuthBootstrap />
+            <ActivityTracker />
             <SiteThemeVars />
             <div
               id="main-content"

@@ -1140,6 +1140,141 @@ export function ElementRenderer({ element, editable, onUpdate, onClick, isSelect
       );
     }
 
+    case "image-banner": {
+      const bannerImgs = (p.images as string[]) || [];
+      const filled = bannerImgs.filter(Boolean);
+      const imgHeight = Math.max(40, Number(p.height) || 120);
+      const imgGap = Math.max(0, Number(p.gap) || 16);
+      const imgRadius = Math.max(0, Number(p.borderRadius) || 12);
+      const scrollSpeed = Math.max(4, Number(p.speed) || 30);
+      const pauseHover = !!(p.pauseOnHover as boolean);
+      const bannerBg = (p.bgColor as string) || undefined;
+
+      // Editing: a still grid so upload targets don't move while the admin
+      // works. The scroll only runs on the published/live page.
+      if (editable) {
+        return (
+          <div className={wrapper} onClick={handleClick}>
+            {rv(
+              <div className="rounded-xl p-2" style={{ backgroundColor: bannerBg }}>
+                <div className="flex flex-wrap gap-3">
+                  {bannerImgs.map((src, i) => (
+                    <div
+                      key={i}
+                      className="relative group/bimg shrink-0"
+                      style={{ height: `${imgHeight}px`, width: `${imgHeight * 2}px` }}
+                    >
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        id={`imgbanner-${element.id}-${i}`}
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          e.target.value = "";
+                          const prepared = await requestCrop(file, {
+                            title: "Crop banner image",
+                            defaultAspect: "banner",
+                          });
+                          if (!prepared) return;
+                          setUploading(true);
+                          try {
+                            const url = await uploadCmsMedia(prepared);
+                            const imgs = [...(p.images as string[])];
+                            imgs[i] = url;
+                            onUpdate?.({ images: imgs });
+                          } catch (err) {
+                            console.error("[builder] image-banner upload failed", err);
+                          } finally {
+                            setUploading(false);
+                          }
+                        }}
+                      />
+                      {src ? (
+                        <>
+                          <img src={src} alt="" className="h-full w-full object-cover" style={{ borderRadius: `${imgRadius}px` }} />
+                          <div
+                            className="absolute inset-0 flex items-center justify-center gap-3 bg-black/50 opacity-0 group-hover/bimg:opacity-100 transition-opacity"
+                            style={{ borderRadius: `${imgRadius}px` }}
+                          >
+                            <button
+                              onClick={(e) => { e.stopPropagation(); (document.getElementById(`imgbanner-${element.id}-${i}`) as HTMLInputElement)?.click(); }}
+                              className="text-white text-xs font-semibold"
+                            >
+                              Replace
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); onUpdate?.({ images: (p.images as string[]).filter((_, j) => j !== i) }); }}
+                              className="text-white/80 text-xs font-semibold hover:text-white"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        </>
+                      ) : (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); (document.getElementById(`imgbanner-${element.id}-${i}`) as HTMLInputElement)?.click(); }}
+                          className="h-full w-full flex items-center justify-center border-2 border-dashed border-[#FF0099]/30 bg-[#FF0099]/5 text-[#FF0099]/60 hover:bg-[#FF0099]/10 transition-colors text-xs"
+                          style={{ borderRadius: `${imgRadius}px` }}
+                        >
+                          + Image
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onUpdate?.({ images: [...(p.images as string[]), ""] }); }}
+                    className="shrink-0 flex items-center justify-center border-2 border-dashed border-[#221019]/12 bg-[#221019]/[0.02] text-[#221019]/40 hover:bg-[#FF0099]/5 transition-colors text-xs rounded-xl"
+                    style={{ height: `${imgHeight}px`, width: `${imgHeight * 2}px` }}
+                  >
+                    + Add image
+                  </button>
+                </div>
+                <p className="mt-2 text-center text-[10px] text-[#221019]/40">
+                  Images scroll sideways on the live page.
+                </p>
+              </div>,
+            )}
+          </div>
+        );
+      }
+
+      // Published/live: seamless horizontal scroll. The `marquee` keyframe
+      // translates -50%, so the list is duplicated to loop without a gap.
+      if (filled.length === 0) return null;
+      const loop = [...filled, ...filled];
+      return (
+        <div className={wrapper} onClick={handleClick}>
+          {rv(
+            <div className="overflow-hidden rounded-xl" style={{ backgroundColor: bannerBg }}>
+              <div
+                className={cn("flex w-max", pauseHover && "hover:[animation-play-state:paused]")}
+                style={{
+                  gap: `${imgGap}px`,
+                  animationName: "marquee",
+                  animationDuration: `${scrollSpeed}s`,
+                  animationTimingFunction: "linear",
+                  animationIterationCount: "infinite",
+                }}
+              >
+                {loop.map((src, i) => (
+                  <img
+                    key={i}
+                    src={src}
+                    alt=""
+                    aria-hidden={i >= filled.length}
+                    className="shrink-0 object-cover"
+                    style={{ height: `${imgHeight}px`, borderRadius: `${imgRadius}px` }}
+                  />
+                ))}
+              </div>
+            </div>,
+          )}
+        </div>
+      );
+    }
+
     case "faq-item":
       return (
         <div className={wrapper} onClick={handleClick}>

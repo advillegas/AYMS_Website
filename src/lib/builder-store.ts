@@ -21,6 +21,7 @@ export type ElementType =
   | "countdown"
   | "columns-2"
   | "banner"
+  | "image-banner"
   | "faq-item"
   | "cta-block";
 
@@ -145,6 +146,8 @@ function defaultProps(type: ElementType): Record<string, unknown> {
       return { ...RV, gap: "24" };
     case "banner":
       return { ...RV, text: "✨ New trips dropping soon — stay tuned! ✨", speed: "30", bgColor: "#FF0099", textColor: "#ffffff", fontSize: "14", shimmerStrip: false };
+    case "image-banner":
+      return { ...RV, images: ["", "", ""], speed: "30", height: "120", gap: "16", borderRadius: "12", bgColor: "", pauseOnHover: true };
     case "faq-item":
       return { ...RV, question: "What's included in the trip price?", answer: "Our trips include accommodation, planned excursions, group meals, and airport transfers. Flights are typically booked separately.", open: false };
     case "cta-block":

@@ -546,6 +546,20 @@ function PanelContent({ element, onClose }: { element: BuilderElement; onClose: 
             </>
           )}
 
+          {element.type === "image-banner" && (
+            <>
+              <Field label="Scroll speed (s)"><Input type="number" min="4" value={p.speed as string} onChange={(e) => update({ speed: e.target.value })} className={inputCls} /></Field>
+              <Field label="Image height (px)"><Input type="number" value={p.height as string} onChange={(e) => update({ height: e.target.value })} className={inputCls} /></Field>
+              <Field label="Gap (px)"><Input type="number" value={p.gap as string} onChange={(e) => update({ gap: e.target.value })} className={inputCls} /></Field>
+              <Field label="Border Radius"><Input type="number" value={p.borderRadius as string} onChange={(e) => update({ borderRadius: e.target.value })} className={inputCls} /></Field>
+              <Field label="Background"><ColorPicker value={(p.bgColor as string) || ""} onChange={(v) => update({ bgColor: v })} /></Field>
+              <Field label="Pause on hover"><ToggleBtn value={!!(p.pauseOnHover as boolean)} onChange={(v) => update({ pauseOnHover: v })} /></Field>
+              <Field label="Images">
+                <p className="text-[10px] text-white/30">{((p.images as string[]) || []).length} images — upload &amp; reorder on the canvas</p>
+              </Field>
+            </>
+          )}
+
           {element.type === "faq-item" && (
             <>
               <Field label="Question"><Input value={p.question as string} onChange={(e) => update({ question: e.target.value })} className={inputCls} /></Field>

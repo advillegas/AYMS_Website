@@ -26,6 +26,7 @@ import {
   DollarSign,
   Timer,
   Video,
+  Images,
 } from "lucide-react";
 
 interface Props {
@@ -48,6 +49,7 @@ const BLOCK_ITEMS: { type: ElementType; label: string; description: string; icon
   { type: "gallery", label: "Gallery", description: "A grid of images.", icon: Grid3X3 },
   { type: "cta-block", label: "CTA block", description: "A bold call-to-action with two buttons.", icon: Sparkles },
   { type: "banner", label: "Banner", description: "A scrolling marquee strip.", icon: Megaphone },
+  { type: "image-banner", label: "Image banner", description: "A strip of images that scroll sideways — upload your own photos or sponsor logos.", icon: Images },
   { type: "testimonial", label: "Testimonial", description: "A quote card with avatar.", icon: Star },
   { type: "pricing", label: "Pricing", description: "A price card with a feature list.", icon: DollarSign },
   { type: "countdown", label: "Countdown", description: "A live countdown timer.", icon: Timer },

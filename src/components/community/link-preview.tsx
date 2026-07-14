@@ -6,10 +6,34 @@ import { Loader2, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
- * Detects http/https URLs in plain text. Anchored loosely so
- * surrounding punctuation doesn't get eaten.
+ * Detects links in plain chat text. Three shapes, in precedence order:
+ *   1. explicit scheme  — https://example.com/x
+ *   2. www-prefixed     — www.example.com/x
+ *   3. bare domain      — example.com/x, instagram.com/amigasymas
+ * Trailing sentence punctuation is not eaten. Bare domains require a known
+ * TLD and a leading lookbehind that rejects emails (foo@bar.com) and any
+ * host already captured by a longer match.
  */
-export const URL_REGEX = /\bhttps?:\/\/[^\s<]+[^\s<.,!?:;)\]}'"]/gi;
+const TLD =
+  "com|org|net|io|co|dev|app|me|gg|tv|xyz|info|biz|shop|store|social|life|link|club|us|ca|mx|es|uk|edu|gov|fm|ai|so|to|page|site";
+export const URL_REGEX = new RegExp(
+  [
+    // 1 + 2: scheme or www.
+    `(?<![@\\w])(?:https?:\\/\\/|www\\.)[^\\s<]+[^\\s<.,!?:;)\\]}'"]`,
+    // 3: bare domain (not preceded by @, word char, dot or slash → skips emails/paths)
+    `(?<![@\\w.\\/])(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\\.)+(?:${TLD})(?:\\/[^\\s<]*[^\\s<.,!?:;)\\]}'"]|\\/?)`,
+  ].join("|"),
+  "gi",
+);
+
+/**
+ * Normalize a detected link into an absolute href. Bare/`www.` links get an
+ * `https://` scheme so the browser navigates instead of treating them as a
+ * relative path. Explicit http/https links pass through untouched.
+ */
+export function toHref(raw: string): string {
+  return /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+}
 
 interface PreviewData {
   url: string;

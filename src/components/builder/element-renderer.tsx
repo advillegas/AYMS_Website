@@ -1149,6 +1149,13 @@ export function ElementRenderer({ element, editable, onUpdate, onClick, isSelect
       const scrollSpeed = Math.max(4, Number(p.speed) || 30);
       const pauseHover = !!(p.pauseOnHover as boolean);
       const bannerBg = (p.bgColor as string) || undefined;
+      const moveBannerImg = (from: number, to: number) => {
+        const arr = [...(p.images as string[])];
+        if (to < 0 || to >= arr.length) return;
+        const [moved] = arr.splice(from, 1);
+        arr.splice(to, 0, moved);
+        onUpdate?.({ images: arr });
+      };
 
       // Editing: a still grid so upload targets don't move while the admin
       // works. The scroll only runs on the published/live page.
@@ -1195,21 +1202,41 @@ export function ElementRenderer({ element, editable, onUpdate, onClick, isSelect
                         <>
                           <img src={src} alt="" className="h-full w-full object-cover" style={{ borderRadius: `${imgRadius}px` }} />
                           <div
-                            className="absolute inset-0 flex items-center justify-center gap-3 bg-black/50 opacity-0 group-hover/bimg:opacity-100 transition-opacity"
+                            className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 bg-black/55 opacity-0 group-hover/bimg:opacity-100 transition-opacity"
                             style={{ borderRadius: `${imgRadius}px` }}
                           >
-                            <button
-                              onClick={(e) => { e.stopPropagation(); (document.getElementById(`imgbanner-${element.id}-${i}`) as HTMLInputElement)?.click(); }}
-                              className="text-white text-xs font-semibold"
-                            >
-                              Replace
-                            </button>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); onUpdate?.({ images: (p.images as string[]).filter((_, j) => j !== i) }); }}
-                              className="text-white/80 text-xs font-semibold hover:text-white"
-                            >
-                              Remove
-                            </button>
+                            <div className="flex items-center gap-3">
+                              <button
+                                onClick={(e) => { e.stopPropagation(); (document.getElementById(`imgbanner-${element.id}-${i}`) as HTMLInputElement)?.click(); }}
+                                className="text-white text-xs font-semibold hover:underline"
+                              >
+                                Replace
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); onUpdate?.({ images: (p.images as string[]).filter((_, j) => j !== i) }); }}
+                                className="text-white/80 text-xs font-semibold hover:text-white"
+                              >
+                                Remove
+                              </button>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={(e) => { e.stopPropagation(); moveBannerImg(i, i - 1); }}
+                                disabled={i === 0}
+                                aria-label="Move left"
+                                className="flex h-6 w-6 items-center justify-center rounded-full bg-white/15 text-white text-sm leading-none hover:bg-white/30 disabled:opacity-30 disabled:cursor-not-allowed"
+                              >
+                                ‹
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); moveBannerImg(i, i + 1); }}
+                                disabled={i === bannerImgs.length - 1}
+                                aria-label="Move right"
+                                className="flex h-6 w-6 items-center justify-center rounded-full bg-white/15 text-white text-sm leading-none hover:bg-white/30 disabled:opacity-30 disabled:cursor-not-allowed"
+                              >
+                                ›
+                              </button>
+                            </div>
                           </div>
                         </>
                       ) : (

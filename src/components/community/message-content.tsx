@@ -3,7 +3,7 @@
 import React from "react";
 import { useCommunity } from "@/lib/store";
 import { useCommunityMembers } from "@/lib/use-community-members";
-import { URL_REGEX, LinkPreview } from "./link-preview";
+import { URL_REGEX, LinkPreview, toHref } from "./link-preview";
 import { ProfileMiniTrigger } from "./profile-mini-card";
 import { cn } from "@/lib/utils";
 
@@ -149,7 +149,10 @@ export function MessageContent({
 
   const urls: string[] = [];
   for (const s of segments) {
-    if (s.kind === "url" && !urls.includes(s.value)) urls.push(s.value);
+    if (s.kind === "url") {
+      const href = toHref(s.value);
+      if (!urls.includes(href)) urls.push(href);
+    }
   }
   // Cap previews to avoid runaway fetches if someone pastes 30 links.
   const previewUrls = urls.slice(0, 3);
@@ -167,7 +170,7 @@ export function MessageContent({
               return (
                 <a
                   key={i}
-                  href={seg.value}
+                  href={toHref(seg.value)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-primary hover:underline break-all"

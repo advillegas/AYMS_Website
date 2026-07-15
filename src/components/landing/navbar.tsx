@@ -36,6 +36,7 @@ const FALLBACK_LINKS = [
   { label: "Camp", href: "/camp" },
   { label: "Events", href: "/events" },
   { label: "Gallery", href: "/gallery" },
+  { label: "Quiz", href: "/quiz" },
   { label: "FAQ", href: "/faq" },
 ];
 

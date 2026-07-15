@@ -31,6 +31,7 @@ export const SEO_PAGES: { slug: string; label: string }[] = [
   { slug: "events", label: "Events" },
   { slug: "gallery", label: "Gallery" },
   { slug: "faq", label: "FAQ" },
+  { slug: "quiz", label: "Travel Quiz" },
   { slug: "featured", label: "Featured Event" },
   { slug: "camp", label: "Summer Camp" },
   { slug: "llm", label: "Company Profile (/llm)" },

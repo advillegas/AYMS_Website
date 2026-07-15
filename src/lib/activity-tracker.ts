@@ -71,7 +71,8 @@ export type ActivityType =
   | "concierge_inquiry"
   | "message_sent"
   | "event_rsvp"
-  | "agreement_signed";
+  | "agreement_signed"
+  | "quiz_completed";
 
 export interface ActivityEvent {
   id: string;

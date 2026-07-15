@@ -57,6 +57,7 @@ const DEFAULT_NAV: NavLink[] = [
   { id: "nav-camp", label: "Camp", href: "/camp", isVisible: true },
   { id: "nav-events", label: "Events", href: "/events", isVisible: true },
   { id: "nav-gallery", label: "Gallery", href: "/gallery", isVisible: true },
+  { id: "nav-quiz", label: "Quiz", href: "/quiz", isVisible: true },
   { id: "nav-faq", label: "FAQ", href: "/faq", isVisible: true },
 ];
 

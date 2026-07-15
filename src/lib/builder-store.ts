@@ -101,7 +101,7 @@ function defaultProps(type: ElementType): Record<string, unknown> {
     case "text":
       return { ...RV, text: "Click to edit this text. Add your event details, descriptions, or any content here.", align: "left", color: "#e0e0e0", fontSize: "16" };
     case "image":
-      return { ...RV, src: "", alt: "Image", width: "100%", align: "center", borderRadius: "12", ambientFloat: false };
+      return { ...RV, src: "", alt: "Image", width: "100%", align: "center", borderRadius: "12", ambientFloat: false, aspect: "auto", objectFit: "cover", objectPosition: "center" };
     case "video":
       return { ...RV, src: "", poster: "", autoplay: false };
     case "button":
@@ -147,7 +147,7 @@ function defaultProps(type: ElementType): Record<string, unknown> {
     case "banner":
       return { ...RV, text: "✨ New trips dropping soon — stay tuned! ✨", speed: "30", bgColor: "#FF0099", textColor: "#ffffff", fontSize: "14", shimmerStrip: false };
     case "image-banner":
-      return { ...RV, images: ["", "", ""], speed: "30", height: "120", gap: "16", borderRadius: "12", bgColor: "", pauseOnHover: true };
+      return { ...RV, images: ["", "", ""], scroll: true, speed: "30", height: "120", gap: "16", borderRadius: "12", bgColor: "", pauseOnHover: true };
     case "faq-item":
       return { ...RV, question: "What's included in the trip price?", answer: "Our trips include accommodation, planned excursions, group meals, and airport transfers. Flights are typically booked separately.", open: false };
     case "cta-block":

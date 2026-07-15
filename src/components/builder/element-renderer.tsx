@@ -19,6 +19,17 @@ const NOISE_BG =
 // pinks/corals and any genuinely custom color the user picked pass through
 // untouched — only the old near-black surfaces and white-on-dark text get
 // remapped so published/edited pages read like the live editorial site.
+// Maps the image element's `aspect` preset to a CSS aspect-ratio value.
+// "auto" (or anything unlisted) renders the photo at its natural ratio.
+const IMAGE_ASPECT_MAP: Record<string, string | undefined> = {
+  auto: undefined,
+  "1:1": "1 / 1",
+  "4:3": "4 / 3",
+  "16:9": "16 / 9",
+  "3:2": "3 / 2",
+  "3:1": "3 / 1",
+};
+
 const CREAM = "#FDFCF7";
 const INK = "#221019";
 const DARK_SURFACE_MAP: Record<string, string> = {
@@ -123,6 +134,33 @@ export function ElementRenderer({ element, editable, onUpdate, onClick, isSelect
     }
   }
 
+  // Re-open the cropper on an ALREADY-uploaded image (by URL) so admins can
+  // re-crop / re-frame a photo without re-uploading. Returns the new Storage
+  // URL, or null if cancelled/failed. GIFs/SVGs bypass the cropper.
+  async function recropImage(
+    url: string,
+    opts?: Parameters<typeof requestCrop>[1],
+  ): Promise<string | null> {
+    if (!url) return null;
+    try {
+      const res = await fetch(url, { mode: "cors" });
+      if (!res.ok) return null;
+      const blob = await res.blob();
+      const file = new File([blob], "recrop.jpg", { type: blob.type || "image/jpeg" });
+      const prepared = await requestCrop(file, opts ?? { title: "Crop & adjust photo" });
+      if (!prepared) return null;
+      setUploading(true);
+      try {
+        return await uploadCmsMedia(prepared);
+      } finally {
+        setUploading(false);
+      }
+    } catch (err) {
+      console.error("[builder] re-crop failed", err);
+      return null;
+    }
+  }
+
   switch (type) {
     case "heading": {
       const Tag = (p.level as string) === "h1" ? "h1" : (p.level as string) === "h3" ? "h3" : "h2";
@@ -196,41 +234,73 @@ export function ElementRenderer({ element, editable, onUpdate, onClick, isSelect
       );
     }
 
-    case "image":
+    case "image": {
+      const imgAspect = (p.aspect as string) || "auto";
+      const aspectRatio = IMAGE_ASPECT_MAP[imgAspect];
+      const imgRadiusCss = `${p.borderRadius}px`;
+      const alignClass =
+        (p.align as string) === "left"
+          ? "mr-auto"
+          : (p.align as string) === "right"
+            ? "ml-auto"
+            : "mx-auto";
+      const objectFit = ((p.objectFit as string) || "cover") as "cover" | "contain";
+      const objectPosition = (p.objectPosition as string) || "center";
       return (
         <div className={wrapper} onClick={handleClick}>
           {rv(
             <>
           <input ref={fileRef} type="file" accept="image/*,image/gif" className="hidden" onChange={(e) => handleFileChange(e, "src")} />
           {(p.src as string) ? (
-            <div className={cn("relative group/img", !!(p.ambientFloat as boolean) && !editable && "animate-float")}>
-              <img
-                src={p.src as string}
-                alt={p.alt as string}
-                className={cn(
-                  "block max-w-full",
-                  (p.align as string) === "left"
-                    ? "mr-auto"
-                    : (p.align as string) === "right"
-                      ? "ml-auto"
-                      : "mx-auto",
-                )}
-                style={{ width: p.width as string, borderRadius: `${p.borderRadius}px` }}
-              />
+            <div
+              className={cn("relative group/img", !!(p.ambientFloat as boolean) && !editable && "animate-float", alignClass)}
+              style={{ width: p.width as string }}
+            >
+              {aspectRatio ? (
+                // Fixed-aspect frame: the photo is cropped to fit and the focal
+                // point is controlled by objectPosition.
+                <div className="relative w-full overflow-hidden" style={{ aspectRatio, borderRadius: imgRadiusCss }}>
+                  <img
+                    src={p.src as string}
+                    alt={p.alt as string}
+                    className="absolute inset-0 h-full w-full"
+                    style={{ objectFit, objectPosition }}
+                  />
+                </div>
+              ) : (
+                <img
+                  src={p.src as string}
+                  alt={p.alt as string}
+                  className="block w-full"
+                  style={{ borderRadius: imgRadiusCss, objectPosition }}
+                />
+              )}
               {editable && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); fileRef.current?.click(); }}
-                  className="absolute inset-0 flex items-center justify-center bg-[#221019]/45 backdrop-blur-[1px] opacity-0 group-hover/img:opacity-100 transition-opacity rounded-xl text-white text-sm font-semibold"
-                >
-                  {uploading ? "Uploading…" : "Click to replace image / GIF"}
-                </button>
+                <div className="absolute inset-0 flex items-center justify-center gap-2 bg-[#221019]/45 backdrop-blur-[1px] opacity-0 group-hover/img:opacity-100 transition-opacity" style={{ borderRadius: imgRadiusCss }}>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); fileRef.current?.click(); }}
+                    className="rounded-full bg-white/15 px-3 py-1.5 text-white text-xs font-semibold hover:bg-white/30"
+                  >
+                    {uploading ? "Uploading…" : "Replace"}
+                  </button>
+                  <button
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      const url = await recropImage(p.src as string);
+                      if (url) onUpdate?.({ src: url });
+                    }}
+                    className="rounded-full bg-white/15 px-3 py-1.5 text-white text-xs font-semibold hover:bg-white/30"
+                  >
+                    Crop
+                  </button>
+                </div>
               )}
             </div>
           ) : (
             <button
               onClick={(e) => { e.stopPropagation(); fileRef.current?.click(); }}
               className="flex h-48 w-full items-center justify-center rounded-xl border-2 border-dashed border-[#FF0099]/30 bg-[#FF0099]/5 text-[#FF0099]/60 hover:bg-[#FF0099]/10 hover:border-[#FF0099]/50 transition-colors cursor-pointer"
-              style={{ borderRadius: `${p.borderRadius}px` }}
+              style={{ borderRadius: imgRadiusCss }}
             >
               <div className="text-center">
                 <span className="text-3xl block mb-2">{uploading ? "⏳" : "📷"}</span>
@@ -242,6 +312,7 @@ export function ElementRenderer({ element, editable, onUpdate, onClick, isSelect
           )}
         </div>
       );
+    }
 
     case "video":
       return (
@@ -1148,6 +1219,7 @@ export function ElementRenderer({ element, editable, onUpdate, onClick, isSelect
       const imgRadius = Math.max(0, Number(p.borderRadius) || 12);
       const scrollSpeed = Math.max(4, Number(p.speed) || 30);
       const pauseHover = !!(p.pauseOnHover as boolean);
+      const bannerScroll = p.scroll !== false;
       const bannerBg = (p.bgColor as string) || undefined;
       const moveBannerImg = (from: number, to: number) => {
         const arr = [...(p.images as string[])];
@@ -1213,6 +1285,20 @@ export function ElementRenderer({ element, editable, onUpdate, onClick, isSelect
                                 Replace
                               </button>
                               <button
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  const url = await recropImage(src, { title: "Crop banner image", defaultAspect: "banner" });
+                                  if (url) {
+                                    const arr = [...(p.images as string[])];
+                                    arr[i] = url;
+                                    onUpdate?.({ images: arr });
+                                  }
+                                }}
+                                className="text-white text-xs font-semibold hover:underline"
+                              >
+                                Crop
+                              </button>
+                              <button
                                 onClick={(e) => { e.stopPropagation(); onUpdate?.({ images: (p.images as string[]).filter((_, j) => j !== i) }); }}
                                 className="text-white/80 text-xs font-semibold hover:text-white"
                               >
@@ -1267,9 +1353,33 @@ export function ElementRenderer({ element, editable, onUpdate, onClick, isSelect
         );
       }
 
-      // Published/live: seamless horizontal scroll. The `marquee` keyframe
-      // translates -50%, so the list is duplicated to loop without a gap.
       if (filled.length === 0) return null;
+
+      // Scrolling OFF: a static, centered, wrapping row of the images.
+      if (!bannerScroll) {
+        return (
+          <div className={wrapper} onClick={handleClick}>
+            {rv(
+              <div className="overflow-hidden rounded-xl" style={{ backgroundColor: bannerBg }}>
+                <div className="flex flex-wrap items-center justify-center" style={{ gap: `${imgGap}px` }}>
+                  {filled.map((src, i) => (
+                    <img
+                      key={i}
+                      src={src}
+                      alt=""
+                      className="shrink-0 object-cover"
+                      style={{ height: `${imgHeight}px`, borderRadius: `${imgRadius}px` }}
+                    />
+                  ))}
+                </div>
+              </div>,
+            )}
+          </div>
+        );
+      }
+
+      // Scrolling ON: seamless horizontal marquee. The `marquee` keyframe
+      // translates -50%, so the list is duplicated to loop without a gap.
       const loop = [...filled, ...filled];
       return (
         <div className={wrapper} onClick={handleClick}>

@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { X, Trash2, Copy, Loader2, Images } from "lucide-react";
+import { X, Trash2, Copy, Loader2, Images, Crop } from "lucide-react";
 import { v4 as uuid } from "uuid";
 import { cn } from "@/lib/utils";
 import { uploadCmsMedia } from "@/lib/supabase-storage";
@@ -101,7 +101,31 @@ function PanelContent({ element, onClose }: { element: BuilderElement; onClose: 
     }
   }
 
+  // Re-open the cropper on the current (already-uploaded) image so it can be
+  // re-cropped/re-framed without picking a new file.
+  async function handleRecrop(key: string) {
+    const url = (element.props[key] as string) || "";
+    if (!url) return;
+    try {
+      const res = await fetch(url, { mode: "cors" });
+      if (!res.ok) return;
+      const blob = await res.blob();
+      const file = new File([blob], "recrop.jpg", { type: blob.type || "image/jpeg" });
+      const prepared = await requestCrop(file, { title: "Crop & adjust photo" });
+      if (!prepared) return;
+      setUploading(true);
+      try {
+        update({ [key]: await uploadCmsMedia(prepared) });
+      } finally {
+        setUploading(false);
+      }
+    } catch (err) {
+      console.error("[builder] re-crop failed", err);
+    }
+  }
+
   const inputCls = "bg-white/5 border-white/10 text-white text-xs h-8 focus-visible:ring-[#FF0099]/30";
+  const selectCls = "w-full rounded-md px-2 py-1 text-xs bg-white/5 border border-white/10 text-white";
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -177,8 +201,36 @@ function PanelContent({ element, onClose }: { element: BuilderElement; onClose: 
                   </Button>
                 </div>
                 {(p.src as string) && <img src={p.src as string} alt="" className="mt-2 w-full rounded-lg" />}
+                {(p.src as string) && (
+                  <Button variant="outline" size="sm" disabled={uploading} onClick={() => handleRecrop("src")} className="mt-1.5 w-full text-[10px] border-white/10 text-white/50 hover:text-white hover:bg-white/5 h-7">
+                    <Crop className="h-3 w-3 mr-1" aria-hidden="true" /> Crop / reframe
+                  </Button>
+                )}
               </Field>
               <Field label="Or paste URL"><Input value={p.src as string} onChange={(e) => update({ src: e.target.value })} placeholder="https://… (jpg, png, .gif, GIPHY)" className={inputCls} /></Field>
+              <Field label="Shape">
+                <select value={(p.aspect as string) || "auto"} onChange={(e) => update({ aspect: e.target.value })} className={selectCls}>
+                  <option value="auto">Original (natural)</option>
+                  <option value="1:1">Square (1:1)</option>
+                  <option value="4:3">Landscape (4:3)</option>
+                  <option value="3:2">Photo (3:2)</option>
+                  <option value="16:9">Wide (16:9)</option>
+                  <option value="3:1">Banner (3:1)</option>
+                </select>
+              </Field>
+              {((p.aspect as string) || "auto") !== "auto" && (
+                <>
+                  <Field label="Fit">
+                    <select value={(p.objectFit as string) || "cover"} onChange={(e) => update({ objectFit: e.target.value })} className={selectCls}>
+                      <option value="cover">Fill frame (crop)</option>
+                      <option value="contain">Fit inside (letterbox)</option>
+                    </select>
+                  </Field>
+                  <Field label="Position">
+                    <PositionPicker value={(p.objectPosition as string) || "center"} onChange={(v) => update({ objectPosition: v })} />
+                  </Field>
+                </>
+              )}
               <Field label={`Width — ${imgWidthPct(p.width)}% of panel`}>
                 <div className="flex items-center gap-2">
                   <input
@@ -548,14 +600,19 @@ function PanelContent({ element, onClose }: { element: BuilderElement; onClose: 
 
           {element.type === "image-banner" && (
             <>
-              <Field label="Scroll speed (s)"><Input type="number" min="4" value={p.speed as string} onChange={(e) => update({ speed: e.target.value })} className={inputCls} /></Field>
+              <Field label="Scrolling effect"><ToggleBtn value={p.scroll !== false} onChange={(v) => update({ scroll: v })} /></Field>
+              {p.scroll !== false && (
+                <Field label="Scroll speed (s)"><Input type="number" min="4" value={p.speed as string} onChange={(e) => update({ speed: e.target.value })} className={inputCls} /></Field>
+              )}
               <Field label="Image height (px)"><Input type="number" value={p.height as string} onChange={(e) => update({ height: e.target.value })} className={inputCls} /></Field>
               <Field label="Gap (px)"><Input type="number" value={p.gap as string} onChange={(e) => update({ gap: e.target.value })} className={inputCls} /></Field>
               <Field label="Border Radius"><Input type="number" value={p.borderRadius as string} onChange={(e) => update({ borderRadius: e.target.value })} className={inputCls} /></Field>
               <Field label="Background"><ColorPicker value={(p.bgColor as string) || ""} onChange={(v) => update({ bgColor: v })} /></Field>
-              <Field label="Pause on hover"><ToggleBtn value={!!(p.pauseOnHover as boolean)} onChange={(v) => update({ pauseOnHover: v })} /></Field>
+              {p.scroll !== false && (
+                <Field label="Pause on hover"><ToggleBtn value={!!(p.pauseOnHover as boolean)} onChange={(v) => update({ pauseOnHover: v })} /></Field>
+              )}
               <Field label="Images">
-                <p className="text-[10px] text-white/30">{((p.images as string[]) || []).length} images — upload &amp; reorder on the canvas</p>
+                <p className="text-[10px] text-white/30">{((p.images as string[]) || []).length} images — upload, crop, reorder on the canvas</p>
               </Field>
             </>
           )}
@@ -637,6 +694,42 @@ function AlignPicker({ value, onChange }: { value: string; onChange: (v: string)
           {a.charAt(0).toUpperCase() + a.slice(1)}
         </button>
       ))}
+    </div>
+  );
+}
+
+// 3x3 focal-point grid → CSS object-position keyword. Lets the admin choose
+// which part of a cropped photo stays visible inside a fixed-aspect frame.
+const POSITION_GRID: { label: string; value: string }[] = [
+  { label: "Top left", value: "left top" },
+  { label: "Top", value: "center top" },
+  { label: "Top right", value: "right top" },
+  { label: "Left", value: "left center" },
+  { label: "Center", value: "center" },
+  { label: "Right", value: "right center" },
+  { label: "Bottom left", value: "left bottom" },
+  { label: "Bottom", value: "center bottom" },
+  { label: "Bottom right", value: "right bottom" },
+];
+
+function PositionPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="grid grid-cols-3 gap-1" role="group" aria-label="Focal position">
+      {POSITION_GRID.map((pos) => {
+        const active = value === pos.value;
+        return (
+          <button
+            key={pos.value}
+            type="button"
+            onClick={() => onChange(pos.value)}
+            aria-pressed={active}
+            title={pos.label}
+            className={`flex h-7 items-center justify-center rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099] ${active ? "bg-[#FF0099]" : "bg-white/5 hover:bg-white/10"}`}
+          >
+            <span className={`h-1.5 w-1.5 rounded-full ${active ? "bg-white" : "bg-white/40"}`} aria-hidden="true" />
+          </button>
+        );
+      })}
     </div>
   );
 }

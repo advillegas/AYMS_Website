@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
@@ -47,6 +47,7 @@ import {
   Copy,
   Settings,
   Compass,
+  MoreHorizontal,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn, initials } from "@/lib/utils";
@@ -95,6 +96,49 @@ const ADMIN_TAB = {
   icon: Shield,
   perm: "viewAdminPanel" as const,
 };
+
+type CommunityTab = (typeof BASE_TABS)[number] | typeof ADMIN_TAB;
+
+/** Tabs that get their own slot in the phone bottom bar; the rest live
+ * behind its "More" menu so five-plus-one always fits a 360px screen. */
+const MOBILE_PRIMARY_HREFS = new Set<string>([
+  "/community/home",
+  "/community",
+  "/community/messages",
+  "/community/calendar",
+  "/community/members",
+]);
+
+function useCommunityTabs(): readonly CommunityTab[] {
+  const { hasPermission } = useMe();
+  return hasPermission("viewAdminPanel") ? [...BASE_TABS, ADMIN_TAB] : BASE_TABS;
+}
+
+function isTabActive(pathname: string, href: string): boolean {
+  return (
+    pathname === href ||
+    (href !== "/community" && pathname.startsWith(href + "/"))
+  );
+}
+
+/**
+ * `true` when the viewport is at least `px` wide, `undefined` before the
+ * first client render (so SSR + hydration stay deterministic). Used to pick
+ * ONE mount point for the thread / member-detail panel — desktop rail or
+ * mobile sheet — rather than rendering both and hiding one with CSS, which
+ * would double every subscription the panel opens.
+ */
+function useMinWidth(px: number): boolean | undefined {
+  const [matches, setMatches] = useState<boolean | undefined>(undefined);
+  useEffect(() => {
+    const mq = window.matchMedia(`(min-width: ${px}px)`);
+    const update = () => setMatches(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, [px]);
+  return matches;
+}
 
 const CATEGORY_LABELS: Record<string, string> = {
   general: "General",
@@ -467,15 +511,17 @@ function ChannelSidebar({ onChannelClick }: ChannelSidebarProps) {
 
 function TopBarTabs({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
-  const { hasPermission } = useMe();
-  const tabs = hasPermission("viewAdminPanel") ? [...BASE_TABS, ADMIN_TAB] : BASE_TABS;
+  const tabs = useCommunityTabs();
   const unreadDms = useUnreadConversations();
+  // `mx-auto w-max` (instead of centering via the scroll container)
+  // keeps the strip centered when it fits, but lets it start at the
+  // left edge and scroll when it doesn't. A centered flex row that
+  // overflows clips BOTH ends and the start side can never be scrolled
+  // into view — that's how Home/Chat/Profile went missing on phones.
   return (
-    <nav data-tour="nav" aria-label="Community sections" className="flex items-center gap-1 shrink-0">
+    <nav data-tour="nav" aria-label="Community sections" className="mx-auto flex w-max shrink-0 items-center gap-1">
       {tabs.map((tab) => {
-        const active =
-          pathname === tab.href ||
-          (tab.href !== "/community" && pathname.startsWith(tab.href + "/"));
+        const active = isTabActive(pathname, tab.href);
         const showBadge = tab.href === "/community/messages" && unreadDms > 0;
         return (
           <Link
@@ -507,6 +553,110 @@ function TopBarTabs({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
+/** Phone header: the tab strip moves to the bottom bar, so the middle of
+ * the header names the current section instead. */
+function MobileSectionTitle() {
+  const pathname = usePathname();
+  const tabs = useCommunityTabs();
+  const active = tabs.find((t) => isTabActive(pathname, t.href));
+  return (
+    <div className="flex min-w-0 flex-1 items-center justify-center lg:hidden">
+      <span className="truncate text-sm font-semibold text-foreground/80">
+        {active?.label ?? "Community"}
+      </span>
+    </div>
+  );
+}
+
+const MOBILE_ACTIVE_BAR = (
+  <span
+    aria-hidden
+    className="absolute inset-x-3 -top-1 h-0.5 rounded-full bg-gradient-to-r from-[#FF0099] to-[#B51760]"
+  />
+);
+
+/**
+ * Bottom navigation for phones/tablets (< lg). Five primary sections get
+ * a slot each; the rest sit behind "More". Replaces the header tab strip,
+ * which at phone widths collapsed to unlabeled icons with half of them
+ * clipped out of reach.
+ */
+function MobileTabBar() {
+  const pathname = usePathname();
+  const router = useRouter();
+  const tabs = useCommunityTabs();
+  const unreadDms = useUnreadConversations();
+  const primary = tabs.filter((t) => MOBILE_PRIMARY_HREFS.has(t.href));
+  const overflow = tabs.filter((t) => !MOBILE_PRIMARY_HREFS.has(t.href));
+  const overflowActive = overflow.some((t) => isTabActive(pathname, t.href));
+  const itemCls = (active: boolean) =>
+    cn(
+      "relative flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-lg py-1.5 text-[10px] font-medium leading-none transition-colors",
+      active ? "text-primary" : "text-foreground/60 hover:text-primary",
+    );
+
+  return (
+    <nav
+      data-tour="nav"
+      aria-label="Community sections"
+      className="flex shrink-0 items-stretch gap-0.5 border-t border-[#FACDE8]/30 glass-strong px-1 pt-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))] lg:hidden"
+    >
+      {primary.map((tab) => {
+        const active = isTabActive(pathname, tab.href);
+        const showBadge = tab.href === "/community/messages" && unreadDms > 0;
+        return (
+          <Link
+            key={tab.href}
+            href={tab.href}
+            aria-current={active ? "page" : undefined}
+            className={itemCls(active)}
+          >
+            <span className="relative inline-flex">
+              <tab.icon className="h-5 w-5" />
+              {showBadge && (
+                <span
+                  className="absolute -top-1.5 -right-2.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-coral px-1 text-[9px] font-bold text-white"
+                  aria-label={`${unreadDms} unread`}
+                >
+                  {unreadDms > 9 ? "9+" : unreadDms}
+                </span>
+              )}
+            </span>
+            <span className="max-w-full truncate">{tab.label}</span>
+            {active && MOBILE_ACTIVE_BAR}
+          </Link>
+        );
+      })}
+      {overflow.length > 0 && (
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            aria-label="More sections"
+            className={itemCls(overflowActive)}
+          >
+            <MoreHorizontal className="h-5 w-5" />
+            <span>More</span>
+            {overflowActive && MOBILE_ACTIVE_BAR}
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" side="top" sideOffset={10} className="w-52">
+            {overflow.map((tab) => {
+              const active = isTabActive(pathname, tab.href);
+              return (
+                <DropdownMenuItem
+                  key={tab.href}
+                  onClick={() => router.push(tab.href)}
+                  className={cn(active && "text-primary font-semibold")}
+                >
+                  <tab.icon className="mr-2 h-4 w-4" /> {tab.label}
+                </DropdownMenuItem>
+              );
+            })}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+    </nav>
+  );
+}
+
 export function CommunityShell({ children }: { children: React.ReactNode }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const router = useRouter();
@@ -517,6 +667,26 @@ export function CommunityShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const selectedProfile = useCommunityUI((s) => s.selectedProfile);
   const activeThread = useCommunityUI((s) => s.activeThread);
+  const closeThread = useCommunityUI((s) => s.closeThread);
+  const selectProfile = useCommunityUI((s) => s.selectProfile);
+
+  // Below xl (Tailwind's 1280px) the right rail doesn't exist, so threads
+  // and member cards open in a sheet instead. Escape closes it like any
+  // other overlay. `isXl` is undefined during SSR → render the rail path.
+  const isXl = useMinWidth(1280);
+  const sheetOpen = isXl === false && Boolean(activeThread || selectedProfile);
+  const closeSheet = useCallback(() => {
+    if (activeThread) closeThread();
+    else selectProfile(null);
+  }, [activeThread, closeThread, selectProfile]);
+  useEffect(() => {
+    if (!sheetOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeSheet();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [sheetOpen, closeSheet]);
 
   // Per-member resizable / collapsible side rails.
   const leftWidth = usePanelLayout((s) => s.leftWidth);
@@ -602,7 +772,9 @@ export function CommunityShell({ children }: { children: React.ReactNode }) {
 
   return (
     <CommunityErrorBoundary>
-    <div className="flex h-screen flex-col overflow-hidden bg-background">
+    {/* h-dvh (not h-screen): on phones 100vh includes the area under the
+        browser chrome, which would push the bottom bar off-screen. */}
+    <div className="flex h-dvh flex-col overflow-hidden bg-background">
       {/* TOP BAR -------------------------------------------------- */}
       <header className="flex h-14 shrink-0 items-center gap-3 border-b border-[#FACDE8]/30 glass-strong elevate-2 px-3 sm:px-4">
         <Button
@@ -629,9 +801,12 @@ export function CommunityShell({ children }: { children: React.ReactNode }) {
           </span>
         </Link>
 
-        <div className="flex-1 flex justify-center overflow-x-auto">
+        {/* lg+: scrollable tab strip. Below lg the tabs live in the bottom
+            bar and the header shows the current section name instead. */}
+        <div className="hidden min-w-0 flex-1 overflow-x-auto lg:flex [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <TopBarTabs />
         </div>
+        <MobileSectionTitle />
 
         <span data-tour="notifications" className="inline-flex">
           <NotificationsButton />
@@ -807,8 +982,8 @@ export function CommunityShell({ children }: { children: React.ReactNode }) {
           </button>
         )}
 
-        {/* RIGHT: members / detail / thread */}
-        {showRightRail && (
+        {/* RIGHT: members / detail / thread (xl+ only; see sheet below) */}
+        {showRightRail && isXl !== false && (
           <aside
             ref={rightAsideRef}
             style={
@@ -847,7 +1022,31 @@ export function CommunityShell({ children }: { children: React.ReactNode }) {
             {rightRail}
           </aside>
         )}
+
+        {/* MOBILE / TABLET (< xl): thread + member detail sheet. Full-screen
+            on phones, a right-hand drawer with a scrim from sm up. Sits at
+            z-40 so dialogs/popovers (z-50) opened from inside still win. */}
+        {sheetOpen && (
+          <>
+            <div
+              className="fixed inset-0 z-40 hidden bg-black/30 backdrop-blur-sm sm:block xl:hidden"
+              onClick={closeSheet}
+              aria-hidden
+            />
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-label={activeThread ? "Thread" : "Member details"}
+              className="fixed inset-0 z-40 flex flex-col bg-background xl:hidden sm:inset-y-0 sm:left-auto sm:right-0 sm:w-[380px] sm:border-l sm:border-[#FACDE8]/30 sm:shadow-2xl"
+            >
+              {rightRail}
+            </div>
+          </>
+        )}
       </div>
+
+      {/* BOTTOM NAV (< lg) ---------------------------------------- */}
+      <MobileTabBar />
     </div>
     </CommunityErrorBoundary>
   );

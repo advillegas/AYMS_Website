@@ -280,7 +280,10 @@ export default function CalendarPage() {
           <div className="min-w-0">
             <h1 className="text-lg sm:text-2xl font-bold flex items-center gap-2 font-[family-name:var(--font-heading)]">
               <CalIcon className="h-5 w-5 sm:h-6 sm:w-6 text-primary shrink-0" />
-              <span className="truncate">Events Calendar</span>
+              {/* Phones: the view toggles + actions need the width, and the
+                  month heading below already names the page. */}
+              <span className="hidden truncate sm:inline">Events Calendar</span>
+              <span className="sr-only sm:hidden">Events Calendar</span>
             </h1>
             <p className="text-xs text-muted-foreground mt-0.5 hidden sm:block">
               {loading

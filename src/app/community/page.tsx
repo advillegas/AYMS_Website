@@ -702,6 +702,15 @@ export default function ChatPage() {
     el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
   }, [input]);
 
+  // Focus the composer on mount — but only with a keyboard-sized screen.
+  // On phones an autofocused textarea pops the on-screen keyboard over
+  // the conversation the moment the page opens (replaces `autoFocus`).
+  useEffect(() => {
+    if (window.matchMedia("(min-width: 640px)").matches) {
+      inputRef.current?.focus();
+    }
+  }, []);
+
   // Base UI's ScrollArea renders the scrollable element with a data-slot
   // attribute; grab it from the bottom anchor so we can measure scroll
   // position for sticky-bottom behaviour.
@@ -1219,7 +1228,7 @@ export default function ChatPage() {
       )}
 
       {/* Composer */}
-      <div className="relative border-t border-[#FACDE8]/25 px-4 py-3 glass elevate-2">
+      <div className="relative border-t border-[#FACDE8]/25 px-3 py-2 sm:px-4 sm:py-3 glass elevate-2">
         {!canSendMessages && (
           <div className="mb-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-[11px] text-amber-900 dark:text-amber-200">
             You don&apos;t have permission to send messages in this channel.
@@ -1243,8 +1252,11 @@ export default function ChatPage() {
             />
           </div>
         )}
-        <form onSubmit={handleSendButton} className="flex gap-2 items-end">
-          <div className="flex items-center gap-1">
+        {/* Phones: textbox + send on the first row, toolbar underneath so
+            the four icon buttons don't squeeze the input to a sliver.
+            sm+: everything on one row (orders reset). */}
+        <form onSubmit={handleSendButton} className="flex flex-wrap items-end gap-2 sm:flex-nowrap">
+          <div className="order-3 flex w-full items-center gap-0.5 sm:order-none sm:w-auto sm:gap-1">
             <EmojiPickerButton onSelect={handleEmoji} placement="top-start" />
             <GifPickerButton onSelect={handleGif} placement="top-start" />
             {canCreatePolls && (
@@ -1294,18 +1306,17 @@ export default function ChatPage() {
               isMuted
                 ? "You're muted — you can't post right now"
                 : canSendMessages
-                  ? `Message #${channel?.name || "general"}…  (Shift+Enter for new line, @ to mention)`
+                  ? `Message #${channel?.name || "general"}…`
                   : "Read-only channel"
             }
             rows={1}
-            autoFocus
-            className="flex-1 resize-none overflow-hidden rounded-md border border-rosa/30 [background-color:#fff] px-3 py-2 text-sm leading-snug focus:outline-none focus:border-primary/40 placeholder:text-muted-foreground/70 max-h-[200px] disabled:opacity-60 disabled:cursor-not-allowed"
+            className="order-1 min-w-0 flex-1 resize-none overflow-hidden rounded-md border border-rosa/30 [background-color:#fff] px-3 py-2 text-sm leading-snug focus:outline-none focus:border-primary/40 placeholder:text-muted-foreground/70 max-h-[200px] disabled:opacity-60 disabled:cursor-not-allowed sm:order-none"
           />
           <Button
             type="submit"
             size="icon"
             disabled={!canSend || sending}
-            className="bg-gradient-to-r from-[#FF0099] to-[#B51760] text-white border-0 disabled:opacity-40 rounded-full shrink-0 shadow-[0_4px_14px_rgb(255_0_153/0.35)] hover:brightness-110 lift"
+            className="order-2 bg-gradient-to-r from-[#FF0099] to-[#B51760] text-white border-0 disabled:opacity-40 rounded-full shrink-0 shadow-[0_4px_14px_rgb(255_0_153/0.35)] hover:brightness-110 lift sm:order-none"
             aria-label="Send message"
           >
             {sending ? (
@@ -1315,6 +1326,11 @@ export default function ChatPage() {
             )}
           </Button>
         </form>
+        {canSendMessages && !isMuted && (
+          <p className="mt-1 hidden text-center text-[10px] text-muted-foreground/60 sm:block">
+            Enter to send · Shift+Enter for a new line · @ to mention
+          </p>
+        )}
       </div>
 
       <PollComposer

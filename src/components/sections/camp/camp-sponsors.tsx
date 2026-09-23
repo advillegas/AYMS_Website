@@ -16,6 +16,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import { isOptimizableImageUrl } from "@/lib/optimized-image";
 import { motion, useReducedMotion } from "framer-motion";
 import {
   ChevronDown,
@@ -60,7 +61,7 @@ function SponsorCard({ item }: { item: SponsorItem }) {
           src={item.image}
           alt={item.name || "Sponsor"}
           fill
-          unoptimized
+          unoptimized={!isOptimizableImageUrl(item.image)}
           sizes="176px"
           className="object-contain"
         />
@@ -335,7 +336,7 @@ function SponsorsEditorDialog({
                   src={s.image}
                   alt={s.name || "Sponsor"}
                   fill
-                  unoptimized
+                  unoptimized={!isOptimizableImageUrl(s.image)}
                   sizes="80px"
                   className="object-contain"
                 />

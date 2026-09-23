@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { uploadCmsMedia } from "@/lib/supabase-storage";
 import { MediaLibraryDialog } from "@/components/admin/media-library-dialog";
 import { useImageCropper } from "@/components/admin/image-cropper";
+import { isOptimizableImageUrl } from "@/lib/optimized-image";
 import { Upload, Loader2, Images } from "lucide-react";
 
 interface Props {
@@ -66,7 +67,11 @@ export function EditableImage({ id, src, alt, fill, width, height, sizes, priori
       height={height}
       sizes={sizes}
       priority={priority}
-      unoptimized
+      // Uploaded photos (Supabase Storage) go through Vercel's optimizer so
+      // visitors don't pull full-size originals from Supabase on every view
+      // (that egress took the site down in Sep 2026). Coded /public defaults
+      // and data:/blob: previews keep rendering as-is.
+      unoptimized={!isOptimizableImageUrl(url)}
       className={className}
     />
   );

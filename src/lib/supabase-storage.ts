@@ -34,7 +34,11 @@ export async function uploadToSupabaseStorage(
     .slice(2, 8)}-${safeName}`;
   try {
     const { error } = await sb.storage.from("media").upload(path, file, {
-      cacheControl: "3600",
+      // The path is unique per upload and never overwritten (upsert:false),
+      // so the object is immutable: let browsers and Vercel's image cache
+      // keep it for a year. The previous 1-hour TTL forced a fresh download
+      // from Supabase every hour, and that egress took the site down.
+      cacheControl: "31536000",
       upsert: false,
       contentType: file.type || undefined,
     });

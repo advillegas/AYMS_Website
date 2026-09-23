@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import { isOptimizableImageUrl } from "@/lib/optimized-image";
 import { motion, useReducedMotion } from "framer-motion";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -98,7 +99,7 @@ export function Contact() {
                           src={item.image}
                           alt=""
                           fill
-                          unoptimized
+                          unoptimized={!isOptimizableImageUrl(item.image)}
                           sizes="48px"
                           className="object-cover"
                         />

@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import Image from "next/image";
+import { isOptimizableImageUrl } from "@/lib/optimized-image";
 import { Camera, X, Loader2 } from "lucide-react";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { toast } from "sonner";
@@ -104,8 +105,9 @@ export function CoverPhotoUploader({
           src={url}
           alt="Cover photo"
           fill
+          sizes="100vw"
           className="object-cover"
-          unoptimized
+          unoptimized={!isOptimizableImageUrl(url)}
         />
       )}
       {editable && (

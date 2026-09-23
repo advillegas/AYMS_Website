@@ -7,6 +7,7 @@ import { RevealWrap } from "@/components/builder/reveal-wrap";
 import { RichTextEditor } from "@/components/inline/rich-text-editor";
 import { RichTextStatic } from "@/components/inline/rich-text-static";
 import { uploadCmsMedia, toVideoEmbedUrl } from "@/lib/supabase-storage";
+import { OptimizedImg } from "@/lib/optimized-image";
 import { useImageCropper } from "@/components/admin/image-cropper";
 
 const NOISE_BG =
@@ -260,17 +261,19 @@ export function ElementRenderer({ element, editable, onUpdate, onClick, isSelect
                 // Fixed-aspect frame: the photo is cropped to fit and the focal
                 // point is controlled by objectPosition.
                 <div className="relative w-full overflow-hidden" style={{ aspectRatio, borderRadius: imgRadiusCss }}>
-                  <img
+                  <OptimizedImg
                     src={p.src as string}
                     alt={p.alt as string}
+                    sizes="(max-width: 768px) 100vw, 1200px"
                     className="absolute inset-0 h-full w-full"
                     style={{ objectFit, objectPosition }}
                   />
                 </div>
               ) : (
-                <img
+                <OptimizedImg
                   src={p.src as string}
                   alt={p.alt as string}
+                  sizes="(max-width: 768px) 100vw, 1200px"
                   className="block w-full"
                   style={{ borderRadius: imgRadiusCss, objectPosition }}
                 />
@@ -479,7 +482,7 @@ export function ElementRenderer({ element, editable, onUpdate, onClick, isSelect
           >
             {isFront && (p.image as string) ? (
               <div className="relative group/cimg">
-                <img src={p.image as string} alt="" className="w-full h-44 object-cover" />
+                <OptimizedImg src={p.image as string} alt="" sizes="(max-width: 768px) 100vw, 420px" className="w-full h-44 object-cover" />
                 {editable && (
                   <button
                     onClick={(e) => { e.stopPropagation(); (document.getElementById(cardImgRef) as HTMLInputElement)?.click(); }}
@@ -666,7 +669,7 @@ export function ElementRenderer({ element, editable, onUpdate, onClick, isSelect
             style={{ minHeight: `${p.minHeight}px`, background: creamSurface(p.bgGradient) }}
           >
             {(p.bgImage as string) && (
-              <img src={p.bgImage as string} alt="" className="absolute inset-0 w-full h-full object-cover z-0" />
+              <OptimizedImg src={p.bgImage as string} alt="" sizes="100vw" loading="eager" className="absolute inset-0 w-full h-full object-cover z-0" />
             )}
             {showBokeh && !editable && (
               <div className="pointer-events-none absolute inset-0 z-[1] overflow-hidden">
@@ -758,7 +761,7 @@ export function ElementRenderer({ element, editable, onUpdate, onClick, isSelect
                 onClick={(e) => { if (editable) { e.stopPropagation(); (document.getElementById(testimonialAvatarRef) as HTMLInputElement)?.click(); } }}
               >
                 {(p.avatarImage as string) ? (
-                  <img src={p.avatarImage as string} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                  <OptimizedImg src={p.avatarImage as string} alt="" sizes="96px" className="absolute inset-0 w-full h-full object-cover" />
                 ) : (
                   p.avatarInitials as string
                 )}
@@ -853,7 +856,7 @@ export function ElementRenderer({ element, editable, onUpdate, onClick, isSelect
                 />
                 {src ? (
                   <>
-                    <img src={src} alt="" className="w-full aspect-square object-cover" style={{ borderRadius: `${p.borderRadius}px` }} />
+                    <OptimizedImg src={src} alt="" sizes="(max-width: 768px) 50vw, 33vw" className="w-full aspect-square object-cover" style={{ borderRadius: `${p.borderRadius}px` }} />
                     {editable && (
                       <button
                         onClick={(e) => { e.stopPropagation(); (document.getElementById(`gallery-${element.id}-${i}`) as HTMLInputElement)?.click(); }}
@@ -907,7 +910,7 @@ export function ElementRenderer({ element, editable, onUpdate, onClick, isSelect
           >
             {(p.image as string) ? (
               <div className="relative group/tripimg h-40">
-                <img src={p.image as string} alt="" className="w-full h-full object-cover" />
+                <OptimizedImg src={p.image as string} alt="" sizes="(max-width: 768px) 100vw, 420px" className="w-full h-full object-cover" />
                 {editable && (
                   <button
                     onClick={(e) => { e.stopPropagation(); (document.getElementById(tripImgRef) as HTMLInputElement)?.click(); }}
@@ -1272,7 +1275,7 @@ export function ElementRenderer({ element, editable, onUpdate, onClick, isSelect
                       />
                       {src ? (
                         <>
-                          <img src={src} alt="" className="h-full w-full object-cover" style={{ borderRadius: `${imgRadius}px` }} />
+                          <OptimizedImg src={src} alt="" sizes={`${imgHeight * 2}px`} className="h-full w-full object-cover" style={{ borderRadius: `${imgRadius}px` }} />
                           <div
                             className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 bg-black/55 opacity-0 group-hover/bimg:opacity-100 transition-opacity"
                             style={{ borderRadius: `${imgRadius}px` }}
@@ -1363,10 +1366,11 @@ export function ElementRenderer({ element, editable, onUpdate, onClick, isSelect
               <div className="overflow-hidden rounded-xl" style={{ backgroundColor: bannerBg }}>
                 <div className="flex flex-wrap items-center justify-center" style={{ gap: `${imgGap}px` }}>
                   {filled.map((src, i) => (
-                    <img
+                    <OptimizedImg
                       key={i}
                       src={src}
                       alt=""
+                      sizes={`${imgHeight * 2}px`}
                       className="shrink-0 object-cover"
                       style={{ height: `${imgHeight}px`, borderRadius: `${imgRadius}px` }}
                     />
@@ -1396,11 +1400,12 @@ export function ElementRenderer({ element, editable, onUpdate, onClick, isSelect
                 }}
               >
                 {loop.map((src, i) => (
-                  <img
+                  <OptimizedImg
                     key={i}
                     src={src}
                     alt=""
                     aria-hidden={i >= filled.length}
+                    sizes={`${imgHeight * 2}px`}
                     className="shrink-0 object-cover"
                     style={{ height: `${imgHeight}px`, borderRadius: `${imgRadius}px` }}
                   />

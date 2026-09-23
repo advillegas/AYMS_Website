@@ -12,6 +12,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import { isOptimizableImageUrl } from "@/lib/optimized-image";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Maximize2 } from "lucide-react";
 import {
@@ -199,7 +200,8 @@ export function PostCard({
                     src={m.url}
                     alt={m.alt ?? `Post attachment ${i + 1}`}
                     fill
-                    unoptimized
+                    sizes="(max-width: 768px) 50vw, 320px"
+                    unoptimized={!isOptimizableImageUrl(m.url)}
                     className="object-cover transition-transform group-hover:scale-[1.02]"
                   />
                 ) : (
@@ -237,8 +239,9 @@ export function PostCard({
               alt={lightbox.alt ?? "Post attachment"}
               width={1200}
               height={900}
+              sizes="(max-width: 768px) 100vw, 768px"
               className="w-full h-auto max-h-[85vh] object-contain"
-              unoptimized
+              unoptimized={!isOptimizableImageUrl(lightbox.url)}
             />
           )}
           {lightbox?.type === "video" && (

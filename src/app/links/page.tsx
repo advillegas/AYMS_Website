@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { isOptimizableImageUrl } from "@/lib/optimized-image";
 import { motion, useReducedMotion } from "framer-motion";
 import { ArrowUpRight } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -50,7 +51,7 @@ export default function LinksPage() {
               alt="Amigas y Más Social logo"
               width={104}
               height={104}
-              unoptimized
+              unoptimized={!isOptimizableImageUrl(content.avatar)}
               priority
               className="h-26 w-26 rounded-full object-cover"
             />

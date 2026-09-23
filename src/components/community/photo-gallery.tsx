@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import Image from "next/image";
+import { isOptimizableImageUrl } from "@/lib/optimized-image";
 import { Plus, X, Loader2, Maximize2 } from "lucide-react";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { toast } from "sonner";
@@ -135,8 +136,9 @@ export function PhotoGallery({
               src={url}
               alt={`Gallery photo ${i + 1}`}
               fill
+              sizes="(max-width: 768px) 33vw, 200px"
               className="object-cover"
-              unoptimized
+              unoptimized={!isOptimizableImageUrl(url)}
             />
             {!editable && (
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
@@ -202,8 +204,9 @@ export function PhotoGallery({
               alt="Gallery photo"
               width={1200}
               height={900}
+              sizes="(max-width: 768px) 100vw, 768px"
               className="w-full h-auto max-h-[85vh] object-contain"
-              unoptimized
+              unoptimized={!isOptimizableImageUrl(lightboxUrl)}
             />
           )}
         </DialogContent>

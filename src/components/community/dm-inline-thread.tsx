@@ -427,7 +427,8 @@ export function DMInlineThread({
           </div>
         )}
         <div className="flex items-end gap-2 rounded-xl border border-rosa/20 [background-color:#fff] px-2.5 py-1.5">
-          <Avatar className="h-6 w-6 shrink-0 self-end">
+          {/* Decorative on phones, where the indented box is already narrow. */}
+          <Avatar className="hidden h-6 w-6 shrink-0 self-end sm:flex">
             {user?.avatar && (
               <AvatarImage src={user.avatar} alt={user.name} />
             )}
@@ -444,9 +445,9 @@ export function DMInlineThread({
             }}
             onKeyDown={handleKeyDown}
             onSelect={syncCaret}
-            placeholder={`Reply to ${replyTo}... (@ to mention)`}
+            placeholder={`Reply to ${replyTo}…`}
             rows={1}
-            className="flex-1 resize-none bg-transparent text-sm placeholder:text-muted-foreground/60 outline-none min-h-5 max-h-36"
+            className="min-w-0 flex-1 resize-none bg-transparent text-sm placeholder:text-muted-foreground/60 outline-none min-h-5 max-h-36"
           />
           <EmojiPickerButton
             onSelect={(emoji) => {

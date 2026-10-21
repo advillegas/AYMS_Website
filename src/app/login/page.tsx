@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/lib/store";
 import { isFirebaseConfigured } from "@/lib/firebase";
 import { useSupabaseBackend } from "@/lib/supabase";
-import { useAuthHydrated } from "@/lib/use-auth-hydrated";
+import { useAuthHydrated, AUTH_EXPIRED_FLAG } from "@/lib/use-auth-hydrated";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { GoogleButton } from "@/components/auth/google-button";
@@ -34,6 +34,19 @@ export default function LoginPage() {
   useEffect(() => {
     if (hydrated && isAuthenticated) router.replace("/community");
   }, [hydrated, isAuthenticated, router]);
+
+  // Explain a forced sign-out (the app found no usable backend session and
+  // sent the member here) so it doesn't read as a random logout.
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem(AUTH_EXPIRED_FLAG)) {
+        sessionStorage.removeItem(AUTH_EXPIRED_FLAG);
+        toast("Your session expired — please sign in again.");
+      }
+    } catch {
+      /* sessionStorage unavailable — nothing to explain */
+    }
+  }, []);
 
   function validate() {
     const next: { identifier?: string; password?: string } = {};

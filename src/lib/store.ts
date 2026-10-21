@@ -1,5 +1,9 @@
 import { create } from "zustand";
-import { persist, createJSONStorage } from "zustand/middleware";
+import {
+  persist,
+  type PersistStorage,
+  type StorageValue,
+} from "zustand/middleware";
 import { type CalendarEvent } from "./events-data";
 import {
   firebaseSignUp,
@@ -299,6 +303,53 @@ const MOCK_MESSAGES: Message[] = [
  * a soft launch but should be replaced by a real auth provider before
  * public release - see SECURITY note in README/CLAUDE.md.
  */
+type AuthPersisted = Pick<AuthState, "user" | "isAuthenticated" | "registry">;
+
+/**
+ * localStorage-backed persist storage that can't wedge hydration.
+ *
+ * With the stock `createJSONStorage(() => localStorage)`, an unreadable
+ * value (corrupt JSON) makes zustand's hydrate() reject and `hasHydrated()`
+ * stays false forever — every auth-gated page then shows "Loading…"
+ * indefinitely, and a reload doesn't help because the bad value persists.
+ * A blocked localStorage (strict privacy settings / some embedded browsers)
+ * is worse: zustand skips the middleware and `useAuth.persist` is undefined.
+ * Here both cases degrade to "start signed out" instead.
+ */
+const resilientAuthStorage: PersistStorage<AuthPersisted> = {
+  getItem: (name) => {
+    if (typeof window === "undefined") return null; // SSR: nothing persisted
+    try {
+      const raw = window.localStorage.getItem(name);
+      return raw ? (JSON.parse(raw) as StorageValue<AuthPersisted>) : null;
+    } catch (e) {
+      console.warn("[auth] discarding unreadable saved session", e);
+      try {
+        window.localStorage.removeItem(name);
+      } catch {
+        /* storage blocked entirely */
+      }
+      return null;
+    }
+  },
+  setItem: (name, value) => {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(name, JSON.stringify(value));
+    } catch (e) {
+      console.warn("[auth] couldn't save session", e);
+    }
+  },
+  removeItem: (name) => {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.removeItem(name);
+    } catch {
+      /* storage blocked entirely */
+    }
+  },
+};
+
 export const useAuth = create<AuthState>()(
   persist(
     (set, get) => ({
@@ -579,8 +630,8 @@ export const useAuth = create<AuthState>()(
     }),
     {
       name: "ayms-auth",
-      storage: createJSONStorage(() => localStorage),
-      partialize: (s) => ({
+      storage: resilientAuthStorage,
+      partialize: (s): AuthPersisted => ({
         user: s.user,
         isAuthenticated: s.isAuthenticated,
         registry: s.registry,

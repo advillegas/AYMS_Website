@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import { useAuth, type User } from "./store";
 import {
@@ -25,28 +25,141 @@ import { readUserProfile, upsertUserProfile } from "./firebase-auth";
  * login page on every cold load.
  */
 export function useAuthHydrated(): boolean {
-  // Always start `false` so the first client render matches the server
-  // (which has no localStorage). Zustand's persist rehydrates
-  // synchronously the moment the store module loads — so reading
-  // `hasHydrated()` in the initializer returns `true` on the very first
-  // client render while the server rendered with `false`, which makes
-  // React throw a hydration mismatch. Deferring the flip to a post-mount
-  // effect keeps SSR and the first client render in agreement.
-  const [hydrated, setHydrated] = useState<boolean>(false);
+  // useSyncExternalStore with a `false` server snapshot: the server and
+  // the hydrating client render both see `false` (no localStorage on the
+  // server), then React re-renders with the real value — no hydration
+  // mismatch even though zustand's persist rehydrates synchronously the
+  // moment the store module loads.
+  return useSyncExternalStore(
+    subscribeHydration,
+    getHydrationSnapshot,
+    getServerHydrationSnapshot,
+  );
+}
 
-  useEffect(() => {
-    if (hydrated) return;
-    if (useAuth.persist.hasHydrated()) {
-      setHydrated(true);
-      return;
+/** Flipped by the safety-net timer so every subscriber agrees afterwards. */
+let hydrationGaveUp = false;
+
+function getHydrationSnapshot(): boolean {
+  const persist = useAuth.persist;
+  // No persist API means the storage was unavailable when the store was
+  // created (zustand then skips the middleware entirely) — there is
+  // nothing to wait for.
+  return !persist || persist.hasHydrated() || hydrationGaveUp;
+}
+
+function getServerHydrationSnapshot(): boolean {
+  return false;
+}
+
+function subscribeHydration(onChange: () => void): () => void {
+  const persist = useAuth.persist;
+  if (!persist || persist.hasHydrated()) return () => {};
+  const unsub = persist.onFinishHydration(onChange);
+  // Safety net: if rehydration never finishes (zustand's hydrate() rejects
+  // on unreadable storage and `hasHydrated()` then stays false forever),
+  // stop showing "Loading…" and let the layout fall through to /login
+  // rather than hanging indefinitely.
+  const timer = window.setTimeout(() => {
+    if (persist.hasHydrated()) return;
+    console.warn("[auth] persisted session never finished loading; continuing signed out");
+    hydrationGaveUp = true;
+    onChange();
+  }, 4000);
+  return () => {
+    unsub();
+    window.clearTimeout(timer);
+  };
+}
+
+/** sessionStorage flag read by /login to explain a forced sign-out. */
+export const AUTH_EXPIRED_FLAG = "ayms:auth-expired";
+
+type AdminRecoveryOutcome = "restored" | "rejected" | "unreachable";
+let adminRecovery: Promise<AdminRecoveryOutcome> | null = null;
+
+/**
+ * Re-mint the password-admin's Supabase session via /api/auth/admin-session
+ * (gated by the signed cookie set at password login). Deduplicated so the
+ * auth-change listener and the hydration hook share one request instead of
+ * racing each other.
+ *
+ *  - "restored":    a session was installed (SIGNED_IN follows).
+ *  - "rejected":    the server refused — cookie expired, or this admin signed
+ *                   in with Google and never had one. Not retryable.
+ *  - "unreachable": network/config failure; worth retrying on the next load.
+ */
+export function recoverAdminSession(): Promise<AdminRecoveryOutcome> {
+  if (adminRecovery) return adminRecovery;
+  adminRecovery = (async (): Promise<AdminRecoveryOutcome> => {
+    const sb = getSupabase();
+    if (!sb) return "unreachable";
+    try {
+      const res = await fetch("/api/auth/admin-session", { method: "POST" });
+      if (!res.ok) return res.status >= 500 ? "unreachable" : "rejected";
+      const j = (await res.json()) as {
+        ok?: boolean;
+        access_token?: string;
+        refresh_token?: string;
+      };
+      if (!j?.ok || !j.access_token || !j.refresh_token) return "rejected";
+      await sb.auth.setSession({
+        access_token: j.access_token,
+        refresh_token: j.refresh_token,
+      });
+      return "restored";
+    } catch {
+      return "unreachable";
+    } finally {
+      // Keep the settled promise briefly so near-simultaneous callers share
+      // it, then allow a fresh attempt (e.g. after a later SIGNED_OUT).
+      window.setTimeout(() => {
+        adminRecovery = null;
+      }, 5_000);
     }
-    const unsub = useAuth.persist.onFinishHydration(() => setHydrated(true));
-    return () => {
-      unsub();
-    };
-  }, [hydrated]);
+  })();
+  return adminRecovery;
+}
 
-  return hydrated;
+/** Sign the store out and leave a note for /login to show why. */
+function expireStoreSession(): void {
+  try {
+    sessionStorage.setItem(AUTH_EXPIRED_FLAG, "1");
+  } catch {
+    /* storage unavailable — the redirect alone still gets them to /login */
+  }
+  useAuth.setState({ user: null, isAuthenticated: false });
+}
+
+/**
+ * The store says "signed in" but Supabase holds no session, so every
+ * RLS-guarded query comes back empty and every write is rejected — the
+ * community renders as a dead shell ("It's quiet in here…" in every
+ * channel). This is exactly what happened to the admin after the Sep 2026
+ * Supabase outage: token refreshes failed, supabase-js dropped the session,
+ * and the admin identity was deliberately kept signed-in in the store
+ * (expecting the cookie re-mint), but the admin had signed in with Google
+ * and never had the cookie — so the dead shell persisted for weeks.
+ *
+ * Resolution: the admin gets one cookie-gated re-mint attempt; if the
+ * server refuses, or for any other identity, sign the store out so the
+ * community layout sends them to /login, which is always recoverable.
+ */
+async function reconcileSessionlessIdentity(): Promise<void> {
+  const state = useAuth.getState();
+  if (!state.isAuthenticated && !state.user) return;
+  if (state.user?.id === "admin") {
+    const outcome = await recoverAdminSession();
+    if (outcome === "restored") return; // SIGNED_IN will apply the user
+    if (outcome === "unreachable") return; // transient — retry on next load
+    // Re-check: a parallel sign-in may have landed while we waited.
+    const sb = getSupabase();
+    if (sb) {
+      const { data } = await sb.auth.getSession();
+      if (data.session) return;
+    }
+  }
+  expireStoreSession();
 }
 
 /**
@@ -57,7 +170,9 @@ export function useAuthHydrated(): boolean {
  * leaving the browser anonymous to Supabase. RLS then hides community data
  * (channels, messages) as if it were deleted. When we detect that stale
  * state, silently re-mint the session via /api/auth/admin-session (gated by
- * the signed admin cookie) — no password re-prompt needed.
+ * the signed admin cookie) — no password re-prompt needed. If the re-mint is
+ * refused, the admin is signed out to /login instead of being left in the
+ * dead-shell state.
  */
 export function useAdminSessionRecovery(): void {
   const hydrated = useAuthHydrated();
@@ -72,19 +187,7 @@ export function useAdminSessionRecovery(): void {
         if (cancelled || data.session) return; // already signed in
         const st = useAuth.getState();
         if (!st.isAuthenticated || st.user?.id !== "admin") return;
-        const res = await fetch("/api/auth/admin-session", { method: "POST" });
-        if (!res.ok) return;
-        const j = (await res.json()) as {
-          ok?: boolean;
-          access_token?: string;
-          refresh_token?: string;
-        };
-        if (!cancelled && j?.ok && j.access_token && j.refresh_token) {
-          await sb.auth.setSession({
-            access_token: j.access_token,
-            refresh_token: j.refresh_token,
-          });
-        }
+        await reconcileSessionlessIdentity();
       } catch {
         /* best effort — the admin can always sign in again manually */
       }
@@ -114,9 +217,13 @@ export function useFirebaseAuthSync(): void {
       return onSupabaseAuthChange((user) => {
         const state = useAuth.getState();
         if (!user) {
-          if (state.user && !isBackendUserId(state.user.id)) return;
+          // Supabase reports no session (INITIAL_SESSION on a cold load,
+          // or SIGNED_OUT after a failed token refresh). Under the Supabase
+          // backend NO store identity is valid without one — including
+          // "admin" — so recover or sign out rather than keeping a signed-in
+          // store that can't read or write anything.
           if (state.isAuthenticated || state.user) {
-            useAuth.setState({ user: null, isAuthenticated: false });
+            void reconcileSessionlessIdentity();
           }
           return;
         }

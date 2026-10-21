@@ -484,13 +484,20 @@ language sql stable security definer set search_path = public as $$
   )
 $$;
 
--- Admin = canonical admin email on the JWT (bootstrap parity with
--- firestore.rules isAdminEmail()) OR a profile row with role 'admin'.
+-- Admin = the caller's canonical profile row has role 'admin'. That row
+-- is only ever written by the service role (/api/auth/login seeds the
+-- 'admin' row; the admin members panel promotes under is_app_admin()),
+-- so this is the single privilege boundary.
+--
+-- Deliberately NO "admin email on the JWT" shortcut: an earlier version
+-- granted admin to any JWT whose email was admin@ayms.com — a domain the
+-- business does not own (live MX records, third-party mail). With
+-- self-signup enabled, whoever controls that mailbox could have signed up,
+-- confirmed, and passed every policy as admin. See admin-email-hardening.sql.
 create or replace function public.is_app_admin()
 returns boolean
 language sql stable security definer set search_path = public as $$
-  select coalesce(auth.jwt()->>'email', '') = 'admin@ayms.com'
-      or exists (select 1 from public.users
+  select exists (select 1 from public.users
                   where id = public.current_app_user_id() and role = 'admin')
 $$;
 
@@ -562,26 +569,25 @@ $$;
 
 -- users.role is the privilege boundary. Role grants/changes are allowed
 -- for the service role and for app admins (the admin members panel
--- promotes/demotes client-side); the canonical admin email may also seed
--- its OWN row with role 'admin' (bootstrap parity with firestore.rules).
--- Blocks the create-as-amiga-then-update-role-to-admin escalation —
--- is_app_admin() is evaluated against the ACTOR, not the row.
+-- promotes/demotes client-side). The 'admin' row itself is seeded by the
+-- service role in /api/auth/login, so no client may ever INSERT role
+-- 'admin'. Blocks the create-as-amiga-then-update-role-to-admin
+-- escalation — is_app_admin() is evaluated against the ACTOR, not the row.
 create or replace function public.guard_user_role()
 returns trigger language plpgsql set search_path = public as $$
 begin
-  if public.is_service_role() or public.is_app_admin() then
+  -- API roles are the only untrusted callers; the dashboard / migrations
+  -- run as postgres (same exemption as guard_user_auth_id below).
+  if public.is_service_role()
+     or current_user not in ('anon', 'authenticated')
+     or public.is_app_admin() then
     return new;
   end if;
   if tg_op = 'UPDATE' and new.role is distinct from old.role then
     raise exception 'users.role changes require an admin or the service role';
   end if;
   if tg_op = 'INSERT' and coalesce(new.role, '') = 'admin' then
-    -- Admin-email bootstrap (own row only) — already covered by the
-    -- is_app_admin() email branch above; kept explicit for clarity.
-    if not (coalesce(auth.jwt()->>'email', '') = 'admin@ayms.com'
-            and new.id = auth.uid()::text) then
-      raise exception 'admin role grants require an admin or the service role';
-    end if;
+    raise exception 'admin role grants require an admin or the service role';
   end if;
   return new;
 end $$;

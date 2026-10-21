@@ -96,7 +96,15 @@ export function recoverAdminSession(): Promise<AdminRecoveryOutcome> {
     if (!sb) return "unreachable";
     try {
       const res = await fetch("/api/auth/admin-session", { method: "POST" });
-      if (!res.ok) return res.status >= 500 ? "unreachable" : "rejected";
+      // 5xx = Supabase/Vercel trouble, 429 = our own rate limit: both
+      // transient. 401 (no/expired cookie, or Supabase refused the admin
+      // credentials) and 503 (server env unconfigured) stay until a human
+      // acts, so they're final.
+      if (!res.ok) {
+        return res.status === 429 || (res.status >= 500 && res.status !== 503)
+          ? "unreachable"
+          : "rejected";
+      }
       const j = (await res.json()) as {
         ok?: boolean;
         access_token?: string;
@@ -132,6 +140,29 @@ function expireStoreSession(): void {
 }
 
 /**
+ * Whether supabase-js still holds a persisted session for this project
+ * (`sb-<ref>-auth-token`; the PKCE verifier key has a longer suffix and is
+ * excluded). auth-js only REMOVES that entry for final outcomes — explicit
+ * sign-out, a revoked/invalid refresh token, or a non-retryable refresh
+ * error such as the 402s of the Sep 2026 outage. When a refresh merely
+ * fails transiently (offline, Supabase 5xx) the entry stays and auth-js
+ * retries every 30s, emitting TOKEN_REFRESHED on success.
+ */
+function hasPersistedSupabaseSession(): boolean {
+  try {
+    for (let i = 0; i < window.localStorage.length; i++) {
+      const key = window.localStorage.key(i);
+      if (key && /^sb-.+-auth-token$/.test(key) && window.localStorage.getItem(key)) {
+        return true;
+      }
+    }
+  } catch {
+    /* storage blocked → nothing persisted that could recover */
+  }
+  return false;
+}
+
+/**
  * The store says "signed in" but Supabase holds no session, so every
  * RLS-guarded query comes back empty and every write is rejected — the
  * community renders as a dead shell ("It's quiet in here…" in every
@@ -143,7 +174,9 @@ function expireStoreSession(): void {
  *
  * Resolution: the admin gets one cookie-gated re-mint attempt; if the
  * server refuses, or for any other identity, sign the store out so the
- * community layout sends them to /login, which is always recoverable.
+ * community layout sends them to /login, which is always recoverable —
+ * unless auth-js still holds the session and just couldn't refresh it
+ * right now (offline / Supabase 5xx), which it will retry by itself.
  */
 async function reconcileSessionlessIdentity(): Promise<void> {
   const state = useAuth.getState();
@@ -159,6 +192,7 @@ async function reconcileSessionlessIdentity(): Promise<void> {
       if (data.session) return;
     }
   }
+  if (hasPersistedSupabaseSession()) return; // transient — auth-js retries
   expireStoreSession();
 }
 

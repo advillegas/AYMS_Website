@@ -50,27 +50,43 @@ const UUID_RE =
 export const CONFIRM_EMAIL = "confirm-email" as const;
 export type ConfirmEmailSentinel = typeof CONFIRM_EMAIL;
 
+/** Thrown by the sign-in wrappers when the profile lookup itself failed. */
+const PROFILE_LOOKUP_FAILED =
+  "Signed in, but your profile couldn't be loaded. Please try again.";
+
 /**
  * Find the canonical app user for an email. Returns the migrated row's
  * User (preserving the original id + profile) when one exists, else a
  * freshly-seeded User keyed by `fallbackId` (the Supabase auth uid).
+ *
+ * Returns null when the lookup itself FAILED (PostgREST error, rejected
+ * JWT, network) as opposed to finding no row. Callers must treat null as
+ * "identity unknown right now" and keep whatever they had: falling
+ * through to the seed branch on an error would mint a brand-new
+ * `onboarded:false` identity for an EXISTING member — swapping their
+ * canonical id for the auth uid (so RLS rejects their writes) and
+ * re-running the welcome journey — every time Supabase hiccups.
  */
 async function resolveCanonicalUser(
   email: string,
   fallbackId: string,
   seed: { name?: string; avatar?: string },
-): Promise<User> {
+): Promise<User | null> {
   const sb = getSupabase();
   const today = new Date().toISOString().split("T")[0];
   const lowerEmail = email.toLowerCase().trim();
   if (sb) {
     try {
-      const { data } = await sb
+      const { data, error: lookupErr } = await sb
         .from("users")
         .select("*")
         .eq("email", lowerEmail)
         .limit(1)
         .maybeSingle();
+      if (lookupErr) {
+        console.warn("[supabase-auth] canonical lookup failed", lookupErr);
+        return null;
+      }
       if (data) {
         const existing = mapUserRowToUser(data as SupabaseUserRow);
         // Backfill users.auth_id for this JWT (security-definer RPC)
@@ -101,12 +117,16 @@ async function resolveCanonicalUser(
         if (linkErr) {
           console.warn("[supabase-auth] link_auth_identity failed", linkErr);
         } else if (typeof canonicalId === "string" && canonicalId) {
-          const { data: linked } = await sb
+          const { data: linked, error: linkedErr } = await sb
             .from("users")
             .select("*")
             .eq("id", canonicalId)
             .limit(1)
             .maybeSingle();
+          if (linkedErr) {
+            console.warn("[supabase-auth] canonical lookup failed", linkedErr);
+            return null;
+          }
           if (linked) {
             const existing = mapUserRowToUser(linked as SupabaseUserRow);
             // Touch last_active_at so they show online immediately.
@@ -124,12 +144,16 @@ async function resolveCanonicalUser(
       // or OAuthed with a different Google address. If so, follow the
       // linkage and update the row's email instead of forking.
       if (UUID_RE.test(fallbackId)) {
-        const { data: linked } = await sb
+        const { data: linked, error: byAuthErr } = await sb
           .from("users")
           .select("*")
           .eq("auth_id", fallbackId)
           .limit(1)
           .maybeSingle();
+        if (byAuthErr) {
+          console.warn("[supabase-auth] canonical lookup failed", byAuthErr);
+          return null;
+        }
         if (linked) {
           const existing = mapUserRowToUser(linked as SupabaseUserRow);
           await sb
@@ -143,7 +167,8 @@ async function resolveCanonicalUser(
         }
       }
     } catch (e) {
-      console.warn("[supabase-auth] canonical lookup failed", e);
+      console.warn("[supabase-auth] canonical lookup threw", e);
+      return null;
     }
   }
   // New member — seed a row keyed by the auth uid. Explicit false flags so
@@ -195,7 +220,13 @@ export async function supabaseSignUp(
   const authId = data.user?.id ?? `sb-${Date.now().toString(36)}`;
   // For a brand-new signup there won't be a migrated row, so this
   // seeds one keyed by the auth id.
-  return resolveCanonicalUser(email, authId, { name });
+  const user = await resolveCanonicalUser(email, authId, { name });
+  if (!user) {
+    throw new Error(
+      "Your account was created, but your profile couldn't be loaded. Please sign in.",
+    );
+  }
+  return user;
 }
 
 export async function supabaseSignIn(
@@ -210,9 +241,11 @@ export async function supabaseSignIn(
   });
   if (error) throw error;
   const authId = data.user?.id ?? email;
-  return resolveCanonicalUser(email, authId, {
+  const user = await resolveCanonicalUser(email, authId, {
     name: (data.user?.user_metadata?.name as string) ?? undefined,
   });
+  if (!user) throw new Error(PROFILE_LOOKUP_FAILED);
+  return user;
 }
 
 export async function supabaseSignInWithGoogle(): Promise<User | null> {
@@ -264,35 +297,36 @@ export async function supabaseSendPasswordReset(email: string): Promise<void> {
  *
  * /api/auth/login provisions the admin@amigasymassocial.com auth user (password
  * tracking ADMIN_PASSWORD) and seeds the role='admin' users row via the
- * service role BEFORE this runs; here we only sign in. Best-effort:
- * failures are logged loudly and swallowed — the UI keeps working with
- * the legacy "admin" store identity (use-auth-hydrated guards it from
- * being clobbered by this bridge session).
+ * service role BEFORE this runs; here we only sign in. Returns whether a
+ * usable admin session exists afterwards — the caller (store.login) fails
+ * the login closed when it doesn't, because under RLS a store identity
+ * with no Supabase session can't read or write anything.
  */
 export async function ensureSupabaseAdminSession(
   password: string,
-): Promise<void> {
+): Promise<boolean> {
   const sb = getSupabase();
-  if (!sb) return;
+  if (!sb) return false;
   try {
     const { data } = await sb.auth.getSession();
-    if (data.session?.user?.email?.toLowerCase() === ADMIN_EMAIL) return;
-    const { error } = await sb.auth.signInWithPassword({
+    if (data.session?.user?.email?.toLowerCase() === ADMIN_EMAIL) return true;
+    const { data: signedIn, error } = await sb.auth.signInWithPassword({
       email: ADMIN_EMAIL,
       password,
     });
-    if (error) {
-      // Loud on purpose: the UI admin login SUCCEEDED but Supabase
-      // writes guarded by RLS will fail without this session.
+    if (error || !signedIn.session) {
       console.error(
-        "[admin-bridge] ADMIN MUTATIONS MAY FAIL: couldn't establish the " +
-          "Supabase admin session. If SUPABASE_SERVICE_ROLE_KEY isn't " +
-          "configured the server can't provision admin@amigasymassocial.com.",
+        "[admin-bridge] couldn't establish the Supabase admin session. If " +
+          "SUPABASE_SERVICE_ROLE_KEY isn't configured the server can't " +
+          "provision admin@amigasymassocial.com.",
         error,
       );
+      return false;
     }
+    return true;
   } catch (e) {
     console.warn("[admin-bridge] Supabase admin sign-in failed", e);
+    return false;
   }
 }
 
@@ -309,6 +343,13 @@ export function onSupabaseAuthChange(
 
   // Resolve the initial session on mount (covers OAuth redirect return
   // and persisted sessions across reloads).
+  // A null resolution means the profile lookup failed (not "no profile"):
+  // keep the store's current identity rather than applying a guess.
+  const applyResolved = (user: User | null) => {
+    if (user) apply(user);
+    else console.warn("[supabase-auth] keeping current identity: profile lookup failed");
+  };
+
   void sb.auth.getSession().then(async ({ data }) => {
     const session = data.session;
     if (!session?.user?.email) return;
@@ -317,7 +358,7 @@ export function onSupabaseAuthChange(
       session.user.id,
       { name: (session.user.user_metadata?.name as string) ?? undefined },
     );
-    apply(user);
+    applyResolved(user);
   });
 
   // The callback body is deferred out of the emission with setTimeout:
@@ -337,7 +378,7 @@ export function onSupabaseAuthChange(
     const authId = session.user.id;
     const name = (session.user.user_metadata?.name as string) ?? undefined;
     setTimeout(() => {
-      void resolveCanonicalUser(email, authId, { name }).then(apply);
+      void resolveCanonicalUser(email, authId, { name }).then(applyResolved);
     }, 0);
   });
 

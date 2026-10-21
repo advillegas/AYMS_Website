@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/lib/store";
+import { useAuth, isLogoutInFlight } from "@/lib/store";
 import { useAuthHydrated } from "@/lib/use-auth-hydrated";
 import { CommunityShell } from "@/components/community/community-shell";
 import { WelcomeJourney } from "@/components/community/welcome-journey";
@@ -37,7 +37,9 @@ export default function CommunityLayout({
 
   useEffect(() => {
     if (!hydrated) return;
-    if (!isAuthenticated) {
+    // A deliberate Sign Out navigates home itself; this redirect is for
+    // expired / missing sessions.
+    if (!isAuthenticated && !isLogoutInFlight()) {
       router.replace("/login");
     }
   }, [hydrated, isAuthenticated, router]);

@@ -306,6 +306,15 @@ const MOCK_MESSAGES: Message[] = [
 type AuthPersisted = Pick<AuthState, "user" | "isAuthenticated" | "registry">;
 
 /**
+ * True while `logout()` is running (and for a beat afterwards). The
+ * community layout consults this so a deliberate sign-out follows the
+ * Sign Out button's own navigation (home) instead of the layout's
+ * "unauthenticated → /login" redirect, which is meant for expired sessions.
+ */
+let logoutInFlight = false;
+export const isLogoutInFlight = (): boolean => logoutInFlight;
+
+/**
  * localStorage-backed persist storage that can't wedge hydration.
  *
  * With the stock `createJSONStorage(() => localStorage)`, an unreadable
@@ -378,20 +387,36 @@ export const useAuth = create<AuthState>()(
             user?: User;
             error?: string;
             fallback?: boolean;
+            adminBridge?: "ok" | "unavailable";
           } = await res.json();
 
           if (data.ok && data.user) {
-            set({ user: data.user, isAuthenticated: true });
-            void upsertUserProfile(data.user);
             // Bridge the password-only admin into a real Firebase Auth
             // session so client-side admin writes (events, calendar feeds,
             // testimonials, config) pass the Firestore isAdmin() rules.
             // Best-effort; the UI identity stays the legacy "admin".
             void ensureFirebaseAdminSession(password);
-            // Same bridge for Supabase (dual-run): /api/auth/login has
-            // already provisioned admin@amigasymassocial.com server-side; this
-            // signs in so admin writes carry a JWT RLS can see.
-            if (useSupabaseBackend) void ensureSupabaseAdminSession(password);
+            // Same bridge for Supabase: /api/auth/login has already
+            // provisioned admin@amigasymassocial.com server-side; this signs
+            // in so reads and writes carry a JWT RLS can see. Under the
+            // Supabase backend that session IS the admin's access, so fail
+            // the login closed if it can't be established — "succeeding"
+            // into a store identity with no session renders a community
+            // where every channel is empty and every write is rejected.
+            if (useSupabaseBackend) {
+              const bridged = await ensureSupabaseAdminSession(password);
+              if (!bridged) {
+                return {
+                  ok: false,
+                  error:
+                    data.adminBridge === "unavailable"
+                      ? "Password accepted, but the server couldn't set up the admin's database session (SUPABASE_SERVICE_ROLE_KEY / ADMIN_PASSWORD misconfigured). Fix the server config and try again."
+                      : "Password accepted, but the database rejected the admin session. Try again in a moment.",
+                };
+              }
+            }
+            set({ user: data.user, isAuthenticated: true });
+            void upsertUserProfile(data.user);
             trackEvent("sign_in", { method: "admin" });
             return { ok: true };
           }
@@ -583,8 +608,32 @@ export const useAuth = create<AuthState>()(
       },
 
       logout: async () => {
-        await firebaseSignOut();
-        set({ user: null, isAuthenticated: false });
+        const wasAdmin = get().user?.id === "admin";
+        logoutInFlight = true;
+        try {
+          // Clear the store FIRST. signOut() emits SIGNED_OUT synchronously
+          // and the auth sync treats "signed-in store + no session" as a
+          // stranded identity to recover (admin cookie re-mint) or expire —
+          // neither may run for a deliberate sign-out, or the admin would
+          // be silently signed straight back in.
+          set({ user: null, isAuthenticated: false });
+          await firebaseSignOut();
+          if (wasAdmin) {
+            // Drop the 30-day admin marker so this browser can't re-mint an
+            // admin session without the password after signing out.
+            try {
+              await fetch("/api/auth/admin-session", { method: "DELETE" });
+            } catch {
+              /* best effort — the marker still expires on its own */
+            }
+          }
+        } finally {
+          // Outlive the caller's navigation so the layout's redirect
+          // effect (which runs after render) still sees the flag.
+          setTimeout(() => {
+            logoutInFlight = false;
+          }, 1500);
+        }
       },
 
       sendPasswordReset: async (email) => {

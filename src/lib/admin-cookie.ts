@@ -4,8 +4,11 @@
  * Supabase session on reload (so the legacy password-admin never silently
  * drops to an anonymous session, which RLS would treat as "no data").
  *
- * The cookie carries no secret of its own — just an HMAC over a fixed
- * subject keyed by a server secret, so it can't be forged client-side.
+ * Format: `<issued-at-seconds>.<hmac-sha256-hex>` where the HMAC covers
+ * "admin:<issued-at>" under a server secret. The timestamp is what makes
+ * the marker expire server-side: a browser's Max-Age is advisory only, and
+ * a leaked constant-value cookie would otherwise re-mint admin sessions
+ * until the secret was rotated. Can't be forged client-side.
  * Must never be imported from a "use client" module.
  */
 
@@ -22,16 +25,31 @@ function secret(): string {
   );
 }
 
-export function signAdminCookie(): string {
-  return createHmac("sha256", secret()).update("admin").digest("hex");
+function mac(issuedAt: number): string {
+  return createHmac("sha256", secret())
+    .update(`admin:${issuedAt}`)
+    .digest("hex");
 }
 
-export function verifyAdminCookie(value: string | undefined | null): boolean {
+export function signAdminCookie(now = Date.now()): string {
+  const issuedAt = Math.floor(now / 1000);
+  return `${issuedAt}.${mac(issuedAt)}`;
+}
+
+export function verifyAdminCookie(
+  value: string | undefined | null,
+  now = Date.now(),
+): boolean {
   if (!value) return false;
-  const expected = signAdminCookie();
+  const dot = value.indexOf(".");
+  if (dot <= 0) return false; // legacy constant-format cookie: re-login once
+  const issuedAt = Number(value.slice(0, dot));
+  if (!Number.isInteger(issuedAt)) return false;
+  const ageSeconds = Math.floor(now / 1000) - issuedAt;
+  if (ageSeconds < 0 || ageSeconds > ADMIN_COOKIE_MAX_AGE) return false;
   try {
-    const a = Buffer.from(value);
-    const b = Buffer.from(expected);
+    const a = Buffer.from(value.slice(dot + 1));
+    const b = Buffer.from(mac(issuedAt));
     return a.length === b.length && timingSafeEqual(a, b);
   } catch {
     return false;

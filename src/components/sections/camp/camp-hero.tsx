@@ -38,7 +38,7 @@ export function CampHero() {
         >
           <div className="pill-glass mx-auto mb-6 flex w-fit items-center gap-2.5 px-4 py-1.5">
             <Flame className="h-4 w-4 text-[#FF7F50]" aria-hidden="true" />
-            <span className="eyebrow text-[#B51760]">All-Inclusive · Aug 28–30, 2026</span>
+            <EditableText id="camp.hero.date" as="span" className="eyebrow text-[#B51760]">All-Inclusive · Aug 28–30, 2026</EditableText>
           </div>
           <h1 className="text-editorial font-display text-ink text-balance">
             <EditableText id="camp.hero.title" as="span">Relive Summer Camp — </EditableText>

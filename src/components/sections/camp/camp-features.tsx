@@ -78,9 +78,11 @@ export function CampFeatures() {
       />
       <div className="absolute inset-0 bg-white/25" aria-hidden="true" />
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <motion.p {...reveal} className="eyebrow mb-8 text-center text-[#B51760]">
-          Hover or tap to flip · Pasa el cursor o toca para voltear
-        </motion.p>
+        <motion.div {...reveal} className="mb-8 text-center">
+          <EditableText id="camp.features.hint" as="p" className="eyebrow text-[#B51760]">
+            Hover or tap to flip · Pasa el cursor o toca para voltear
+          </EditableText>
+        </motion.div>
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {FEATURES.map((f, i) => (
             <motion.div

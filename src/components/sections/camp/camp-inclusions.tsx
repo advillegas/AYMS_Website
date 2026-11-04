@@ -39,10 +39,10 @@ export function CampInclusions() {
     <section className="canvas-editorial relative py-20 sm:py-24">
       <div className="mx-auto grid max-w-7xl items-start gap-12 px-4 sm:px-6 lg:grid-cols-2 lg:gap-16 lg:px-8">
         <motion.div {...reveal}>
-          <p className="eyebrow text-[#FF7F50] mb-3">Here&apos;s What You Get</p>
+          <EditableText id="camp.inclusions.eyebrow" as="p" className="eyebrow text-[#FF7F50] mb-3">Here&apos;s What You Get</EditableText>
           <h2 className="text-title font-display text-ink">
-            Camp{" "}
-            <span className="font-display-italic marker-swipe text-[#B51760]">Inclusions</span>
+            <EditableText id="camp.inclusions.title" as="span">Camp</EditableText>{" "}
+            <EditableText id="camp.inclusions.titleAccent" as="span" className="font-display-italic marker-swipe text-[#B51760]">Inclusions</EditableText>
           </h2>
           <ul className="mt-7 space-y-3">
             {INCLUSIONS.map((item, i) => (
@@ -60,9 +60,9 @@ export function CampInclusions() {
         </motion.div>
 
         <motion.div {...reveal}>
-          <p className="eyebrow text-[#FF7F50] mb-3">The Lineup</p>
+          <EditableText id="camp.activities.eyebrow" as="p" className="eyebrow text-[#FF7F50] mb-3">The Lineup</EditableText>
           <h2 className="text-title font-display text-ink">
-            <span className="font-display-italic marker-swipe text-[#B51760]">Activities</span>
+            <EditableText id="camp.activities.title" as="span" className="font-display-italic marker-swipe text-[#B51760]">Activities</EditableText>
           </h2>
           <div className="mt-7 grid gap-x-6 gap-y-3 sm:grid-cols-2">
             {ACTIVITIES.map((item, i) => (

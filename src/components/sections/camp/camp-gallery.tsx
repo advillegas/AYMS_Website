@@ -1,6 +1,7 @@
 "use client";
 
 import { motion, useReducedMotion } from "framer-motion";
+import { EditableText } from "@/components/inline/editable-text";
 import { EditableImage } from "@/components/inline/editable-image";
 import { EASE } from "./shared";
 
@@ -17,8 +18,8 @@ export function CampGallery() {
     <section className="canvas-warm grain relative overflow-hidden border-y border-[#FF7F50]/15 py-20 sm:py-24">
       <div className="mx-auto max-w-7xl px-4 text-center sm:px-6 lg:px-8">
         <motion.h2 {...reveal} className="text-title font-display text-ink">
-          Sunshine. Adventure.{" "}
-          <span className="font-display-italic marker-swipe text-[#B51760]">Amigas.</span>
+          <EditableText id="camp.gallery.title" as="span">Sunshine. Adventure.</EditableText>{" "}
+          <EditableText id="camp.gallery.titleAccent" as="span" className="font-display-italic marker-swipe text-[#B51760]">Amigas.</EditableText>
         </motion.h2>
         <motion.div {...reveal} className="mt-10 grid gap-5 sm:grid-cols-2">
           {["/camp/gallery-1.jpg", "/camp/gallery-2.jpg"].map((src, i) => (

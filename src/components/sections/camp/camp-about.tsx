@@ -26,12 +26,10 @@ export function CampAbout() {
     <section className="canvas-warm relative overflow-hidden border-t border-[#FF7F50]/15 py-20 sm:py-24">
       <div className="mx-auto grid max-w-7xl items-center gap-12 px-4 sm:px-6 lg:grid-cols-2 lg:gap-16 lg:px-8">
         <motion.div {...reveal}>
-          <p className="eyebrow text-[#FF7F50] mb-3">The Experience</p>
+          <EditableText id="camp.about.eyebrow" as="p" className="eyebrow text-[#FF7F50] mb-3">The Experience</EditableText>
           <h2 className="text-title font-display text-ink">
-            What is{" "}
-            <span className="font-display-italic marker-swipe text-[#B51760]">
-              Amigas Summer Camp?
-            </span>
+            <EditableText id="camp.about.title" as="span">What is</EditableText>{" "}
+            <EditableText id="camp.about.titleAccent" as="span" className="font-display-italic marker-swipe text-[#B51760]">Amigas Summer Camp?</EditableText>
           </h2>
           <EditableText id="camp.about.p1" as="p" multiline className="mt-5 text-lead text-ink-soft">
             Amigas Summer Camp is a grown-girl reimagining of the summer camp experience — designed for Latina women who want to unplug, reconnect, and build real friendships in a joyful, supportive space.

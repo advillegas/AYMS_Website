@@ -23,8 +23,8 @@ export function CampCta() {
       <div className="relative mx-auto max-w-5xl px-4 text-center sm:px-6 lg:px-8">
         <motion.div {...reveal}>
           <h2 className="text-title font-display text-ink">
-            Enough already.{" "}
-            <span className="font-display-italic marker-swipe text-[#B51760]">SIGN ME UP!</span>
+            <EditableText id="camp.cta.title" as="span">Enough already.</EditableText>{" "}
+            <EditableText id="camp.cta.titleAccent" as="span" className="font-display-italic marker-swipe text-[#B51760]">SIGN ME UP!</EditableText>
           </h2>
           <EditableText id="camp.cta.subtitle" as="p" multiline className="mx-auto mt-4 max-w-xl text-lead text-ink-soft">
             Spots are limited and these weekends fill fast. Lock in your bunk and we&apos;ll handle the rest.

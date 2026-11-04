@@ -39,8 +39,8 @@ export function CampTestimonials() {
     <section className="canvas-warm relative overflow-hidden border-t border-[#FF7F50]/15 py-20 sm:py-24">
       <div className="mx-auto max-w-7xl px-4 text-center sm:px-6 lg:px-8">
         <motion.h2 {...reveal} className="text-title font-display text-ink mx-auto max-w-2xl">
-          What the amigas say about our{" "}
-          <span className="font-display-italic marker-swipe text-[#B51760]">community…</span>
+          <EditableText id="camp.testimonials.title" as="span">What the amigas say about our</EditableText>{" "}
+          <EditableText id="camp.testimonials.titleAccent" as="span" className="font-display-italic marker-swipe text-[#B51760]">community…</EditableText>
         </motion.h2>
         <div className="mt-12 grid grid-cols-1 gap-6 md:grid-cols-3">
           {TESTIMONIALS.map((t, i) => (

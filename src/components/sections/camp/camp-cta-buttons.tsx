@@ -4,12 +4,13 @@
  * Admin-editable CTA buttons for the camp page (hero + final CTA share one
  * list, stored under cms_config key "camp.cta").
  *
- * Replaces the old hardcoded Stripe "buy" buttons. The default is a single
- * "Join the waitlist" button wired to the existing lead-capture pipeline
- * (newsletter_signups / newsletterSignups with source "waitlist", surfaced
- * in Admin → Leads). Admins can relabel, repoint (any URL), hide, remove,
- * reorder, and add buttons from the in-place editor ("Edit page" on /camp
- * or the section builder).
+ * Each button is either a "waitlist" button (opens the built-in lead-capture
+ * form → newsletter_signups with source "waitlist", surfaced in Admin →
+ * Leads) or a "link" button (Stripe Payment Link, internal page, any URL).
+ * Admins relabel, repoint, hide, remove, reorder, and add buttons from the
+ * in-place editor ("Edit page" on /camp or the section builder); a one-click
+ * preset adds the "Pay in full" + "Payment plan" checkout pair. Link buttons
+ * without a URL yet are hidden from visitors (shown greyed-out to admins).
  */
 
 import { useEffect, useState } from "react";
@@ -18,6 +19,7 @@ import {
   Check,
   ChevronDown,
   ChevronUp,
+  CreditCard,
   Eye,
   EyeOff,
   Loader2,
@@ -30,9 +32,12 @@ import { useInlineEdit } from "@/lib/use-inline-edit";
 import {
   useCampCta,
   saveSiteContent,
+  campCtaKind,
+  campPaymentButtonsPreset,
   CAMP_CTA_KEY,
   WAITLIST_HREF,
   type CampCtaButton,
+  type CampCtaKind,
 } from "@/lib/use-site-content";
 import { useNewsletter } from "@/lib/use-newsletter";
 import { ensureHttp } from "@/lib/url";
@@ -53,10 +58,9 @@ const PRIMARY_CLS =
 const SECONDARY_CLS =
   "inline-flex items-center justify-center gap-2 rounded-full border border-[#FF0099]/30 bg-white px-8 py-3 text-base font-semibold text-[#B51760] transition-colors hover:bg-[#FF0099]/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0099]/40";
 
-/** True when a button should open the built-in waitlist form. */
-function isWaitlistHref(href: string): boolean {
-  const h = href.trim().toLowerCase();
-  return h === "" || h === WAITLIST_HREF || h === "waitlist";
+/** A link button with no destination yet — never shown to visitors. */
+function isUnlinked(b: CampCtaButton): boolean {
+  return campCtaKind(b) === "link" && b.href.trim() === "";
 }
 
 export function CampCtaButtons({ className = "" }: { className?: string }) {
@@ -65,13 +69,17 @@ export function CampCtaButtons({ className = "" }: { className?: string }) {
   const [waitlistOpen, setWaitlistOpen] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
 
-  const visible = buttons.filter((b) => b.visible !== false && b.label.trim());
+  // Admins see unlinked buttons greyed out so they know what still needs a
+  // URL; visitors never see them.
+  const visible = buttons.filter(
+    (b) => b.visible !== false && b.label.trim() && (editing || !isUnlinked(b)),
+  );
 
   return (
     <div className={`flex flex-col gap-3 sm:flex-row ${className}`}>
       {visible.map((b, i) => {
         const cls = i === 0 ? PRIMARY_CLS : SECONDARY_CLS;
-        if (isWaitlistHref(b.href)) {
+        if (campCtaKind(b) === "waitlist") {
           return (
             <button
               key={b.id}
@@ -81,6 +89,23 @@ export function CampCtaButtons({ className = "" }: { className?: string }) {
             >
               {b.label}
               {i === 0 && <ArrowRight className="h-4 w-4" aria-hidden="true" />}
+            </button>
+          );
+        }
+        if (isUnlinked(b)) {
+          return (
+            <button
+              key={b.id}
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setEditorOpen(true);
+              }}
+              className={`${cls} opacity-50 grayscale`}
+              title="No link yet — hidden from visitors. Click to add the link."
+            >
+              {b.label}
+              <span className="text-[10px] font-bold uppercase tracking-wider">· no link</span>
             </button>
           );
         }
@@ -260,9 +285,14 @@ function newButton(): CampCtaButton {
   return {
     id: `cta-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
     label: "New button",
-    href: WAITLIST_HREF,
+    href: "",
     visible: true,
+    kind: "link",
   };
+}
+
+function isStripeLink(href: string): boolean {
+  return /^(https?:\/\/)?(buy|checkout)\.stripe\.com\//i.test(href.trim());
 }
 
 function CtaEditorDialog({
@@ -299,11 +329,46 @@ function CtaEditorDialog({
   function remove(i: number) {
     setDraft((d) => d.filter((_, idx) => idx !== i));
   }
+  function setKind(i: number, kind: CampCtaKind) {
+    setDraft((d) =>
+      d.map((b, idx) => {
+        if (idx !== i) return b;
+        if (kind === "waitlist") return { ...b, kind, href: WAITLIST_HREF };
+        // Switching to link: clear the sentinel so the URL field starts empty.
+        const href = campCtaKind(b) === "waitlist" ? "" : b.href;
+        return { ...b, kind, href };
+      }),
+    );
+  }
+  /**
+   * Replace the waitlist button(s) with the "Pay in full" + "Payment plan"
+   * pair. Non-waitlist buttons the admin already added are kept after them.
+   */
+  function addPaymentButtons() {
+    setDraft((d) => {
+      const alreadyThere = d.some((b) => /pay in full|payment plan/i.test(b.label));
+      if (alreadyThere) {
+        toast.message("Payment buttons are already in the list.");
+        return d;
+      }
+      const kept = d.filter((b) => campCtaKind(b) !== "waitlist");
+      return [...campPaymentButtonsPreset(), ...kept];
+    });
+  }
+
+  const unlinkedCount = draft.filter(
+    (b) => b.visible !== false && campCtaKind(b) === "link" && b.href.trim() === "",
+  ).length;
 
   async function handleSave() {
     setSaving(true);
     const ok = await saveSiteContent(CAMP_CTA_KEY, {
-      buttons: draft.map((b) => ({ ...b, label: b.label.trim(), href: b.href.trim() })),
+      buttons: draft.map((b) => ({
+        ...b,
+        kind: campCtaKind(b),
+        label: b.label.trim(),
+        href: campCtaKind(b) === "waitlist" ? WAITLIST_HREF : b.href.trim(),
+      })),
     });
     setSaving(false);
     if (ok) {
@@ -320,10 +385,11 @@ function CtaEditorDialog({
         <DialogHeader>
           <DialogTitle>Camp call-to-action buttons</DialogTitle>
           <DialogDescription>
-            These buttons appear in the camp hero and the closing section.
-            Leave the link as <code className="text-xs">#waitlist</code> (or
-            empty) to open the built-in waitlist form — signups land in
-            Admin → Leads.
+            These buttons appear in the camp hero and the closing section. A
+            button either opens the built-in waitlist form (signups land in
+            Admin → Leads) or goes to a link — paste a Stripe Payment Link
+            to take payment. Link buttons without a URL stay hidden from
+            visitors until you add one.
           </DialogDescription>
         </DialogHeader>
 
@@ -394,29 +460,102 @@ function CtaEditorDialog({
                   <Input
                     value={b.label}
                     onChange={(e) => patch(i, { label: e.target.value })}
-                    placeholder="e.g. Join the waitlist"
+                    placeholder="e.g. Pay in full"
                   />
                 </div>
                 <div className="grid gap-1">
-                  <Label className="text-xs">Link</Label>
+                  <Label className="text-xs">When clicked</Label>
+                  <div
+                    role="radiogroup"
+                    aria-label="Button action"
+                    className="grid grid-cols-2 overflow-hidden rounded-md border border-border text-xs font-medium"
+                  >
+                    {(
+                      [
+                        ["link", "Open a link"],
+                        ["waitlist", "Waitlist form"],
+                      ] as const
+                    ).map(([k, text]) => {
+                      const selected = campCtaKind(b) === k;
+                      return (
+                        <button
+                          key={k}
+                          type="button"
+                          role="radio"
+                          aria-checked={selected}
+                          onClick={() => setKind(i, k)}
+                          className={`px-2 py-2 transition-colors ${
+                            selected
+                              ? "bg-[var(--magenta)]/15 text-[var(--magenta)]"
+                              : "hover:bg-muted"
+                          }`}
+                        >
+                          {text}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+              {campCtaKind(b) === "link" && (
+                <div className="grid gap-1">
+                  <Label className="text-xs">
+                    Link{" "}
+                    <span className="font-normal text-muted-foreground">
+                      (Stripe Payment Link, /page, or https://…)
+                    </span>
+                  </Label>
                   <Input
                     value={b.href}
                     onChange={(e) => patch(i, { href: e.target.value })}
-                    placeholder="#waitlist, /trips, or https://…"
+                    placeholder="https://buy.stripe.com/…"
+                    inputMode="url"
+                    autoComplete="off"
                   />
+                  {b.href.trim() === "" ? (
+                    <p className="text-[11px] text-amber-700">
+                      No link yet — this button is hidden from visitors until
+                      you paste one.
+                    </p>
+                  ) : isStripeLink(b.href) ? (
+                    <p className="flex items-center gap-1 text-[11px] text-emerald-700">
+                      <CreditCard className="h-3 w-3" aria-hidden="true" />
+                      Stripe Payment Link — opens Stripe checkout in a new tab.
+                    </p>
+                  ) : null}
                 </div>
-              </div>
+              )}
             </div>
           ))}
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full"
-            onClick={() => setDraft((d) => [...d, newButton()])}
-          >
-            <Plus className="mr-1 h-3.5 w-3.5" /> Add button
-          </Button>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full"
+              onClick={addPaymentButtons}
+              title='Adds "Pay in full" + "Payment plan" link buttons (replacing the waitlist button) — then paste your Stripe links.'
+            >
+              <CreditCard className="mr-1 h-3.5 w-3.5" /> Add payment buttons
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full"
+              onClick={() => setDraft((d) => [...d, newButton()])}
+            >
+              <Plus className="mr-1 h-3.5 w-3.5" /> Add button
+            </Button>
+          </div>
         </div>
+
+        {unlinkedCount > 0 && (
+          <p className="text-xs text-amber-700">
+            {unlinkedCount === 1
+              ? "1 button has no link yet and won't show to visitors."
+              : `${unlinkedCount} buttons have no link yet and won't show to visitors.`}{" "}
+            You can still save and add the Stripe links later.
+          </p>
+        )}
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>

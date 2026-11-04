@@ -449,22 +449,39 @@ export function useFlipCards(key: string, defaults: FlipCardItem[]): FlipCardIte
 
 /* ------------------ Camp: CTA buttons + sponsor banner ------------- */
 
+/**
+ * What a camp CTA button does when clicked.
+ * - "waitlist": opens the built-in waitlist lead-capture form.
+ * - "link": navigates to `href` (Stripe Payment Link, /page, https://…).
+ *   A link button with an empty href is not shown to visitors.
+ */
+export type CampCtaKind = "waitlist" | "link";
+
 export interface CampCtaButton {
   id: string;
   label: string;
   /**
-   * Destination. "#waitlist" (or empty) opens the built-in waitlist
-   * lead-capture form; "/path" navigates internally; anything else is an
-   * external URL.
+   * Destination. "#waitlist" (or empty, for legacy rows without `kind`)
+   * opens the built-in waitlist lead-capture form; "/path" navigates
+   * internally; anything else is an external URL.
    */
   href: string;
   visible: boolean;
+  /** Omitted on rows saved before this field existed — see campCtaKind(). */
+  kind?: CampCtaKind;
 }
 export interface CampCtaContent {
   buttons: CampCtaButton[];
 }
 
 export const WAITLIST_HREF = "#waitlist";
+
+/** Resolve a button's behaviour, honouring legacy rows that only have href. */
+export function campCtaKind(b: Pick<CampCtaButton, "href" | "kind">): CampCtaKind {
+  if (b.kind === "waitlist" || b.kind === "link") return b.kind;
+  const h = (b.href ?? "").trim().toLowerCase();
+  return h === "" || h === WAITLIST_HREF || h === "waitlist" ? "waitlist" : "link";
+}
 
 /** Default camp CTA: the waitlist capture flow (no hardcoded buy links). */
 export const DEFAULT_CAMP_CTA: CampCtaContent = {
@@ -474,9 +491,23 @@ export const DEFAULT_CAMP_CTA: CampCtaContent = {
       label: "Join the waitlist",
       href: WAITLIST_HREF,
       visible: true,
+      kind: "waitlist",
     },
   ],
 };
+
+/**
+ * One-click preset for the checkout flow: "Pay in full" + "Payment plan"
+ * link buttons. Paste the Stripe Payment Link URLs into each button's link
+ * field; a button stays hidden from visitors until it has a URL.
+ */
+export function campPaymentButtonsPreset(): CampCtaButton[] {
+  const stamp = Date.now().toString(36);
+  return [
+    { id: `cta-payfull-${stamp}`, label: "Pay in full", href: "", visible: true, kind: "link" },
+    { id: `cta-payplan-${stamp}`, label: "Payment plan", href: "", visible: true, kind: "link" },
+  ];
+}
 
 export const CAMP_CTA_KEY = "camp.cta";
 

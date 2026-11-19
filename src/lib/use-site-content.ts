@@ -574,6 +574,26 @@ export function useCampSponsors(): CampSponsorsContent {
   return { items: Array.isArray(c.items) ? c.items : [] };
 }
 
+export interface CampQaItem {
+  id: string;
+  /** The question. */
+  q: string;
+  /** The answer — plain text; line breaks are kept, URLs/emails become links. */
+  a: string;
+}
+export interface CampQaContent {
+  items: CampQaItem[];
+}
+/** Empty by default: visitors don't see the section until a question exists. */
+export const DEFAULT_CAMP_QA: CampQaContent = { items: [] };
+
+export const CAMP_QA_KEY = "camp.qa";
+
+export function useCampQa(): CampQaContent {
+  const c = useDomain<CampQaContent>(CAMP_QA_KEY, DEFAULT_CAMP_QA);
+  return { items: Array.isArray(c.items) ? c.items : [] };
+}
+
 /* ---------------------------- chatbot ------------------------------- */
 
 export interface ChatbotContent {

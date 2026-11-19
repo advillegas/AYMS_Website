@@ -10,6 +10,7 @@ import { CampGallery } from "@/components/sections/camp/camp-gallery";
 import { CampInclusions } from "@/components/sections/camp/camp-inclusions";
 import { CampTestimonials } from "@/components/sections/camp/camp-testimonials";
 import { CampSponsors } from "@/components/sections/camp/camp-sponsors";
+import { CampQa } from "@/components/sections/camp/camp-qa";
 import { CampCta } from "@/components/sections/camp/camp-cta";
 
 export default function CampPage() {
@@ -24,6 +25,7 @@ export default function CampPage() {
         <CampInclusions />
         <CampTestimonials />
         <CampSponsors />
+        <CampQa />
         <CampCta />
       </main>
       <Footer />

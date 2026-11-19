@@ -8,6 +8,7 @@ import { CampGallery } from "@/components/sections/camp/camp-gallery";
 import { CampInclusions } from "@/components/sections/camp/camp-inclusions";
 import { CampTestimonials } from "@/components/sections/camp/camp-testimonials";
 import { CampSponsors } from "@/components/sections/camp/camp-sponsors";
+import { CampQa } from "@/components/sections/camp/camp-qa";
 import { CampCta } from "@/components/sections/camp/camp-cta";
 
 /**
@@ -66,6 +67,14 @@ export const CAMP_SECTIONS: SectionDef[] = [
     description:
       "Horizontal banner of sponsor photos/logos with optional names + links. Manage the list right on the canvas.",
     Component: () => <CampSponsors />,
+  },
+  {
+    type: "section.camp.qa",
+    label: "Q&A",
+    group: "Camp",
+    description:
+      "Tap-to-open questions and answers. Add, reword and reorder them right on the canvas.",
+    Component: () => <CampQa />,
   },
   {
     type: "section.camp.cta",
